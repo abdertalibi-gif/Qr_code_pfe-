@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrésenceQR — Connexion</title>
+  <link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body class="login-page">
+  <aside class="login-brand-panel">
+    <div class="login-brand-content">
+      <div class="nav-brand" style="color:#fff">
+        <div class="nav-brand-icon">📋</div>
+        <span style="font-size:1.15rem;font-weight:800">PrésenceQR</span>
+      </div>
+      <h2>La présence en cours,<br/>simplifiée.</h2>
+      <p>
+        Plateforme sécurisée de gestion des présences par QR code pour établissements
+        d'enseignement supérieur.
+      </p>
+      <ul class="login-features">
+        <li>Scan QR en temps réel</li>
+        <li>Tableaux de bord admin & enseignant</li>
+        <li>Export Excel des présences</li>
+        <li>Gestion des classes et séances</li>
+      </ul>
+    </div>
+    <p class="login-brand-footer">© 2026 PrésenceQR — Tous droits réservés</p>
+  </aside>
+
+  <div class="login-form-panel">
+    <div class="login-card">
+      <h1>Bon retour</h1>
+      <p class="subtitle">Connectez-vous pour accéder à votre espace</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Adresse e-mail</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="vous@exemple.ma"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn">
+          <span class="btn-label">Se connecter</span>
+          <span class="spinner"></span>
+        </button>
+
+        <div class="alert" id="alert"></div>
+      </form>
+
+      <p style="margin-top:1.75rem;text-align:center;font-size:.78rem;color:var(--muted)">
+        Connexion sécurisée · JWT
+      </p>
+    </div>
+  </div>
+
+  <script src="/api.js"></script>
+  <script src="/i18n-fr.js"></script>
+  <script>
+    if (API.getToken()) {
+      const u = localStorage.getItem('current_user');
+      if (u) {
+        try {
+          const user = JSON.parse(u);
+          if (user.role === 'admin') window.location.href = '/admin-ui/';
+          else if (user.role === 'teacher') window.location.href = '/teacher/';
+          else if (user.role === 'student') window.location.href = '/student/';
+          else window.location.href = '/login/';
+        } catch {}
+      }
+    }
+
+    const form = document.getElementById('loginForm');
+    const btn = document.getElementById('loginBtn');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(msg, type = 'error') {
+      alertEl.className = `alert ${type}`;
+      alertEl.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+    }
+
+    function setLoading(loading) {
+      btn.disabled = loading;
+      btn.classList.toggle('loading', loading);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.className = 'alert';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showAlert(t('fillBothFields'));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const data = await API.login(email, password);
+        const role = data.user?.role;
+        const name = data.user?.first_name || email;
+        
+        if (!role) {
+          showAlert('Unable to determine user role', 'error');
+          setLoading(false);
+          return;
+        }
+        
+        showAlert(t('welcomeRedirect', { name }), 'success');
+
+        setTimeout(() => {
+          if (role === 'admin') window.location.href = '/admin-ui/';
+          else if (role === 'teacher') window.location.href = '/teacher/';
+          else if (role === 'student') window.location.href = '/student/';
+          else {
+            showAlert('Unknown user role', 'error');
+            setLoading(false);
+          }
+        }, 600);
+      } catch (err) {
+        showAlert(err.message || t('invalidCredentials'));
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

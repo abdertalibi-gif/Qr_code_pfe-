@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tableau de bord enseignant — PrésenceQR</title>
+        <link rel="stylesheet" href="/dashboard.css" />
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </head>
+    <body class="dashboard-app teacher-app">
+        <!-- NAV -->
+        <nav>
+            <div class="nav-brand">
+                <div class="nav-brand-icon">📋</div>
+                PrésenceQR
+            </div>
+            <div class="nav-right">
+                <div class="user-pill">
+                    <div class="user-avatar" id="avatarInitials">?</div>
+                    <span id="navUserName">Chargement…</span>
+                    <span class="badge badge-teacher">Enseignant</span>
+                </div>
+                <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Déconnexion
+                </button>
+            </div>
+        </nav>
+
+        <!-- LAYOUT -->
+        <div class="layout">
+            <!-- SIDEBAR: Courses + Sessions -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>🏫 Mes classes</h2>
+                    <button class="btn sm outline" type="button" onclick="showLiveDashboard()">📡 En direct</button>
+                </div>
+                <div class="sidebar-content" id="classesContainer">
+                    <div class="sidebar-loading">Chargement des classes…</div>
+                </div>
+            </aside>
+
+            <!-- MAIN PANEL -->
+            <section class="main-panel" id="mainPanel">
+                <div class="empty-state">
+                    <div class="icon">📡</div>
+                    <h2>Sélectionnez une séance</h2>
+                    <p>Choisissez une classe et une séance pour gérer les présences et générer un code QR.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- ── MODAL: QR Generation Settings ── -->
+        <div class="modal-backdrop" id="modalGenQR">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>🔲 Générer le QR Code</h3>
+                    <button class="modal-close" data-close="modalGenQR">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field">
+                        <label>Durée de validité (minutes)</label>
+                        <input type="number" id="qrExpiryMinutes" value="20" min="1" max="120" />
+                    </div>
+                    <div class="field">
+                        <label>Rayon de présence (mètres)</label>
+                        <select id="qrRadius">
+                            <option value="20">20 m</option>
+                            <option value="50" selected>50 m</option>
+                            <option value="100">100 m</option>
+                            <option value="200">200 m</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Localisation de la salle</label>
+                        <button type="button" class="btn outline sm" id="btnCaptureLocation">
+                            📍 Capturer ma position GPS
+                        </button>
+                        <p id="qrLocationStatus" style="font-size:0.8rem;color:var(--muted);margin-top:0.5rem">
+                            Position non capturée — requise pour le géorepérage.
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn outline" data-close="modalGenQR">Annuler</button>
+                    <button class="btn green" id="btnConfirmGenQR">Générer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── MODAL: Export Wizard (assistant avancé) ── -->
+        <div class="modal-backdrop" id="modalExportWizard">
+            <div class="modal wide">
+                <div class="modal-header">
+                    <h3>📥 Export Wizard — Assistant d'export Excel</h3>
+                    <button class="modal-close" data-close="modalExportWizard">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                        <div class="field">
+                            <label>Date de début <span class="req">*</span></label>
+                            <input type="date" id="expStartDate" />
+                        </div>
+                        <div class="field">
+                            <label>Date de fin <span class="req">*</span></label>
+                            <input type="date" id="expEndDate" />
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem">
+                        <div class="field">
+                            <label>Semestre</label>
+                            <select id="expSemestre">
+                                <option value="">— Sélectionner —</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Filière</label>
+                            <select id="expFiliere" disabled>
+                                <option value="">— Sélectionner d'abord le semestre —</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem">
+                        <div class="field">
+                            <label>Module</label>
+                            <select id="expModule" disabled>
+                                <option value="">— Sélectionner d'abord la filière —</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Classe (optionnel)</label>
+                            <select id="expClasse" disabled>
+                                <option value="">— Toutes —</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border,#e0e0e0)" />
+
+                    <div class="field" style="margin-top:.5rem">
+                        <label style="display:flex;align-items:center;gap:.5rem;font-weight:600;cursor:pointer">
+                            <input type="checkbox" id="expFilterStudent" onchange="toggleStudentFilter()" />
+                            Filtrer par étudiant spécifique
+                        </label>
+                        <div id="expStudentSelectArea" style="display:none;margin-top:.5rem">
+                            <input type="text" id="expStudentSearch" placeholder="Rechercher un étudiant..." style="width:100%;padding:.5rem;border:1px solid var(--border,#e0e0e0);border-radius:6px;margin-bottom:.25rem;box-sizing:border-box" />
+                            <select id="expEtudiant" style="width:100%">
+                                <option value="">— Sélectionner d'abord les filtres ci-dessus —</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                        <div class="field">
+                            <label>Type d'export</label>
+                            <select id="expType">
+                                <option value="all">Tous les étudiants</option>
+                                <option value="present">Présents uniquement</option>
+                                <option value="absent">Absents uniquement</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Mode d'export</label>
+                            <select id="expMode">
+                                <option value="by_student">Par étudiant</option>
+                                <option value="by_module">Par module</option>
+                                <option value="by_session">Par séance</option>
+                                <option value="resume_absences">Résumé des absences</option>
+                                <option value="resume_presences">Résumé des présences</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="expProgressArea" style="display:none;margin-top:1rem">
+                        <div style="display:flex;align-items:center;gap:.75rem">
+                            <span class="spinner" id="expSpinner"></span>
+                            <span id="expProgressText">Génération du fichier Excel en cours...</span>
+                        </div>
+                        <div style="margin-top:.5rem;height:6px;background:var(--border,#e0e0e0);border-radius:3px;overflow:hidden">
+                            <div id="expProgressBar" style="height:100%;width:0%;background:var(--primary,#4361ee);border-radius:3px;transition:width .3s"></div>
+                        </div>
+                    </div>
+
+                    <div id="expErrorArea" style="display:none;margin-top:1rem;padding:.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#dc2626;font-size:.9rem">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn outline" data-close="modalExportWizard">Annuler</button>
+                    <button class="btn green" id="btnGenerateExcelWizard" disabled>Générer le fichier Excel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── MODAL: QR Code Viewer ── -->
+        <div class="modal-backdrop" id="modalQR">
+            <div class="modal wide">
+                <div class="modal-header">
+                    <h3>🔲 QR Code</h3>
+                    <button class="modal-close" data-close="modalQR">✕</button>
+                </div>
+                <div class="modal-body">
+                    <img
+                        id="qrModalImg"
+                        class="qr-modal-img"
+                        src=""
+                        alt="QR Code"
+                    />
+                    <div class="qr-modal-meta">
+                        <div>
+                            <div
+                                style="
+                                    font-size: 0.8rem;
+                                    color: var(--muted);
+                                    margin-bottom: 0.2rem;
+                                "
+                            >
+                                Time remaining
+                            </div>
+                            <div class="qr-modal-timer" id="qrModalTimer">—</div>
+                        </div>
+                        <div style="text-align: right">
+                            <div
+                                style="
+                                    font-size: 0.8rem;
+                                    color: var(--muted);
+                                    margin-bottom: 0.2rem;
+                                "
+                            >
+                                Expires at
+                            </div>
+                            <div
+                                style="font-size: 0.9rem; font-weight: 600"
+                                id="qrModalExpiry"
+                            >—</div>
+                        </div>
+                    </div>
+                    <p
+                        style="
+                            font-size: 0.78rem;
+                            color: var(--muted);
+                            text-align: center;
+                            margin-top: 0.8rem;
+                        "
+                    >
+                        Students must scan this QR code before it expires.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn outline" data-close="modalQR">Close</button>
+                    <button class="btn green" id="btnRefreshQR">🔄 Regenerate QR</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST -->
+        <div id="toast"></div>
+
+        <script src="/api.js"></script>
+        <script src="/i18n-fr.js"></script>
+        <script src="/session-form.js"></script>
+        <script>
+            /* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════════ */
+            let currentUser = null;
+            let allClasses = [];
+            let sessionsByClasse = {};
+            let activeClasseId = null;
+            let activeSessionId = null;
+            let activeSession = null;
+            let qrExpiresAt = null;
+            let qrCountdownTimer = null;
+            let qrModalCountdownTimer = null;
+            let activeWS = null;
+            let teacherLiveWS = null;
+            let attendanceRows = [];
+            let liveAttendanceRows = [];
+            let lastQrData = null;
+            let qrGenLatitude = null;
+            let qrGenLongitude = null;
+            let sessionMap = null;
+            let pendingQrSessionId = null;
+
+            function roundGps(value) {
+                return Math.round(value * 1e7) / 1e7;
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════ */
+            (async () => {
+                try {
+                    currentUser = await API.requireAuth(["teacher", "admin"]);
+                    document.getElementById("navUserName").textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+                    document.getElementById("avatarInitials").textContent =
+                        (currentUser.first_name?.[0] || "") + (currentUser.last_name?.[0] || "");
+                } catch {
+                    return;
+                }
+
+                await loadClasses();
+                await Promise.all([loadCurriculum()]);
+                await SessionForm.init({ isAdmin: false });
+                await loadLiveAttendance();
+                connectTeacherLiveWS();
+
+                const restored = await restoreSavedSession();
+                if (!restored) {
+                    showLiveDashboard();
+                }
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+   COURSES
+═══════════════════════════════════════════════════════════════════ */
+            async function loadClasses() {
+                const container = document.getElementById("classesContainer");
+                try {
+                    const data = await API.apiFetch("/classes/");
+                    allClasses = Array.isArray(data) ? data : data.results || [];
+
+                    if (!allClasses.length) {
+                        container.innerHTML = `<div style="padding:2rem 1.2rem;text-align:center;color:var(--muted);font-size:.88rem;">${t('noClasses')}</div>`;
+                        return;
+                    }
+
+                    container.innerHTML = allClasses
+                        .map(
+                            (c) => `
+      <div class="course-item" id="classe-item-${c.id}">
+        <div class="course-header" data-classe-id="${c.id}">
+          <div class="course-info">
+            <div class="course-title">${esc(c.name)}</div>
+            <div class="course-code">${esc(c.field)} · ${esc(c.level)}</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        <div class="sessions-list" id="sessions-${c.id}">
+          <div class="sessions-list-header">
+            <span>${t('sessions')}</span>
+            <button class="btn sm" onclick="SessionForm.open(${c.id})">+ ${t('newSession')}</button>
+          </div>
+          <div id="session-items-${c.id}">
+            <div class="session-item" style="justify-content:center;color:var(--muted);font-size:.82rem;">${t('loading')}</div>
+          </div>
+        </div>
+      </div>
+    `,
+                        )
+                        .join("");
+
+                    document.querySelectorAll(".course-header").forEach((hdr) => {
+                        hdr.addEventListener("click", () => toggleClasse(Number(hdr.dataset.classeId)));
+                    });
+                } catch (e) {
+                    container.innerHTML = `<div style="padding:2rem 1.2rem;text-align:center;color:var(--red);font-size:.88rem;">${t('failedLoad')}: ${e.message}</div>`;
+                }
+            }
+
+            async function restoreSavedSession() {
+                const raw = sessionStorage.getItem("teacherActiveSession");
+                if (!raw) return false;
+
+                try {
+                    const { sessionId, classeId } = JSON.parse(raw);
+                    if (!sessionId || !classeId) return false;
+
+                    const hdr = document.querySelector(`.course-header[data-classe-id="${classeId}"]`);
+                    const list = document.getElementById(`sessions-${classeId}`);
+                    if (!hdr || !list) return false;
+
+                    document.querySelectorAll(".sessions-list").forEach((l) => l.classList.remove("open"));
+                    document.querySelectorAll(".course-header").forEach((h) => h.classList.remove("active"));
+                    hdr.classList.add("active");
+                    list.classList.add("open");
+                    activeClasseId = classeId;
+                    await loadSessions(classeId);
+                    selectSession(sessionId, classeId);
+                    return true;
+                } catch {
+                    sessionStorage.removeItem("teacherActiveSession");
+                    return false;
+                }
+            }
+
+            function toggleClasse(classeId) {
+                const hdr = document.querySelector(`.course-header[data-classe-id="${classeId}"]`);
+                const list = document.getElementById(`sessions-${classeId}`);
+                const isOpen = list.classList.contains("open");
+
+                document.querySelectorAll(".sessions-list").forEach((l) => l.classList.remove("open"));
+                document.querySelectorAll(".course-header").forEach((h) => h.classList.remove("active"));
+
+                if (!isOpen) {
+                    hdr.classList.add("active");
+                    list.classList.add("open");
+                    activeClasseId = classeId;
+                    loadSessions(classeId);
+                } else {
+                    activeClasseId = null;
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   SESSIONS
+═══════════════════════════════════════════════════════════════════ */
+            async function loadSessions(classeId) {
+                const container = document.getElementById(`session-items-${classeId}`);
+                try {
+                    const data = await API.apiFetch(`/sessions/?classe=${classeId}`);
+                    const sessions = Array.isArray(data) ? data : data.results || [];
+                    sessionsByClasse[classeId] = sessions;
+
+                    if (!sessions.length) {
+                        container.innerHTML = `<div class="session-item" style="justify-content:center;color:var(--muted);font-size:.82rem;">No sessions yet. Click "+ New" above.</div>`;
+                        return;
+                    }
+
+                    container.innerHTML = sessions
+                        .map(
+                            (s) => `
+      <div class="session-item ${activeSessionId === s.id ? "selected" : ""}"
+           id="session-item-${s.id}"
+           data-session-id="${s.id}"
+           data-classe-id="${classeId}">
+        <div>
+          <div class="session-date">📅 ${formatDate(s.date)} · ${formatSessionWindow(s)}</div>
+          <div class="session-id">${esc(s.subject)}</div>
+        </div>
+      </div>
+    `,
+                        )
+                        .join("");
+
+                    container.querySelectorAll(".session-item").forEach((item) => {
+                        item.addEventListener("click", () => {
+                            const sid = Number(item.dataset.sessionId);
+                            const cid = Number(item.dataset.classeId);
+                            selectSession(sid, cid);
+                        });
+                    });
+                } catch (e) {
+                    container.innerHTML = `<div class="session-item" style="color:var(--red);font-size:.82rem;">Error: ${e.message}</div>`;
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+    CURRICULUM DATA (used by export wizard)
+═══════════════════════════════════════════════════════════════════ */
+            let curriculumData = [];
+
+            async function loadCurriculum() {
+                try {
+                    const data = await API.apiFetch('/curriculum/');
+                    curriculumData = Array.isArray(data) ? data : [];
+                } catch (e) {
+                    console.error('Failed to load curriculum:', e);
+                    curriculumData = [];
+                }
+            }
+
+            /* ── Session created event: auto-refresh ── */
+            document.addEventListener('session-created', function (e) {
+                if (activeClasseId) {
+                    loadSessions(activeClasseId);
+                }
+            });
+
+            /* ═══════════════════════════════════════════════════════════
+    LIVE DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
+            async function loadLiveAttendance() {
+                try {
+                    const data = await API.apiFetch("/attendance/");
+                    liveAttendanceRows = Array.isArray(data) ? data : data.results || [];
+                } catch {
+                    liveAttendanceRows = [];
+                }
+            }
+
+            function showLiveDashboard() {
+                activeSessionId = null;
+                document.querySelectorAll(".session-item").forEach((el) => el.classList.remove("selected"));
+
+                if (activeWS) { activeWS.close(); activeWS = null; }
+
+                const mainPanel = document.getElementById("mainPanel");
+                mainPanel.innerHTML = `
+    <div class="session-detail-header">
+      <div class="session-detail-title">
+        <h1>📡 Présences en direct</h1>
+        <p>Scans en temps réel sur tous vos cours</p>
+      </div>
+      <div class="ws-status">
+        <div class="ws-dot" id="teacherLiveWsDot"></div>
+        <span id="teacherLiveWsStatus">Connecting…</span>
+      </div>
+    </div>
+    <div class="attendance-section">
+      <div class="attendance-section-header">
+        <h3>
+          Scans récents
+          <span id="liveAttendanceCount" style="font-size:.8rem;color:var(--muted);font-weight:400">—</span>
+        </h3>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Code Massar</th>
+            <th>Matière</th>
+            <th>Session Date</th>
+            <th>Scanned At</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="liveAttendanceBody">
+          <tr class="empty-row"><td colspan="7">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+                renderLiveAttendance();
+                updateTeacherLiveWsUI(teacherLiveWS?.readyState === WebSocket.OPEN ? "connected" : "disconnected");
+            }
+
+            function renderLiveAttendance() {
+                const tbody = document.getElementById("liveAttendanceBody");
+                const countEl = document.getElementById("liveAttendanceCount");
+                if (!tbody) return;
+
+                if (countEl) {
+                    countEl.textContent = `${liveAttendanceRows.length} scan${liveAttendanceRows.length !== 1 ? "s" : ""}`;
+                }
+
+                if (!liveAttendanceRows.length) {
+                    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Aucune présence. Sélectionnez une séance et générez un QR pour les étudiants.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = liveAttendanceRows.map((r, i) => liveAttendanceRowHtml(r, i + 1)).join("");
+            }
+
+            function liveAttendanceRowHtml(r, idx) {
+                return `
+    <tr>
+      <td style="color:var(--muted)">${idx}</td>
+      <td><strong>${esc(r.student_name)}</strong></td>
+      <td style="font-family:monospace;color:var(--accent)">${esc(r.student_code_massar)}</td>
+      <td>${esc(r.subject || '—')} <span style="color:var(--muted);font-size:.78rem">(${esc(r.classe_session || r.classe_name || '')})</span></td>
+      <td style="color:var(--muted)">${formatDate(r.session_date)}</td>
+      <td style="color:var(--muted);font-size:.8rem">${formatDateTime(r.validation_time)}</td>
+      <td><span class="badge badge-present">Present</span></td>
+    </tr>
+  `;
+            }
+
+            function handleTeacherLiveRecord(record) {
+                if (liveAttendanceRows.some((r) => r.id === record.id)) return;
+                liveAttendanceRows.unshift(record);
+
+                const liveBody = document.getElementById("liveAttendanceBody");
+                if (liveBody) {
+                    const empty = liveBody.querySelector(".empty-row");
+                    if (empty) empty.remove();
+                    const tr = document.createElement("tr");
+                    tr.className = "new-row";
+                    tr.innerHTML = `
+      <td style="color:var(--muted)">1</td>
+      <td><strong>${esc(record.student_name)}</strong></td>
+      <td style="font-family:monospace;color:var(--accent)">${esc(record.student_code_massar)}</td>
+      <td>${esc(record.subject || '—')} <span style="color:var(--muted);font-size:.78rem">(${esc(record.classe_session || '')})</span></td>
+      <td style="color:var(--muted)">${formatDate(record.session_date)}</td>
+      <td style="color:var(--muted);font-size:.8rem">${formatDateTime(record.validation_time)}</td>
+      <td><span class="badge badge-present">Present</span></td>
+    `;
+                    liveBody.prepend(tr);
+                    liveBody.querySelectorAll("tr:not(.empty-row)").forEach((row, i) => {
+                        const cell = row.querySelector("td");
+                        if (cell) cell.textContent = i + 1;
+                    });
+                    const countEl = document.getElementById("liveAttendanceCount");
+                    if (countEl) {
+                        countEl.textContent = `${liveAttendanceRows.length} scan${liveAttendanceRows.length !== 1 ? "s" : ""}`;
+                    }
+                }
+
+                if (activeSessionId && String(record.session) === String(activeSessionId)) {
+                    addAttendanceRow(record);
+                } else {
+                    showToast(t('studentScanned', { name: record.student_name }), "info");
+                }
+            }
+
+            function connectTeacherLiveWS() {
+                if (!currentUser?.id) return;
+                if (teacherLiveWS) teacherLiveWS.close();
+                teacherLiveWS = API.connectAttendanceWs(
+                    `/ws/attendance/live/teacher/${currentUser.id}/`,
+                    handleTeacherLiveRecord,
+                    updateTeacherLiveWsUI,
+                );
+            }
+
+            function updateTeacherLiveWsUI(status) {
+                const dot = document.getElementById("teacherLiveWsDot");
+                const text = document.getElementById("teacherLiveWsStatus");
+                if (!dot || !text) return;
+                if (status === "connected") {
+                    dot.className = "ws-dot connected";
+                    text.textContent = t('live');
+                } else if (status === "error") {
+                    dot.className = "ws-dot error";
+                    text.textContent = t('connectionError');
+                } else {
+                    dot.className = "ws-dot";
+                    text.textContent = t('disconnected');
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   SELECT SESSION
+═══════════════════════════════════════════════════════════════════ */
+            function selectSession(sessionId, classeId) {
+                if (activeWS) { activeWS.close(); activeWS = null; }
+
+                activeSessionId = sessionId;
+                activeClasseId = classeId;
+
+                document.querySelectorAll(".session-item").forEach((el) => el.classList.remove("selected"));
+                const el = document.getElementById(`session-item-${sessionId}`);
+                if (el) el.classList.add("selected");
+
+                const classe = allClasses.find((c) => c.id === classeId);
+                const sessions = sessionsByClasse[classeId] || [];
+                const session = sessions.find((s) => s.id === sessionId);
+                activeSession = session || null;
+
+                sessionStorage.setItem("teacherActiveSession", JSON.stringify({ sessionId, classeId }));
+
+                renderSessionPanel(session, classe);
+                loadAttendance(sessionId);
+                connectWS(sessionId);
+
+                if (session?.qr_token) restoreSessionQR(sessionId);
+            }
+
+            function renderSessionPanel(session, classe) {
+                const mainPanel = document.getElementById("mainPanel");
+                const canGenQR = sessionCanGenerateQr(session);
+                const windowNotice = canGenQR
+                    ? ""
+                    : `<div class="session-window-notice" style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);font-size:.85rem;color:var(--muted)">${esc(getSessionWindowNotice(session))}</div>`;
+
+                mainPanel.innerHTML = `
+    <div class="session-detail-header">
+      <div class="session-detail-title">
+        <h1>${esc(session?.subject || "Séance")}</h1>
+        <p>🏫 ${esc(classe?.name || '')} &nbsp;·&nbsp; 📅 ${formatDate(session?.date)} &nbsp;·&nbsp; 🕐 ${formatSessionWindow(session)}</p>
+      </div>
+      <div class="action-row">
+        ${canGenQR
+            ? `        <button class="btn green" id="btnGenQR">🔲 Générer le QR</button>`
+            : `<button class="btn green" id="btnGenQR" disabled title="Hors créneau horaire">🔲 Générer le QR</button>`}
+
+        <div class="dropdown" style="position:relative;display:inline-block">
+          <button class="btn outline" id="btnExport">📥 Export Excel</button>
+        </div>
+      </div>
+    </div>
+    ${windowNotice}
+
+    <div id="qrArea" style="display:none"></div>
+
+    <div class="tab-bar" style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn sm" id="tabAttendance" onclick="switchSessionTab('attendance')">📋 Présences</button>
+      <button class="btn sm outline" id="tabMap" onclick="switchSessionTab('map')">🗺️ Carte</button>
+      <button class="btn sm outline" id="tabStats" onclick="switchSessionTab('stats')">📊 Statistiques</button>
+      <button class="btn sm outline" id="tabSuspicious" onclick="switchSessionTab('suspicious')">⚠️ Tentatives suspectes</button>
+    </div>
+
+    <div id="tabPanelAttendance">
+      <div class="attendance-section">
+        <div class="attendance-section-header">
+          <h3>
+            📋 Présences
+            <span id="attendanceCount" style="font-size:.8rem;color:var(--muted);font-weight:400">— students</span>
+          </h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom étudiant</th>
+              <th>Code Massar</th>
+              <th>Filière</th>
+              <th>Scanné à</th>
+              <th>Appareil</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceBody">
+            <tr class="empty-row"><td colspan="7">Loading attendance…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tabPanelMap" style="display:none">
+      <div id="sessionMap" style="height:420px;border-radius:12px;border:1px solid var(--border)"></div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">Emplacements GPS des étudiants ayant marqué la présence.</p>
+    </div>
+
+    <div id="tabPanelStats" style="display:none">
+      <div id="statsContent" class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem"></div>
+    </div>
+
+    <div id="tabPanelSuspicious" style="display:none">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Étudiant</th>
+            <th>IP</th>
+            <th>Appareil</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="suspiciousBody">
+          <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+
+                const btnGen = document.getElementById("btnGenQR");
+                if (btnGen && canGenQR) btnGen.addEventListener("click", () => openGenQRModal(session.id));
+
+                document.getElementById("btnExport")?.addEventListener("click", () => openExportWizard());
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   EXPORT WIZARD (assistant avancé)
+═══════════════════════════════════════════════════════════════════ */
+            let _exportWizardBound = false;
+
+            async function openExportWizard() {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 30);
+
+                const toISODate = (d) => d.toISOString().split('T')[0];
+                document.getElementById('expStartDate').value = toISODate(start);
+                document.getElementById('expEndDate').value = toISODate(end);
+
+                document.getElementById('expErrorArea').style.display = 'none';
+                document.getElementById('expProgressArea').style.display = 'none';
+                document.getElementById('btnGenerateExcelWizard').disabled = false;
+                document.getElementById('btnGenerateExcelWizard').textContent = 'Générer le fichier Excel';
+
+                const semSel = document.getElementById('expSemestre');
+                semSel.innerHTML = '<option value="">— Sélectionner —</option>';
+                if (Array.isArray(curriculumData) && curriculumData.length) {
+                    curriculumData.forEach(sem => {
+                        const opt = document.createElement('option');
+                        opt.value = sem.semestre;
+                        opt.textContent = sem.semestre;
+                        semSel.appendChild(opt);
+                    });
+                }
+
+                const filSel = document.getElementById('expFiliere');
+                filSel.innerHTML = '<option value="">— Sélectionner d\'abord le semestre —</option>';
+                filSel.disabled = true;
+
+                const modSel = document.getElementById('expModule');
+                modSel.innerHTML = '<option value="">— Sélectionner d\'abord la filière —</option>';
+                modSel.disabled = true;
+
+                const clsSel = document.getElementById('expClasse');
+                clsSel.innerHTML = '<option value="">— Toutes —</option>';
+                clsSel.disabled = true;
+
+                document.getElementById('expType').value = 'all';
+                document.getElementById('expMode').value = 'by_student';
+
+                // Reset student filter
+                document.getElementById('expFilterStudent').checked = false;
+                document.getElementById('expStudentSelectArea').style.display = 'none';
+                document.getElementById('expStudentSearch').value = '';
+                document.getElementById('expEtudiant').innerHTML = '<option value="">— Sélectionner d\'abord les filtres ci-dessus —</option>';
+
+                if (!_exportWizardBound) {
+                    _exportWizardBound = true;
+                    bindExportWizardHandlers();
+                }
+
+                openModal('modalExportWizard');
+            }
+
+            function bindExportWizardHandlers() {
+                const semSel = document.getElementById('expSemestre');
+                const filSel = document.getElementById('expFiliere');
+                const modSel = document.getElementById('expModule');
+                const clsSel = document.getElementById('expClasse');
+
+                document.getElementById('expStartDate').addEventListener('change', validateExportForm);
+                document.getElementById('expEndDate').addEventListener('change', validateExportForm);
+
+                function reloadStudentsIfActive() {
+                    if (document.getElementById('expFilterStudent').checked) {
+                        loadWizardStudents();
+                    }
+                }
+
+                semSel.addEventListener('change', () => {
+                    const selectedSemestre = semSel.value;
+                    filSel.innerHTML = '<option value="">— Sélectionner —</option>';
+                    modSel.innerHTML = '<option value="">— Sélectionner d\'abord la filière —</option>';
+                    modSel.disabled = true;
+                    clsSel.innerHTML = '<option value="">— Toutes —</option>';
+                    clsSel.disabled = true;
+                    filSel.disabled = !selectedSemestre;
+
+                    if (selectedSemestre) {
+                        const semData = curriculumData.find(s => s.semestre === selectedSemestre);
+                        if (semData && semData.filieres) {
+                            semData.filieres.forEach(f => {
+                                const opt = document.createElement('option');
+                                opt.value = f.name;
+                                opt.textContent = f.name;
+                                filSel.appendChild(opt);
+                            });
+                        }
+                    }
+                    reloadStudentsIfActive();
+                    validateExportForm();
+                });
+
+                filSel.addEventListener('change', () => {
+                    const selectedSemestre = semSel.value;
+                    const selectedFiliere = filSel.value;
+                    modSel.innerHTML = '<option value="">— Sélectionner —</option>';
+                    modSel.disabled = !selectedFiliere;
+                    clsSel.innerHTML = '<option value="">— Toutes —</option>';
+                    clsSel.disabled = !selectedFiliere;
+
+                    if (selectedFiliere) {
+                        const semData = curriculumData.find(s => s.semestre === selectedSemestre);
+                        const filData = semData?.filieres?.find(f => f.name === selectedFiliere);
+                        if (filData && filData.modules) {
+                            filData.modules.forEach(m => {
+                                const label = typeof m === 'string' ? m : (m?.name || '');
+                                const opt = document.createElement('option');
+                                opt.value = label;
+                                opt.textContent = label;
+                                modSel.appendChild(opt);
+                            });
+                        }
+                        if (allClasses) {
+                            const filtered = allClasses.filter(c =>
+                                (c.filiere_name || '').toLowerCase() === selectedFiliere.toLowerCase()
+                            );
+                            if (filtered.length) {
+                                filtered.forEach(c => {
+                                    const opt = document.createElement('option');
+                                    opt.value = c.id;
+                                    opt.textContent = `${c.name || c.classe_name || ''}`;
+                                    clsSel.appendChild(opt);
+                                });
+                                clsSel.disabled = false;
+                            }
+                        }
+                    }
+                    reloadStudentsIfActive();
+                    validateExportForm();
+                });
+
+                modSel.addEventListener('change', () => {
+                    clsSel.innerHTML = '<option value="">— Toutes —</option>';
+                    clsSel.disabled = true;
+                    const selectedModule = modSel.value;
+                    const selectedFiliere = filSel.value;
+                    if (selectedModule && allClasses) {
+                        const filtered = allClasses.filter(c =>
+                            (c.filiere_name || '').toLowerCase() === selectedFiliere.toLowerCase()
+                            && (c.module_name || '').toLowerCase() === selectedModule.toLowerCase()
+                        );
+                        if (filtered.length) {
+                            filtered.forEach(c => {
+                                const opt = document.createElement('option');
+                                opt.value = c.id;
+                                opt.textContent = `${c.name || c.classe_name || ''}`;
+                                clsSel.appendChild(opt);
+                            });
+                            clsSel.disabled = false;
+                        }
+                    }
+                    reloadStudentsIfActive();
+                    validateExportForm();
+                });
+
+                document.getElementById('btnGenerateExcelWizard').addEventListener('click', generateExportWizard);
+
+                document.getElementById('expStudentSearch').addEventListener('input', filterWizardStudentList);
+            }
+
+            function toggleStudentFilter() {
+                const checked = document.getElementById('expFilterStudent').checked;
+                const area = document.getElementById('expStudentSelectArea');
+                area.style.display = checked ? 'block' : 'none';
+                if (checked) {
+                    loadWizardStudents();
+                }
+                validateExportForm();
+            }
+
+            async function loadWizardStudents() {
+                const sel = document.getElementById('expEtudiant');
+                sel.innerHTML = '<option value="">— Chargement... —</option>';
+                sel.disabled = true;
+
+                const semestre = document.getElementById('expSemestre').value;
+                const filiere = document.getElementById('expFiliere').value;
+                const module = document.getElementById('expModule').value;
+                const classe = document.getElementById('expClasse').value;
+
+                const params = new URLSearchParams();
+                if (classe) params.set('classe_id', classe);
+                if (!classe) {
+                    if (filiere) params.set('filiere_id', filiere);
+                    if (module) params.set('module_id', module);
+                    if (semestre && !filiere) params.set('semestre_id', semestre);
+                }
+
+                try {
+                    const data = await API.apiFetch(`/students/?${params.toString()}`);
+                    const students = Array.isArray(data) ? data : (data?.results || []);
+                    sel.innerHTML = '<option value="">— Sélectionner un étudiant —</option>';
+                    students.forEach(function (s) {
+                        const opt = document.createElement('option');
+                        opt.value = s.id;
+                        const code = s.code_massar || s.code_apogee || s.email || '';
+                        opt.textContent = s.last_name + ' ' + s.first_name + ' (' + code + ')';
+                        sel.appendChild(opt);
+                    });
+                    window._wizardAllStudents = students;
+                    sel.disabled = false;
+                } catch (e) {
+                    sel.innerHTML = `<option value="">— Erreur : ${API.esc(e.message)} —</option>`;
+                    console.warn('Failed to load students:', e);
+                }
+            }
+
+            function filterWizardStudentList() {
+                const q = document.getElementById('expStudentSearch').value.toLowerCase().trim();
+                const sel = document.getElementById('expEtudiant');
+                const all = window._wizardAllStudents || [];
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">— Sélectionner un étudiant —</option>';
+                all.forEach(s => {
+                    const fullText = `${s.last_name} ${s.first_name} ${s.code_massar || ''} ${s.code_apogee || ''} ${s.email || ''}`.toLowerCase();
+                    if (!q || fullText.includes(q)) {
+                        const opt = document.createElement('option');
+                        opt.value = s.id;
+                        const code = s.code_massar || s.code_apogee || s.email || '';
+                        opt.textContent = `${s.last_name} ${s.first_name} (${code})`;
+                        sel.appendChild(opt);
+                    }
+                });
+                if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
+                    sel.value = currentVal;
+                }
+                validateExportForm();
+            }
+
+            function validateExportForm() {
+                const startDate = document.getElementById('expStartDate').value;
+                const endDate = document.getElementById('expEndDate').value;
+                const hasDates = startDate && endDate;
+                const hasStudent = document.getElementById('expFilterStudent').checked && document.getElementById('expEtudiant').value;
+                const btn = document.getElementById('btnGenerateExcelWizard');
+                btn.disabled = !hasDates && !hasStudent;
+            }
+
+            async function generateExportWizard() {
+                const startDate = document.getElementById('expStartDate').value;
+                const endDate = document.getElementById('expEndDate').value;
+                const semestre = document.getElementById('expSemestre').value;
+                const filiere = document.getElementById('expFiliere').value;
+                const module = document.getElementById('expModule').value;
+                const classe = document.getElementById('expClasse').value;
+                const exportType = document.getElementById('expType').value;
+                const exportMode = document.getElementById('expMode').value;
+                const filterStudent = document.getElementById('expFilterStudent').checked;
+                const etudiantId = document.getElementById('expEtudiant').value;
+
+                if (!startDate || !endDate) {
+                    if (filterStudent && etudiantId) {
+                        // Student-specific export with no dates: export full history
+                    } else {
+                        showToast('Les dates de début et de fin sont obligatoires sauf si un étudiant spécifique est sélectionné.', 'error');
+                        return;
+                    }
+                }
+
+                const progressArea = document.getElementById('expProgressArea');
+                const progressBar = document.getElementById('expProgressBar');
+                const progressText = document.getElementById('expProgressText');
+                const errorArea = document.getElementById('expErrorArea');
+                const btn = document.getElementById('btnGenerateExcelWizard');
+
+                errorArea.style.display = 'none';
+                progressArea.style.display = 'block';
+                progressBar.style.width = '30%';
+                progressText.textContent = 'Préparation de l\'export...';
+                btn.disabled = true;
+                btn.textContent = 'Génération en cours...';
+
+                try {
+                    progressBar.style.width = '60%';
+                    progressText.textContent = 'Récupération des données...';
+
+                    const params = new URLSearchParams();
+                    if (startDate) params.set('start_date', startDate);
+                    if (endDate) params.set('end_date', endDate);
+                    if (semestre) params.set('semestre', semestre);
+                    if (filiere) params.set('filiere', filiere);
+                    if (module) params.set('module', module);
+                    if (classe) params.set('classe_id', classe);
+                    if (filterStudent && etudiantId) params.set('etudiant_id', etudiantId);
+                    params.set('export_type', exportType);
+                    params.set('export_mode', exportMode);
+
+                    progressBar.style.width = '80%';
+                    progressText.textContent = 'Génération du fichier Excel...';
+
+                    const blob = await API.apiFetch(`/attendance/export-wizard/?${params.toString()}`);
+
+                    progressBar.style.width = '100%';
+                    progressText.textContent = 'Fichier prêt, téléchargement...';
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const modeLabel = exportMode === 'by_student' ? 'par_etudiant'
+                        : exportMode === 'by_module' ? 'par_module'
+                        : exportMode === 'by_session' ? 'par_seance'
+                        : exportMode === 'resume_absences' ? 'resume_absences'
+                        : 'resume_presences';
+                    const datePart = startDate && endDate ? `${startDate}_${endDate}` : `historique_complet`;
+                    a.download = `presences_${modeLabel}_${datePart}.xlsx`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    showToast('Fichier Excel généré avec succès.', 'success');
+                    closeModal('modalExportWizard');
+                } catch (e) {
+                    errorArea.textContent = `Erreur : ${e.message}`;
+                    errorArea.style.display = 'block';
+                    showToast(`Export échoué : ${e.message}`, 'error');
+                } finally {
+                    progressArea.style.display = 'none';
+                    btn.disabled = false;
+                    btn.textContent = 'Générer le fichier Excel';
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   QR CODE
+═══════════════════════════════════════════════════════════════════ */
+            function openGenQRModal(sessionId) {
+                pendingQrSessionId = sessionId;
+                qrGenLatitude = null;
+                qrGenLongitude = null;
+                document.getElementById("qrLocationStatus").textContent = 'Position non capturée — requise pour le géorepérage.';
+                openModal("modalGenQR");
+            }
+
+            document.getElementById("btnCaptureLocation").addEventListener("click", () => {
+                if (!navigator.geolocation) { showToast("GPS non disponible sur cet appareil.", "error"); return; }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        qrGenLatitude = roundGps(pos.coords.latitude);
+                        qrGenLongitude = roundGps(pos.coords.longitude);
+                        document.getElementById("qrLocationStatus").textContent = `✅ Position capturée (${qrGenLatitude.toFixed(5)}, ${qrGenLongitude.toFixed(5)})`;
+                    },
+                    () => showToast("Impossible d'obtenir la position GPS.", "error"),
+                    { enableHighAccuracy: true, timeout: 15000 },
+                );
+            });
+
+            document.getElementById("btnConfirmGenQR").addEventListener("click", async () => {
+                if (!pendingQrSessionId) return;
+                if (qrGenLatitude === null || qrGenLongitude === null) { showToast("Capturez d'abord la position GPS de la salle.", "error"); return; }
+                closeModal("modalGenQR");
+                await generateQR(pendingQrSessionId);
+            });
+
+            async function restoreSessionQR(sessionId) {
+                try {
+                    const data = await API.apiFetch(`/sessions/${sessionId}/current-qr/`);
+                    lastQrData = data;
+                    qrExpiresAt = new Date(data.qr_expires_at);
+                    showInlineQR(data);
+                } catch {}
+            }
+
+            async function generateQR(sessionId) {
+                const btn = document.getElementById("btnGenQR");
+                if (btn) { btn.disabled = true; btn.textContent = "⏳ Generating…"; }
+                try {
+                    const expiry = parseInt(document.getElementById("qrExpiryMinutes")?.value || "20", 10);
+                    const radius = parseInt(document.getElementById("qrRadius")?.value || "50", 10);
+                    const data = await API.apiFetch(`/sessions/${sessionId}/generate-qr/`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            expiry_minutes: expiry,
+                            attendance_radius_meters: radius,
+                            latitude: qrGenLatitude,
+                            longitude: qrGenLongitude,
+                        }),
+                    });
+                    qrExpiresAt = new Date(data.qr_expires_at);
+                    lastQrData = data;
+                    showInlineQR(data);
+                    openQRModal(data);
+                    showToast(`QR généré (${expiry} min, rayon ${radius}m)`, "success");
+                } catch (e) {
+                    showToast(`QR Error: ${e.message}`, "error");
+                } finally {
+                    if (btn) { btn.disabled = false; btn.textContent = "🔲 Generate QR"; }
+                }
+            }
+
+            function showInlineQR(data) {
+                const qrArea = document.getElementById("qrArea");
+                if (!qrArea) return;
+                const expiresAt = new Date(data.qr_expires_at);
+                qrArea.style.display = "block";
+                qrArea.innerHTML = `
+    <div class="qr-card">
+      <div class="qr-img-wrap">
+        <img src="${data.qr_image_base64}" alt="QR Code" />
+        <div class="qr-overlay-expired" id="qrExpiredOverlay">
+          <span style="font-size:2rem">⛔</span>
+          <span>QR Expired</span>
+          ${sessionCanGenerateQr(activeSession) ? `<button class="btn sm" style="margin-top:.5rem" onclick="generateQR(${activeSessionId})">Regenerate</button>` : ""}
+        </div>
+      </div>
+      <div class="qr-info">
+        <h3>QR Code Active</h3>
+        <div class="qr-meta">
+          <div class="qr-meta-row">
+            <span class="qr-meta-label">Expires at</span>
+            <span style="font-weight:600">${formatTime(expiresAt)}</span>
+          </div>
+          <div class="qr-meta-row">
+            <span class="qr-meta-label">Rayon GPS</span>
+            <span>${data.attendance_radius_meters || 50} m</span>
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:.75rem;line-height:1.4">
+          📱 Les étudiants peuvent scanner avec l'<strong>appareil photo</strong> (page web)
+          ou l'<strong>application PrésenceQR</strong>.
+        </p>
+        <p style="font-size:.7rem;color:var(--muted);word-break:break-all;margin-top:.35rem">
+          ${esc(data.qr_url || "")}
+        </p>
+        <div class="countdown" id="inlineCountdown">—:——</div>
+        <div class="countdown-label">remaining</div>
+        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn sm green" onclick="if(lastQrData) openQRModal(lastQrData)">🔍 Enlarge QR</button>
+          ${sessionCanGenerateQr(activeSession) ? `<button class="btn sm outline" onclick="generateQR(${activeSessionId})">🔄 Regenerate</button>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+
+                clearInterval(qrCountdownTimer);
+                qrCountdownTimer = setInterval(() => {
+                    const el = document.getElementById("inlineCountdown");
+                    const expOverlay = document.getElementById("qrExpiredOverlay");
+                    if (!el) { clearInterval(qrCountdownTimer); return; }
+                    const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                    el.textContent = formatSeconds(remaining);
+                    if (remaining === 0) {
+                        el.className = "countdown danger";
+                        if (expOverlay) expOverlay.style.display = "flex";
+                        clearInterval(qrCountdownTimer);
+                    } else if (remaining < 60) {
+                        el.className = "countdown danger";
+                    } else if (remaining < 180) {
+                        el.className = "countdown warning";
+                    } else {
+                        el.className = "countdown";
+                    }
+                }, 1000);
+            }
+
+            function openQRModal(data) {
+                const expiresAt = new Date(data.qr_expires_at);
+                document.getElementById("qrModalImg").src = data.qr_image_base64;
+                document.getElementById("qrModalExpiry").textContent = formatTime(expiresAt);
+                openModal("modalQR");
+
+                const refreshBtn = document.getElementById("btnRefreshQR");
+                refreshBtn._sessionId = activeSessionId;
+                const canRefresh = sessionCanGenerateQr(activeSession);
+                refreshBtn.disabled = !canRefresh;
+                refreshBtn.style.display = canRefresh ? "" : "none";
+
+                clearInterval(qrModalCountdownTimer);
+                qrModalCountdownTimer = setInterval(() => {
+                    const timerEl = document.getElementById("qrModalTimer");
+                    if (!timerEl) { clearInterval(qrModalCountdownTimer); return; }
+                    const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                    timerEl.textContent = formatSeconds(remaining);
+                    if (remaining === 0) { timerEl.className = "qr-modal-timer danger"; clearInterval(qrModalCountdownTimer); }
+                    else if (remaining < 60) timerEl.className = "qr-modal-timer danger";
+                    else if (remaining < 180) timerEl.className = "qr-modal-timer warning";
+                    else timerEl.className = "qr-modal-timer";
+                }, 1000);
+            }
+
+            document.getElementById("btnRefreshQR").addEventListener("click", async () => {
+                if (!sessionCanGenerateQr(activeSession)) { showToast(getSessionWindowNotice(activeSession), "error"); return; }
+                const sid = document.getElementById("btnRefreshQR")._sessionId || activeSessionId;
+                if (!sid) return;
+                closeModal("modalQR");
+                clearInterval(qrModalCountdownTimer);
+                await generateQR(sid);
+            });
+
+            /* ═══════════════════════════════════════════════════════════
+   ATTENDANCE
+═══════════════════════════════════════════════════════════════════ */
+            async function loadAttendance(sessionId) {
+                const tbody = document.getElementById("attendanceBody");
+                if (!tbody) return;
+                try {
+                    const data = await API.apiFetch(`/attendance/session/${sessionId}/`);
+                    attendanceRows = Array.isArray(data) ? data : data.results || [];
+                    renderAttendance(attendanceRows);
+                } catch (e) {
+                    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Failed to load attendance: ${e.message}</td></tr>`;
+                }
+            }
+
+            function renderAttendance(rows) {
+                const tbody = document.getElementById("attendanceBody");
+                const countEl = document.getElementById("attendanceCount");
+                if (!tbody) return;
+
+                if (countEl) countEl.textContent = `${rows.length} student${rows.length !== 1 ? "s" : ""}`;
+
+                if (!rows.length) {
+                    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Aucune présence enregistrée. Générez un QR code et attendez que les étudiants scannent.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i + 1}</td>
+      <td><strong>${esc(r.student_name || "—")}</strong></td>
+      <td style="font-family:monospace;color:var(--accent)">${esc(r.student_code_massar || "—")}</td>
+      <td style="color:var(--muted)">${esc(r.classe_name || "—")}</td>
+      <td style="color:var(--muted);font-size:.8rem">${formatDateTime(r.validation_time)}</td>
+      <td style="font-size:.75rem;font-family:monospace">${esc((r.device_fingerprint || r.device_id || "—").substring(0, 10))}</td>
+      <td><span class="badge badge-present">${esc(r.attendance_status || "confirmed")}</span></td>
+    </tr>
+  `).join("");
+            }
+
+            function addAttendanceRow(record) {
+                const exists = attendanceRows.some((r) => r.id === record.id);
+                if (exists) return;
+                attendanceRows.push(record);
+
+                const tbody = document.getElementById("attendanceBody");
+                const countEl = document.getElementById("attendanceCount");
+                if (!tbody) return;
+
+                const emptyRow = tbody.querySelector(".empty-row");
+                if (emptyRow) emptyRow.remove();
+
+                if (countEl) countEl.textContent = `${attendanceRows.length} student${attendanceRows.length !== 1 ? "s" : ""}`;
+
+                const idx = attendanceRows.length;
+                const tr = document.createElement("tr");
+                tr.className = "new-row";
+                tr.innerHTML = `
+    <td style="color:var(--muted)">${idx}</td>
+    <td><strong>${esc(record.student_name || "—")}</strong></td>
+    <td style="font-family:monospace;color:var(--accent)">${esc(record.student_code_massar || "—")}</td>
+    <td style="color:var(--muted)">${esc(record.classe_name || record.classe_session || "—")}</td>
+    <td style="color:var(--muted);font-size:.8rem">${formatDateTime(record.validation_time)}</td>
+    <td style="font-size:.75rem;font-family:monospace">${esc((record.device_fingerprint || record.device_id || "—").substring(0, 10))}</td>
+    <td><span class="badge badge-present">${esc(record.attendance_status || "confirmed")}</span></td>
+  `;
+                tbody.prepend(tr);
+                showToast(`✅ ${record.student_name || "Student"} just scanned in!`, "info");
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   WEBSOCKET
+═══════════════════════════════════════════════════════════════════ */
+            function connectWS(sessionId) {
+                const wsDot = document.getElementById("wsDot");
+                const wsStatus = document.getElementById("wsStatusText");
+                try {
+                    activeWS = API.connectAttendanceWs(
+                        `/ws/attendance/${sessionId}/`,
+                        (record) => addAttendanceRow(record),
+                        (status) => {
+                            if (status === "connected") {
+                                if (wsDot) wsDot.className = "ws-dot connected";
+                                if (wsStatus) wsStatus.textContent = "Live";
+                            } else if (status === "error") {
+                                if (wsDot) wsDot.className = "ws-dot error";
+                                if (wsStatus) wsStatus.textContent = "Connection error";
+                            } else {
+                                if (wsDot) wsDot.className = "ws-dot";
+                                if (wsStatus) wsStatus.textContent = "Disconnected";
+                            }
+                        },
+                    );
+                } catch (e) {
+                    if (wsDot) wsDot.className = "ws-dot error";
+                    if (wsStatus) wsStatus.textContent = "WS unavailable";
+                }
+            }
+
+            function disconnectWS() {
+                if (activeWS) { activeWS.close(); activeWS = null; }
+                clearInterval(qrCountdownTimer);
+                clearInterval(qrModalCountdownTimer);
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════════════════════ */
+            function switchSessionTab(tab) {
+                const tabs = ["attendance", "map", "stats", "suspicious"];
+                tabs.forEach((t) => {
+                    const panel = document.getElementById(`tabPanel${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                    const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                    if (panel) panel.style.display = t === tab ? "block" : "none";
+                    if (btn) btn.className = t === tab ? "btn sm" : "btn sm outline";
+                });
+                if (tab === "map" && activeSessionId) loadSessionMap(activeSessionId);
+                if (tab === "stats" && activeSessionId) loadSessionStats(activeSessionId);
+                if (tab === "suspicious" && activeSessionId) loadSuspiciousAttempts(activeSessionId);
+            }
+
+            async function loadSessionMap(sessionId) {
+                try {
+                    const data = await API.apiFetch(`/attendance/session/${sessionId}/stats/`);
+                    const container = document.getElementById("sessionMap");
+                    if (!container) return;
+                    if (sessionMap) { sessionMap.remove(); sessionMap = null; }
+                    const center = data.locations?.length
+                        ? [parseFloat(data.locations[0].latitude), parseFloat(data.locations[0].longitude)]
+                        : [33.5731, -7.5898];
+                    sessionMap = L.map(container).setView(center, 17);
+                    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(sessionMap);
+                    (data.locations || []).forEach((loc) => {
+                        if (loc.latitude && loc.longitude) {
+                            L.marker([parseFloat(loc.latitude), parseFloat(loc.longitude)])
+                                .addTo(sessionMap)
+                                .bindPopup(`${loc.student_name}<br>${loc.code_massar}`);
+                        }
+                    });
+                    setTimeout(() => sessionMap.invalidateSize(), 200);
+                } catch (e) {
+                    showToast(`Carte: ${e.message}`, "error");
+                }
+            }
+
+            async function loadSessionStats(sessionId) {
+                try {
+                    const data = await API.apiFetch(`/attendance/session/${sessionId}/stats/`);
+                    const el = document.getElementById("statsContent");
+                    if (!el) return;
+                    el.innerHTML = `
+      <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+        <div style="font-size:1.8rem;font-weight:700">${data.attendance_count}</div>
+        <div style="font-size:.8rem;color:var(--muted)">Présences</div>
+      </div>
+      <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+        <div style="font-size:1.8rem;font-weight:700">${data.attendance_rate}%</div>
+        <div style="font-size:.8rem;color:var(--muted)">Taux</div>
+      </div>
+      <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+        <div style="font-size:1.8rem;font-weight:700">${data.unique_devices}</div>
+        <div style="font-size:.8rem;color:var(--muted)">Appareils</div>
+      </div>
+      <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+        <div style="font-size:1.8rem;font-weight:700;color:var(--danger)">${data.duplicate_attempts}</div>
+        <div style="font-size:.8rem;color:var(--muted)">Doublons bloqués</div>
+      </div>
+      <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+        <div style="font-size:1.8rem;font-weight:700;color:var(--warning)">${data.geofence_violations}</div>
+        <div style="font-size:.8rem;color:var(--muted)">Hors zone</div>
+      </div>
+    `;
+                } catch (e) {
+                    showToast(`Stats: ${e.message}`, "error");
+                }
+            }
+
+            async function loadSuspiciousAttempts(sessionId) {
+                const tbody = document.getElementById("suspiciousBody");
+                if (!tbody) return;
+                try {
+                    const data = await API.apiFetch(`/attendance/session/${sessionId}/suspicious/`);
+                    const rows = Array.isArray(data) ? data : data.results || [];
+                    if (!rows.length) {
+                        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Aucune tentative suspecte.</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = rows.map((r) => `
+      <tr>
+        <td style="font-size:.8rem">${formatDateTime(r.created_at)}</td>
+        <td><span class="badge badge-absent">${esc(r.attempt_type)}</span></td>
+        <td>${esc(r.first_name)} ${esc(r.last_name)}<br><small>${esc(r.code_massar)}</small></td>
+        <td style="font-family:monospace;font-size:.8rem">${esc(r.ip_address || "—")}</td>
+        <td style="font-size:.75rem">${esc((r.device_fingerprint || r.device_id || "—").substring(0, 12))}…</td>
+        <td style="font-size:.8rem">${esc(r.error_message)}</td>
+      </tr>
+    `).join("");
+                } catch (e) {
+                    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${e.message}</td></tr>`;
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════════════════════════════════ */
+            function openModal(id) {
+                document.getElementById(id).classList.add("open");
+            }
+            function closeModal(id) {
+                document.getElementById(id).classList.remove("open");
+            }
+
+            document.querySelectorAll("[data-close]").forEach((el) => {
+                el.addEventListener("click", () => {
+                    closeModal(el.dataset.close);
+                    if (el.dataset.close === "modalQR") clearInterval(qrModalCountdownTimer);
+                });
+            });
+
+            document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+                backdrop.addEventListener("click", (e) => {
+                    if (e.target === backdrop) {
+                        closeModal(backdrop.id);
+                        if (backdrop.id === "modalQR") clearInterval(qrModalCountdownTimer);
+                    }
+                });
+            });
+
+            /* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════════════ */
+            let _toastTimer;
+            function showToast(msg, type = "success") {
+                const t = document.getElementById("toast");
+                t.className = type;
+                t.innerHTML = `<span>${type === "success" ? "✅" : type === "info" ? "ℹ️" : "❌"}</span><span>${msg}</span>`;
+                clearTimeout(_toastTimer);
+                _toastTimer = setTimeout(() => { t.className = ""; }, 4000);
+            }
+
+            /* ═══════════════════════════════════════════════════════════
+   FORMATTERS
+═══════════════════════════════════════════════════════════════════ */
+            function formatSeconds(secs) {
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+            }
+
+            function formatSessionHour(timeStr) {
+                if (!timeStr) return "—";
+                return String(timeStr).slice(0, 5);
+            }
+
+            function formatSessionWindow(session) {
+                if (!session?.start_time || !session?.end_time) return "—";
+                return `${formatSessionHour(session.start_time)}–${formatSessionHour(session.end_time)}`;
+            }
+
+            function sessionWindowBounds(session) {
+                if (!session?.date || !session?.start_time || !session?.end_time) return null;
+                const start = new Date(`${session.date}T${formatSessionHour(session.start_time)}`);
+                const end = new Date(`${session.date}T${formatSessionHour(session.end_time)}`);
+                return { start, end };
+            }
+
+            function sessionCanGenerateQr(session) {
+                if (!session) return false;
+                if (session.can_generate_qr === true) return true;
+                if (session.can_generate_qr === false) return false;
+                const bounds = sessionWindowBounds(session);
+                if (!bounds) return true;
+                const now = new Date();
+                return session.is_active !== false && now >= bounds.start && now <= bounds.end;
+            }
+
+            function getSessionWindowNotice(session) {
+                const bounds = sessionWindowBounds(session);
+                const window = formatSessionWindow(session);
+                if (!bounds) return "Génération de QR indisponible pour cette séance.";
+                const now = new Date();
+                if (now < bounds.start) return `La séance commence à ${formatSessionHour(session.start_time)} (${window}). Le QR sera disponible pendant ce créneau.`;
+                return `Créneau terminé (${window}). Consultez les statistiques ou exportez les présences.`;
+            }
+
+            function formatDate(dateStr) {
+                if (!dateStr) return "—";
+                try {
+                    return new Date(dateStr).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                    });
+                } catch {
+                    return dateStr;
+                }
+            }
+
+            function formatTime(dt) {
+                if (!dt) return "—";
+                try {
+                    return new Date(dt).toLocaleTimeString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                    });
+                } catch {
+                    return "—";
+                }
+            }
+
+            function formatDateTime(dt) {
+                if (!dt) return "—";
+                try {
+                    return new Date(dt).toLocaleString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    });
+                } catch {
+                    return dt;
+                }
+            }
+
+            function esc(str) {
+                if (str === null || str === undefined) return "";
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "<")
+                    .replace(/>/g, ">")
+                    .replace(/"/g, "\"");
+            }
+        </script>
+    </body>
+</html>
+

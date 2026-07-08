@@ -1,0 +1,258 @@
+from rest_framework import serializers
+
+from attendance.utils import round_coordinate
+from curriculum.models import Module
+from users.models import Classe, User, Block, Room, Amphitheater
+
+from .models import Session
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    session_type = serializers.ChoiceField(
+        choices=[("Cours", "Cours"), ("TD", "TD"), ("TP", "TP"), ("Exam", "Exam"), ("Other", "Autre")],
+        default="Cours",
+    )
+    teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
+    teacher = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    classe = serializers.PrimaryKeyRelatedField(
+        queryset=Classe.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    classe_name = serializers.SerializerMethodField()
+    classe_field = serializers.SerializerMethodField()
+    module_id = serializers.PrimaryKeyRelatedField(
+        source="module",
+        queryset=Module.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    module_name = serializers.CharField(source="module.name", read_only=True)
+    
+    block_name = serializers.CharField(source="block.name", read_only=True)
+    block = serializers.PrimaryKeyRelatedField(
+        queryset=Block.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    room_name = serializers.CharField(source="room.name", read_only=True)
+    room = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    amphitheater_name = serializers.CharField(source="amphitheater.name", read_only=True)
+    amphitheater = serializers.PrimaryKeyRelatedField(
+        queryset=Amphitheater.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    is_qr_valid = serializers.BooleanField(read_only=True)
+    is_within_session_window = serializers.BooleanField(read_only=True)
+    can_generate_qr = serializers.BooleanField(read_only=True)
+    is_closed = serializers.BooleanField(read_only=True)
+    report_file = serializers.CharField(read_only=True)
+    report_url = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if user and getattr(user, "is_authenticated", False) and user.role == "teacher":
+            self.fields["teacher"].required = False
+            self.fields["teacher"].read_only = True
+
+    class Meta:
+        model = Session
+        fields = [
+            "id",
+            "subject",
+            "module_id",
+            "module_name",
+            "teacher",
+            "teacher_name",
+            "classe",
+            "classe_name",
+            "classe_field",
+            "location_type",
+            "block",
+            "block_name",
+            "room",
+            "room_name",
+            "amphitheater",
+            "amphitheater_name",
+            "date",
+            "start_time",
+            "end_time",
+            "qr_token",
+            "qr_session_id",
+            "qr_expires_at",
+            "attendance_radius_meters",
+            "location_latitude",
+            "location_longitude",
+            "is_active",
+            "is_closed",
+            "session_type",
+            "report_file",
+            "report_url",
+            "is_qr_valid",
+            "is_within_session_window",
+            "can_generate_qr",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "module_name",
+            "teacher_name",
+            "block_name",
+            "room_name",
+            "amphitheater_name",
+            "qr_token",
+            "qr_session_id",
+            "qr_expires_at",
+            "attendance_radius_meters",
+            "location_latitude",
+            "location_longitude",
+            "is_qr_valid",
+            "is_within_session_window",
+            "can_generate_qr",
+            "report_file",
+            "report_url",
+            "created_at",
+        ]
+        extra_kwargs = {
+            "date": {"required": True},
+            "subject": {"required": False, "allow_blank": True},
+        }
+
+    def get_classe_name(self, obj):
+        return str(obj.classe)
+
+    def get_classe_field(self, obj):
+        if not obj.classe:
+            return "—"
+        f = obj.classe.filiere
+        return f.name if f else "—"
+
+    def get_report_url(self, obj):
+        if obj.report_file:
+            return obj.report_file.url
+        return None
+
+    def validate(self, data):
+        import logging
+        logger = logging.getLogger(__name__)
+        from django.utils import timezone
+
+        logger.info(f"=== SessionSerializer.validate ===")
+        logger.info(f"Input data: {data}")
+
+        try:
+            if not data.get("session_type"):
+                data["session_type"] = "Cours"
+
+            start_time = data.get("start_time", getattr(self.instance, "start_time", None))
+            end_time = data.get("end_time", getattr(self.instance, "end_time", None))
+            if start_time and end_time and end_time <= start_time:
+                raise serializers.ValidationError(
+                    {"end_time": "L'heure de fin doit être après l'heure de début."}
+                )
+
+            module = data.get("module")
+            subject = data.get("subject")
+
+            if module and not subject:
+                data["subject"] = module.name
+            elif not subject:
+                raise serializers.ValidationError(
+                    {"subject": "La matière (subject) est obligatoire si aucun module n'est sélectionné."}
+                )
+
+            # Auto-resolve classe from module if not provided
+            classe = data.get("classe", getattr(self.instance, "classe", None))
+            if not classe and module:
+                try:
+                    filiere = module.filiere
+                    if not filiere:
+                        raise serializers.ValidationError(
+                            {"module": "Le module sélectionné n'a pas de filière associée."}
+                        )
+                    today = timezone.now()
+                    academic_year = f"{today.year}-{today.year + 1}"
+                    # Auto-resolve Classe using only real Classe model fields
+                    classe_name = f"{filiere.name}"
+                    niveau = getattr(filiere, "niveau", None)
+                    if not niveau:
+                        raise serializers.ValidationError(
+                            {"module": "Le module sélectionné n'a pas de niveau via la filière."}
+                        )
+
+                    classe, _ = Classe.objects.get_or_create(
+                        niveau=niveau,
+                        semestre=filiere.semestre,
+                        filiere=filiere,
+                        module=getattr(module, "pk", None) and module,
+                        defaults={
+                            "name": classe_name,
+                            "academic_year": academic_year,
+                            "location_type": "BLOC",
+                        },
+                    )
+                    data["classe"] = classe
+                    logger.info(f"Auto-resolved classe: {classe}")
+                except Exception as e:
+                    logger.error(f"Error auto-resolving classe: {str(e)}", exc_info=True)
+                    raise serializers.ValidationError(
+                        {"classe": f"Erreur lors de la création automatique de la classe: {str(e)}"}
+                    )
+
+            teacher = data.get("teacher", getattr(self.instance, "teacher", None))
+            request = self.context.get("request")
+            if request and request.user.role == "teacher" and classe:
+                assigned = request.user.assigned_classes.filter(pk=classe.pk).exists()
+                has_sessions = Session.objects.filter(
+                    classe=classe, teacher=request.user
+                ).exists()
+                if not assigned and not has_sessions:
+                    raise serializers.ValidationError(
+                        {"classe": "Vous n'êtes pas affecté à cette classe."}
+                    )
+                if teacher and teacher.id != request.user.id:
+                    raise serializers.ValidationError(
+                        {"teacher": "Vous ne pouvez pas assigner une autre enseignant."}
+                    )
+            # Auto-assign teacher when a teacher creates the session
+            if request and request.user.role == "teacher" and not data.get("teacher"):
+                data["teacher"] = request.user
+            logger.info(f"Validation passed for SessionSerializer")
+            return data
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Error in SessionSerializer.validate: {str(e)}", exc_info=True)
+            raise serializers.ValidationError(
+                {"detail": f"Erreur de validation: {str(e)}"}
+            )
+
+
+class GenerateQRSerializer(serializers.Serializer):
+    expiry_minutes = serializers.IntegerField(min_value=1, max_value=120, default=20)
+    attendance_radius_meters = serializers.IntegerField(
+        min_value=20, max_value=200, default=50
+    )
+    latitude = serializers.DecimalField(
+        max_digits=10, decimal_places=7, required=False, allow_null=True
+    )
+    longitude = serializers.DecimalField(
+        max_digits=10, decimal_places=7, required=False, allow_null=True
+    )
+
+    def validate_latitude(self, value):
+        return round_coordinate(value)
+
+    def validate_longitude(self, value):
+        return round_coordinate(value)

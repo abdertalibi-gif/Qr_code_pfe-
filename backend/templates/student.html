@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrésenceQR ? Espace étudiant</title>
+  <link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body class="dashboard-app student-app">
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-brand-icon">??</div>
+    PrésenceQR
+  </div>
+  <div class="nav-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="avatarInitials">?</div>
+      <span id="navUserName">Chargement?</span>
+      <span class="badge badge-student">Étudiant</span>
+    </div>
+    <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Déconnexion
+    </button>
+  </div>
+</nav>
+
+<main>
+  <div class="hero">
+    <div class="hero-icon">??</div>
+    <div class="hero-text">
+      <h1>Marquez votre présence via l'application mobile</h1>
+      <p>
+        La présence s'enregistre en scannant le QR code affiché par votre enseignant
+        avec l'<strong>application PrésenceQR</strong>. Ce portail affiche votre
+        historique et vos informations de compte.
+      </p>
+    </div>
+  </div>
+
+  <div class="profile-card" id="profileCard" style="display:none">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div class="profile-info">
+      <h2 id="profileName">?</h2>
+      <p id="profileEmail">?</p>
+    </div>
+    <div class="profile-meta" id="profileMeta"></div>
+  </div>
+
+  <div class="how-section">
+    <h2>Comment marquer votre présence</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Téléchargez l'application mobile</strong>
+          <span>Installez PrésenceQR sur Android ou iOS.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Connectez-vous</strong>
+          <span>Utilisez les mêmes identifiants que sur ce portail.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Scannez le QR code</strong>
+          <span>Pointez la caméra vers le code affiché en cours.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <strong>Confirmation</strong>
+          <span>Votre présence est enregistrée instantanément.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-card-icon">??</div>
+      <div class="info-card-body">
+        <h3>QR code limité dans le temps</h3>
+        <p>Chaque code est valide 20 minutes. Scannez-le dès qu'il est affiché.</p>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-icon">??</div>
+      <div class="info-card-body">
+        <h3>Un scan par séance</h3>
+        <p>Un seul enregistrement par séance. Les doublons sont ignorés.</p>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-icon">??</div>
+      <div class="info-card-body">
+        <h3>Suivez votre historique</h3>
+        <p>Vos présences apparaissent ci-dessous. Contactez votre enseignant en cas d'erreur.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="attendance-section">
+    <div class="section-header">
+      <h2>Mon historique de présences</h2>
+      <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement?</span>
+    </div>
+    <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Matière</th>
+            <th>Date séance</th>
+            <th>Scanné à</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="attBody">
+          <tr class="empty-row"><td colspan="5">Chargement de l'historique?</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  PrésenceQR © 2025 ? Espace étudiant
+</footer>
+
+<script src="/api.js"></script>
+<script src="/i18n-fr.js"></script>
+<script>
+  let currentUser = null;
+
+  (async () => {
+    try {
+      currentUser = await API.requireAuth('student');
+    } catch {
+      try { currentUser = await API.requireAuth(); } catch { return; }
+    }
+
+    document.getElementById('navUserName').textContent =
+      `${currentUser.first_name} ${currentUser.last_name}`;
+    document.getElementById('avatarInitials').textContent =
+      (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
+
+    showProfile(currentUser);
+    await loadMyAttendance();
+  })();
+
+  function showProfile(user) {
+    const card = document.getElementById('profileCard');
+    card.style.display = 'flex';
+    document.getElementById('profileAvatar').textContent =
+      (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+    document.getElementById('profileName').textContent =
+      `${user.first_name} ${user.last_name}`;
+    document.getElementById('profileEmail').textContent = user.email || '?';
+
+    const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant' };
+    document.getElementById('profileMeta').innerHTML = `
+      <div class="meta-chip">
+        <span class="meta-chip-label">Rôle</span>
+        <span class="meta-chip-value">${roleLabels[user.role] || user.role || '?'}</span>
+      </div>
+      <div class="meta-chip">
+        <span class="meta-chip-label">ID</span>
+        <span class="meta-chip-value">#${user.id || '?'}</span>
+      </div>
+    `;
+  }
+
+  async function loadMyAttendance() {
+    const tbody = document.getElementById('attBody');
+    const countEl = document.getElementById('attCount');
+
+    try {
+      let records = [];
+      try {
+        const data = await API.apiFetch('/attendance/my/');
+        records = Array.isArray(data) ? data : (data.results || []);
+      } catch { records = []; }
+
+      if (countEl) {
+        countEl.textContent = `${records.length} enregistrement${records.length !== 1 ? 's' : ''}`;
+      }
+
+      if (!records.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="5">
+          <div class="empty-state-inline">
+            <span class="empty-icon">??</span>
+            <span>Aucune présence. Scannez un QR en cours pour commencer.</span>
+          </div>
+        </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = records.map((r, i) => `
+        <tr>
+          <td style="color:var(--muted)">${i + 1}</td>
+          <td><strong>${esc(r.subject || '?')}</strong></td>
+          <td style="color:var(--muted)">${formatDate(r.session_date)}</td>
+          <td style="color:var(--muted);font-size:.82rem">${formatDateTime(r.validation_time)}</td>
+          <td><span class="badge badge-present">Présent</span></td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Erreur : ${esc(e.message)}</td></tr>`;
+      if (countEl) countEl.textContent = 'Erreur';
+    }
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '?';
+    try {
+      return new Date(dateStr).toLocaleDateString('fr-FR', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+    } catch { return dateStr; }
+  }
+
+  function formatDateTime(dt) {
+    if (!dt) return '?';
+    try {
+      return new Date(dt).toLocaleString('fr-FR', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return dt; }
+  }
+
+  function esc(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
