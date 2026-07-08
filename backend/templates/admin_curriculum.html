@@ -5,26 +5,89 @@
 <div class="page-hero">
   <div class="page-hero-text">
     <h1>Curriculum</h1>
-    <p>Structure académique : niveaux, semestres, filières et modules.</p>
+    <p>Gérez les matières, filières, semestres et enseignants du curriculum.</p>
   </div>
 </div>
 
 <div class="section-head">
-  <h2>Structure académique <span id="cntCurriculumDetail" style="font-size:.85rem;font-weight:400;color:var(--muted)"></span></h2>
+  <h2>Matières</h2>
   <div class="section-actions">
+    <input type="search" class="search-input" id="searchSubjects" placeholder="Rechercher matière, code, filière…" />
+    <select id="filterSubjectFiliere" class="search-input" style="width:auto;min-width:160px">
+      <option value="">Toutes les filières</option>
+    </select>
     <button class="btn" id="btnRefreshCurriculum">🔄 Actualiser</button>
+    <button class="btn" id="btnOpenAddSubject">+ Nouvelle matière</button>
   </div>
 </div>
 
-<!-- Niveau tabs -->
-<div class="curric-nav" id="curricNavNiveaux" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Code</th>
+        <th>Filière</th>
+        <th>Coefficient</th>
+        <th>Heures</th>
+        <th>Enseignant</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="curriculumBody">
+      <tr class="empty-row"><td colspan="8">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
 
-<!-- Semestre pills (shown after niveau selection) -->
-<div class="curric-nav" id="curricNavSemestres" style="display:none;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
-
-<!-- Content: filieres + modules -->
-<div id="curriculumContainer">
-  <div class="curriculum-loading">Sélectionnez un niveau pour afficher le curriculum.</div>
+{% block modals %}
+<!-- MODAL: Add/Edit Subject -->
+<div class="modal-backdrop" id="modalSubject">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="subjectModalTitle">Nouvelle matière</h3>
+      <button type="button" class="modal-close" data-close="modalSubject" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="subId" />
+      <div class="field">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="subName" placeholder="Algorithmique avancée" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Code</label>
+          <input type="text" id="subCode" placeholder="ALG301" />
+        </div>
+        <div class="field">
+          <label>Coefficient</label>
+          <input type="number" id="subCoefficient" value="1" min="1" max="10" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Filière <span class="req">*</span></label>
+        <select id="subFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Semestre</label>
+        <select id="subSemestre"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Enseignant</label>
+        <select id="subTeacher"><option value="">— Non assigné —</option></select>
+      </div>
+      <div class="field">
+        <label>Volume horaire total</label>
+        <input type="text" id="subHours" placeholder="ex: 45h" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalSubject">Annuler</button>
+      <button class="btn" id="btnSubmitSubject">Enregistrer</button>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

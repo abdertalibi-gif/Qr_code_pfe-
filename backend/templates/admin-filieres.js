@@ -120,6 +120,15 @@ function setupEventListeners() {
 
   document.getElementById('btnRefreshFilieres')?.addEventListener('click', loadFilieres);
 
+  document.getElementById('btnOpenAddFiliere')?.addEventListener('click', async function () {
+    await populateFiliereFormSelects();
+    document.getElementById('fId').value = '';
+    document.getElementById('filiereModalTitle').textContent = 'Ajouter une filière';
+    document.getElementById('fName').value = '';
+    document.getElementById('fNiveau').value = '';
+    openModal('modalFiliere');
+  });
+
   document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {
     const id = document.getElementById('fId').value;
     const body = {

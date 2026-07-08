@@ -5,70 +5,43 @@ async function initPage() {
 }
 
 async function loadStats() {
+  const period = document.getElementById('statPeriod')?.value || '30';
   try {
-    const data = await API.apiFetch('/statistics/');
-    renderOverallStats(data.overall || data);
-    renderCharts(data);
+    const data = await API.apiFetch('/statistics/?period=' + period);
+    renderStats(data);
   } catch (e) {
-    document.getElementById('statsOverallContainer').innerHTML =
-      '<div class="error-msg">Erreur: ' + esc(e.message) + '</div>';
+    document.getElementById('statTotalPresences').textContent = '—';
+    showToast('Erreur chargement statistiques: ' + e.message, 'error');
   }
 }
 
-function renderOverallStats(stats) {
-  const container = document.getElementById('statsOverallContainer');
-  if (!stats) { container.innerHTML = '<p>Aucune statistique.</p>'; return; }
-  const cards = [
-    { label: 'Total étudiants', value: stats.total_students ?? '—' },
-    { label: 'Total enseignants', value: stats.total_teachers ?? '—' },
-    { label: 'Total classes', value: stats.total_classes ?? '—' },
-    { label: 'Total séances', value: stats.total_sessions ?? '—' },
-    { label: 'Présences', value: stats.total_present ?? '—', color: 'var(--green)' },
-    { label: 'Absences', value: stats.total_absent ?? '—', color: 'var(--red)' },
-    { label: 'Taux présence', value: stats.attendance_rate ? stats.attendance_rate + '%' : '—' },
-    { label: 'Taux absence', value: stats.absence_rate ? stats.absence_rate + '%' : '—' },
-  ];
-  container.innerHTML = '<div class="stats-grid">' +
-    cards.map(c => '<div class="stat-card" style="' + (c.color ? 'border-left:4px solid ' + c.color : '') + '">' +
-      '<strong>' + esc(c.label) + '</strong>' +
-      '<span class="stat-value">' + c.value + '</span>' +
-    '</div>').join('') +
-  '</div>';
-}
+function renderStats(data) {
+  if (!data) return;
+  document.getElementById('statTotalPresences').textContent = data.total_present ?? data.total_attendance ?? '—';
+  const rate = data.attendance_rate ?? data.average_rate;
+  document.getElementById('statAvgRate').textContent = rate != null ? rate + '%' : '—';
+  document.getElementById('statActiveClasses').textContent = data.active_classes ?? data.total_classes ?? '—';
+  document.getElementById('statStudents').textContent = data.total_students ?? '—';
 
-function renderCharts(data) {
-  if (typeof Chart === 'undefined') return;
-  const ctxDaily = document.getElementById('chartDailyAttendance');
-  if (ctxDaily && data.daily_attendance) {
-    new Chart(ctxDaily, {
-      type: 'line',
-      data: {
-        labels: data.daily_attendance.map(d => d.date),
-        datasets: [
-          { label: 'Présents', data: data.daily_attendance.map(d => d.present), borderColor: 'var(--green)', fill: false },
-          { label: 'Absents', data: data.daily_attendance.map(d => d.absent), borderColor: 'var(--red)', fill: false },
-        ],
-      },
-      options: { responsive: true, plugins: { legend: { position: 'top' } } },
-    });
+  const rows = data.daily_attendance || data.daily || [];
+  const tbody = document.getElementById('statsBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune donnée.</td></tr>';
+    return;
   }
-  const ctxClasses = document.getElementById('chartByClass');
-  if (ctxClasses && data.by_class) {
-    new Chart(ctxClasses, {
-      type: 'bar',
-      data: {
-        labels: data.by_class.map(c => c.name),
-        datasets: [{
-          label: 'Taux présence (%)',
-          data: data.by_class.map(c => c.rate),
-          backgroundColor: 'rgba(76, 175, 80, 0.6)',
-        }],
-      },
-      options: { responsive: true, scales: { y: { min: 0, max: 100 } } },
-    });
-  }
+  tbody.innerHTML = rows.map(function (r) {
+    const date = r.date || r.day || '—';
+    const present = r.present || r.presences || 0;
+    const total = r.total || (r.present + r.absent) || present;
+    const pct = total > 0 ? Math.round((present / total) * 100) + '%' : '—';
+    return '<tr>' +
+      '<td>' + esc(date) + '</td>' +
+      '<td>' + present + ' / ' + total + '</td>' +
+      '<td>' + pct + '</td>' +
+    '</tr>';
+  }).join('');
 }
 
 function setupEventListeners() {
-  document.getElementById('btnRefreshStats')?.addEventListener('click', loadStats);
+  document.getElementById('statPeriod')?.addEventListener('change', loadStats);
 }

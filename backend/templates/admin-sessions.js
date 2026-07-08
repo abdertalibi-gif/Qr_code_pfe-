@@ -16,7 +16,7 @@ async function loadSessions() {
     renderSessions();
   } catch (e) {
     document.getElementById('sessionsBody').innerHTML =
-      '<tr class="empty-row"><td colspan="8">Erreur: ' + esc(e.message) + '</td></tr>';
+      '<tr class="empty-row"><td colspan="7">Erreur: ' + esc(e.message) + '</td></tr>';
   }
 }
 
@@ -49,7 +49,7 @@ function renderSessions() {
       s.teacher_name || '', s.room_name || '', s.type || '')
   );
   if (!filtered.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">' + (q ? 'Aucun résultat.' : 'Aucune séance.') + '</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">' + (q ? 'Aucun résultat.' : 'Aucune séance.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map((s, i) => {
@@ -87,16 +87,12 @@ async function populateSessionForm() {
 async function openEditSession(id) {
   const s = allSessions.find(x => x.id === id);
   if (!s) return;
-  await populateSessionForm();
-  document.getElementById('sessionId').value = s.id;
-  document.getElementById('sessionModalTitle').textContent = 'Modifier la séance';
-  document.getElementById('sTitle').value = s.title || '';
-  if (s.classe) document.getElementById('sClass').value = s.classe;
-  if (s.matiere) document.getElementById('sMatiere').value = s.matiere;
-  if (s.teacher) document.getElementById('sTeacher').value = s.teacher;
-  if (s.room_id) document.getElementById('sRoom').value = s.room_id;
-  if (s.type) document.getElementById('sType').value = s.type;
-  openModal('modalSession');
+  if (window.SessionForm) {
+    await SessionForm.init({ isAdmin: true, userRole: currentUser?.role });
+    SessionForm.open(s.classe);
+  } else {
+    showToast('Le formulaire de séance n\'est pas chargé.', 'error');
+  }
 }
 
 async function deleteSession(id) {
@@ -114,37 +110,11 @@ function setupEventListeners() {
   document.getElementById('btnRefreshSessions')?.addEventListener('click', loadSessions);
 
   document.getElementById('btnOpenAddSession')?.addEventListener('click', async () => {
-    await populateSessionForm();
-    document.getElementById('sessionId').value = '';
-    document.getElementById('sessionModalTitle').textContent = 'Ajouter une séance';
-    document.getElementById('sTitle').value = '';
-    document.getElementById('sRoom').value = '';
-    document.getElementById('sType').value = 'CM';
-    openModal('modalSession');
-  });
-
-  document.getElementById('btnSubmitSession')?.addEventListener('click', async () => {
-    const id = document.getElementById('sessionId').value;
-    const body = {
-      title: document.getElementById('sTitle').value.trim(),
-      classe: document.getElementById('sClass').value || null,
-      matiere: document.getElementById('sMatiere').value || null,
-      teacher: document.getElementById('sTeacher').value || null,
-      room_id: document.getElementById('sRoom').value || null,
-      type: document.getElementById('sType').value || 'CM',
-    };
-    if (!body.title || !body.classe) {
-      showToast('Titre et classe sont requis.', 'error'); return;
+    if (window.SessionForm) {
+      await SessionForm.init({ isAdmin: true, userRole: currentUser?.role });
+      SessionForm.open(null);
+    } else {
+      showToast('Le formulaire de séance n\'est pas chargé.', 'error');
     }
-    try {
-      if (id) {
-        await API.apiFetch('/sessions/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
-      } else {
-        await API.apiFetch('/sessions/', { method: 'POST', body: JSON.stringify(body) });
-      }
-      closeModal('modalSession');
-      showToast('Séance enregistrée.', 'success');
-      await loadSessions();
-    } catch (e) { showToast(e.message, 'error'); }
   });
 }
