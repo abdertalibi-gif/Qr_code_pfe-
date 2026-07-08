@@ -39,9 +39,13 @@
       <h1>Tableau de bord administrateur</h1>
       <p>Gérez les utilisateurs, classes, étudiants, séances et consultez les présences en direct.</p>
     </div>
-    <div class="page-hero-meta">
+    <div class="page-hero-meta" id="heroCounts">
       <span class="hero-chip">📊 <strong id="heroUserCount">—</strong> utilisateurs</span>
       <span class="hero-chip">🏫 <strong id="heroClassCount">—</strong> classes</span>
+      <span class="hero-chip">👨‍🏫 <strong id="heroTeacherCount">—</strong> enseignants</span>
+      <span class="hero-chip">🎓 <strong id="heroStudentCount">—</strong> étudiants</span>
+      <span class="hero-chip">📅 <strong id="heroSessionCount">—</strong> séances</span>
+      <span class="hero-chip">📚 <strong id="heroModuleCount">—</strong> modules</span>
     </div>
   </div>
 
@@ -958,11 +962,26 @@
   }
 
   async function loadAll() {
-    await Promise.all([loadUsers(), loadClasses(), loadStudents(), loadSessions(), loadCurriculum(), loadDepartments()]);
+    await Promise.all([loadUsers(), loadClasses(), loadStudents(), loadSessions(), loadCurriculum(), loadDepartments(), loadDashboardCounts()]);
     await loadAttendance();
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     setupDepartmentUI();
+  }
+
+  async function loadDashboardCounts() {
+    try {
+      const d = await API.apiFetch('/dashboard/counts/');
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('cntStudents', d.students);
+      set('cntCurriculum', d.modules);
+      set('cntDepartments', d.departments);
+      set('cntTeacherImport', d.teachers);
+      set('heroTeacherCount', d.teachers);
+      set('heroStudentCount', d.students);
+      set('heroSessionCount', d.sessions);
+      set('heroModuleCount', d.modules);
+    } catch (e) { /* ignore */ }
   }
 
   /* ── Load Users ── */
@@ -972,8 +991,6 @@
       allUsers = Array.isArray(data) ? data : (data.results || []);
       renderUsers();
       document.getElementById('cntUsers').textContent = allUsers.length;
-      const heroU = document.getElementById('heroUserCount');
-      if (heroU) heroU.textContent = allUsers.length;
     } catch (e) {
       document.getElementById('usersBody').innerHTML =
         `<tr class="empty-row"><td colspan="4">Failed to load users: ${e.message}</td></tr>`;
@@ -1260,7 +1277,6 @@
       hint.style.display = 'block';
       wrap.style.display = 'none';
       pagination.classList.add('hidden');
-      document.getElementById('cntStudents').textContent = '—';
       return;
     }
 
@@ -1482,8 +1498,6 @@
       await Promise.all([loadBlocks(), loadAmphitheaters()]);
       renderClasses();
       document.getElementById('cntClasses').textContent = allClasses.length;
-      const heroC = document.getElementById('heroClassCount');
-      if (heroC) heroC.textContent = allClasses.length;
       populateClasseSelects();
     } catch (e) {
       document.getElementById('classesBody').innerHTML =

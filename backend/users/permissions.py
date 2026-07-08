@@ -61,10 +61,7 @@ def get_user_department(user):
     """Return the Department for a department_head user, or None."""
     if user.role != "department_head":
         return None
-    try:
-        return user.headed_department
-    except Department.DoesNotExist:
-        return None
+    return user.headed_department.first()
 
 
 def get_user_filiere_ids(user):

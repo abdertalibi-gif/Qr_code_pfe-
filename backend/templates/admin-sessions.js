@@ -1,11 +1,8 @@
 /* ── Admin Sessions Page ── */
 let allSessions = [];
-let allClasses = [];
-let allMatieres = [];
-let allTeachers = [];
 
 async function initPage() {
-  await Promise.all([loadSessions(), loadClasses(), loadMatieres(), loadTeachers()]);
+  await loadSessions();
   setupEventListeners();
 }
 
@@ -16,29 +13,8 @@ async function loadSessions() {
     renderSessions();
   } catch (e) {
     document.getElementById('sessionsBody').innerHTML =
-      '<tr class="empty-row"><td colspan="7">Erreur: ' + esc(e.message) + '</td></tr>';
+      '<tr class="empty-row"><td colspan="8">Erreur: ' + esc(e.message) + '</td></tr>';
   }
-}
-
-async function loadClasses() {
-  try {
-    const data = await API.apiFetch('/classes/');
-    allClasses = Array.isArray(data) ? data : (data.results || []);
-  } catch (e) { allClasses = []; }
-}
-
-async function loadMatieres() {
-  try {
-    const data = await API.apiFetch('/curriculum/subjects/');
-    allMatieres = Array.isArray(data) ? data : (data.results || []);
-  } catch (e) { allMatieres = []; }
-}
-
-async function loadTeachers() {
-  try {
-    const data = await API.apiFetch('/users/?role=teacher');
-    allTeachers = Array.isArray(data) ? data : (data.results || []);
-  } catch (e) { allTeachers = []; }
 }
 
 function renderSessions() {
@@ -49,7 +25,7 @@ function renderSessions() {
       s.teacher_name || '', s.room_name || '', s.type || '')
   );
   if (!filtered.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">' + (q ? 'Aucun résultat.' : 'Aucune séance.') + '</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">' + (q ? 'Aucun résultat.' : 'Aucune séance.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map((s, i) => {
@@ -70,26 +46,12 @@ function renderSessions() {
   }).join('');
 }
 
-async function populateSessionForm() {
-  const classSel = document.getElementById('sClass');
-  classSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    allClasses.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
-
-  const matSel = document.getElementById('sMatiere');
-  matSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    allMatieres.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('');
-
-  const teacherSel = document.getElementById('sTeacher');
-  teacherSel.innerHTML = '<option value="">— Non assigné —</option>' +
-    allTeachers.map(t => '<option value="' + t.id + '">' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</option>').join('');
-}
-
 async function openEditSession(id) {
   const s = allSessions.find(x => x.id === id);
   if (!s) return;
   if (window.SessionForm) {
     await SessionForm.init({ isAdmin: true, userRole: currentUser?.role });
-    SessionForm.open(s.classe);
+    SessionForm.edit(id);
   } else {
     showToast('Le formulaire de séance n\'est pas chargé.', 'error');
   }

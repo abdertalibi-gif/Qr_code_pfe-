@@ -26,6 +26,7 @@ from users.views import (
     department_detail,
     teacher_list,
     teacher_import_excel,
+    dashboard_counts,
 )
 from courses.views import SessionViewSet
 
@@ -135,6 +136,7 @@ api_v1_urlpatterns = [
     path("", include(api_router.urls)),
     path("auth/", include("users.urls")),
     path("attendance/", include("attendance.urls")),
+    path("dashboard/counts/", dashboard_counts, name="dashboard-counts"),
     path("blocks/", block_list, name="block-list"),
     path("amphitheaters/", amphitheater_list, name="amphitheater-list"),
     path("teachers/", teacher_list, name="teacher-list"),

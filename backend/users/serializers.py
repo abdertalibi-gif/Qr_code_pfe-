@@ -121,10 +121,7 @@ class UserSerializer(serializers.ModelSerializer):
     def get_managed_department(self, obj):
         if obj.role != "department_head":
             return None
-        try:
-            dept = obj.headed_department
-        except Department.DoesNotExist:
-            return None
+        dept = obj.headed_department.first()
         if dept is None:
             return None
         return {"id": dept.id, "name": dept.name}

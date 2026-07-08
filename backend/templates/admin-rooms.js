@@ -37,16 +37,32 @@ function renderBlocks() {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="4">' + (query ? 'Aucun résultat.' : 'Aucun bloc.') + '</td></tr>';
     return;
   }
-  tbody.innerHTML = filtered.map((b, i) => '<tr>' +
-    '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
-    '<td><strong>' + esc(b.name) + '</strong></td>' +
-    '<td>' + ((b.rooms && b.rooms.length) ? b.rooms.length + ' salle(s)' : '—') + '</td>' +
-    '<td class="actions-cell">' +
-      '<button class="btn sm outline" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
-      '<button class="btn sm outline" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
-      '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Supprimer</button>' +
-    '</td>' +
-  '</tr>').join('');
+  var html = '';
+  filtered.forEach(function (b, i) {
+    var rooms = b.rooms || [];
+    html += '<tr>' +
+      '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+      '<td><strong>' + esc(b.name) + '</strong></td>' +
+      '<td>' + (rooms.length ? rooms.length + ' salle(s)' : '—') + '</td>' +
+      '<td class="actions-cell">' +
+        '<button class="btn sm outline" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
+        '<button class="btn sm outline" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
+        '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Supprimer</button>' +
+      '</td>' +
+    '</tr>';
+    rooms.forEach(function (r) {
+      html += '<tr class="room-sub-row">' +
+        '<td></td>' +
+        '<td style="padding-left:2rem"><span style="color:var(--muted)">↳</span> ' + esc(r.name) + '</td>' +
+        '<td style="font-size:.85rem;color:var(--muted)">' + esc(b.name) + '</td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + b.id + ')">Modifier</button>' +
+          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Supprimer</button>' +
+        '</td>' +
+      '</tr>';
+    });
+  });
+  tbody.innerHTML = html;
 }
 
 function renderAmphis() {
@@ -93,6 +109,31 @@ function openAddRoom(blockId) {
   sel.innerHTML = '<option value="">— Sélectionner —</option>' +
     allBlocks.map(b => '<option value="' + b.id + '"' + (b.id === blockId ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('');
   openModal('modalRoom');
+}
+
+async function openEditRoom(roomId, blockId) {
+  try {
+    const r = await API.apiFetch('/rooms/' + roomId + '/');
+    document.getElementById('rmId').value = r.id;
+    document.getElementById('roomModalTitle').textContent = 'Modifier la salle';
+    document.getElementById('rmName').value = r.name || '';
+    const sel = document.getElementById('rmBlock');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allBlocks.map(b => '<option value="' + b.id + '">' + esc(b.name) + '</option>').join('');
+    sel.value = r.block || blockId || '';
+    openModal('modalRoom');
+  } catch (e) {
+    showToast('Erreur: ' + e.message, 'error');
+  }
+}
+
+async function deleteRoom(id) {
+  if (!confirm('Supprimer cette salle ?')) return;
+  try {
+    await API.apiFetch('/rooms/' + id + '/', { method: 'DELETE' });
+    showToast('Salle supprimée.', 'success');
+    await loadBlocks();
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 function openEditAmphi(id) {

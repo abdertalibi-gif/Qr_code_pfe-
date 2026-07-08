@@ -310,6 +310,18 @@ nav {
   box-shadow: inset 0 0 0 1px rgba(79, 70, 229, .15);
 }
 
+.nav-count {
+  margin-left: auto;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface2);
+  padding: 1px 7px;
+  border-radius: 20px;
+  min-width: 18px;
+  text-align: center;
+}
+
 .nav-right { display: flex; align-items: center; gap: .65rem; }
 
 .user-pill {

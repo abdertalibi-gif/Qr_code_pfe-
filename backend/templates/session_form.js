@@ -11,6 +11,8 @@
     _availableRooms: null,
     _availableBlocks: null,
     _availableAmphis: null,
+    _editingId: null,
+    _editingData: null,
 
     /* ── PUBLIC API ── */
 
@@ -39,6 +41,85 @@
         this._populateLocationSelects();
       }
       openModal('modalSessionForm');
+    },
+
+    async edit(id) {
+      var _this = this;
+      this._editingId = id;
+      try {
+        var session = await API.apiFetch('/sessions/' + id + '/');
+        this._editingData = session;
+        this._reset();
+
+        this.classeId = session.classe || null;
+
+        document.getElementById('sfDate').value = session.date || '';
+        if (session.start_time) document.getElementById('sfStartTime').value = session.start_time;
+        if (session.end_time) document.getElementById('sfEndTime').value = session.end_time;
+        if (session.session_type) document.getElementById('sfSessionType').value = session.session_type;
+        if (session.teacher) document.getElementById('sfTeacher').value = session.teacher;
+
+        var titleEl = document.querySelector('#modalSessionForm .modal-header h3');
+        if (titleEl) titleEl.textContent = 'Modifier la séance';
+        document.getElementById('sfSubmit').textContent = 'Enregistrer';
+        openModal('modalSessionForm');
+
+        if (session.classe) {
+          try {
+            var classe = await API.apiFetch('/classes/' + session.classe + '/');
+            var niveauId = classe.niveau;
+            var semestreId = classe.semestre;
+            var filiereId = classe.filiere;
+            var moduleId = session.module_id || classe.module;
+            await _this._setCascade(niveauId, semestreId, filiereId, moduleId);
+          } catch (e) {
+            // cascade pre-fill failed, user can select manually
+          }
+        }
+
+        if (session.location_type) {
+          document.getElementById('sfLocationType').value = session.location_type;
+          document.getElementById('sfLocationType').dispatchEvent(new Event('change'));
+          setTimeout(function () {
+            if (session.location_type === 'block') {
+              document.getElementById('sfBlock').value = session.block || '';
+              document.getElementById('sfBlock').dispatchEvent(new Event('change'));
+              setTimeout(function () {
+                document.getElementById('sfRoom').value = session.room || '';
+              }, 100);
+            } else if (session.location_type === 'amphitheater') {
+              document.getElementById('sfAmphi').value = session.amphitheater || '';
+            }
+          }, 200);
+        }
+
+      } catch (e) {
+        this._editingId = null;
+        this._editingData = null;
+        showToast('Erreur lors du chargement de la séance: ' + e.message, 'error');
+      }
+    },
+
+    async _setCascade(niveauId, semestreId, filiereId, moduleId) {
+      var _this = this;
+      if (niveauId) {
+        document.getElementById('sfNiveau').value = niveauId;
+        await _this._loadSemestres(niveauId);
+      }
+      if (semestreId) {
+        document.getElementById('sfSemestre').value = semestreId;
+        document.getElementById('sfSemestre').disabled = false;
+        await _this._loadFilieres(semestreId, niveauId);
+      }
+      if (filiereId) {
+        document.getElementById('sfFiliere').value = filiereId;
+        document.getElementById('sfFiliere').disabled = false;
+        await _this._loadModules(filiereId);
+      }
+      if (moduleId) {
+        document.getElementById('sfModule').value = moduleId;
+        document.getElementById('sfModule').disabled = false;
+      }
     },
 
     /* ── MODAL HTML ── */
@@ -381,6 +462,12 @@
       this._availableAmphis = null;
       this._populateLocationSelects();
       this._resetCascade(0);
+      this._editingId = null;
+      this._editingData = null;
+      var tEl = document.querySelector('#modalSessionForm .modal-header h3');
+      if (tEl) tEl.textContent = 'Nouvelle séance';
+      var sBtn = document.getElementById('sfSubmit');
+      if (sBtn) sBtn.textContent = 'Créer la séance';
     },
 
     _resetCascade(level) {
@@ -530,26 +617,35 @@
         body.teacher = Number(teacherVal);
       }
 
+      const isEditing = !!this._editingId;
       const btn = document.getElementById('sfSubmit');
       btn.disabled = true;
-      btn.textContent = 'Création…';
+      btn.textContent = isEditing ? 'Enregistrement…' : 'Création…';
 
       try {
-        const session = await API.apiFetch('/sessions/', {
-          method: 'POST',
-          body: JSON.stringify(body),
-        });
-        closeModal('modalSessionForm');
-        showToast('Séance créée avec succès.', 'success');
-
-        // Notify the page so it can refresh its lists
+        var session;
+        if (isEditing) {
+          session = await API.apiFetch('/sessions/' + this._editingId + '/', {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+          });
+          closeModal('modalSessionForm');
+          showToast('Séance modifiée avec succès.', 'success');
+        } else {
+          session = await API.apiFetch('/sessions/', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          });
+          closeModal('modalSessionForm');
+          showToast('Séance créée avec succès.', 'success');
+        }
         var evt = new CustomEvent('session-created', { detail: session });
         document.dispatchEvent(evt);
       } catch (e) {
-        showToast('Erreur : ' + (e.message || 'Échec de création de la séance.'), 'error');
+        showToast('Erreur : ' + (e.message || 'Échec de ' + (isEditing ? 'modification' : 'création') + ' de la séance.'), 'error');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Créer la séance';
+        btn.textContent = isEditing ? 'Enregistrer' : 'Créer la séance';
       }
     },
   };

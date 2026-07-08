@@ -14,16 +14,16 @@
     <span>PrésenceQR</span>
   </div>
   <div class="nav-links" id="navLinks">
-    <a href="/admin/attendance-live/" class="nav-link" data-page="attendance-live">📡 Présences en direct</a>
-    <a href="/admin/users/" class="nav-link" data-page="users">👤 Utilisateurs</a>
-    <a href="/admin/teachers/" class="nav-link" data-page="teachers">👨‍🏫 Enseignants</a>
-    <a href="/admin/students/" class="nav-link" data-page="students">🎓 Étudiants</a>
-    <a href="/admin/classes/" class="nav-link" data-page="classes">🏫 Classes</a>
-    <a href="/admin/curriculum/" class="nav-link" data-page="curriculum">📚 Curriculum</a>
-    <a href="/admin/sessions/" class="nav-link" data-page="sessions">📅 Séances</a>
-    <a href="/admin/departments/" class="nav-link" data-page="departments">🏛️ Départements</a>
-    <a href="/admin/filieres/" class="nav-link" data-page="filieres">🏢 Filières</a>
-    <a href="/admin/rooms/" class="nav-link" data-page="rooms">🚪 Salles</a>
+    <a href="/admin/attendance-live/" class="nav-link" data-page="attendance-live">📡 Présences en direct <span class="nav-count" id="navCntAttendance">—</span></a>
+    <a href="/admin/users/" class="nav-link" data-page="users">👤 Utilisateurs <span class="nav-count" id="navCntUsers">—</span></a>
+    <a href="/admin/teachers/" class="nav-link" data-page="teachers">👨‍🏫 Enseignants <span class="nav-count" id="navCntTeachers">—</span></a>
+    <a href="/admin/students/" class="nav-link" data-page="students">🎓 Étudiants <span class="nav-count" id="navCntStudents">—</span></a>
+    <a href="/admin/classes/" class="nav-link" data-page="classes">🏫 Classes <span class="nav-count" id="navCntClasses">—</span></a>
+    <a href="/admin/curriculum/" class="nav-link" data-page="curriculum">📚 Curriculum <span class="nav-count" id="navCntCurriculum">—</span></a>
+    <a href="/admin/sessions/" class="nav-link" data-page="sessions">📅 Séances <span class="nav-count" id="navCntSessions">—</span></a>
+    <a href="/admin/departments/" class="nav-link" data-page="departments">🏛️ Départements <span class="nav-count" id="navCntDepartments">—</span></a>
+    <a href="/admin/filieres/" class="nav-link" data-page="filieres">🏢 Filières <span class="nav-count" id="navCntFilieres">—</span></a>
+    <a href="/admin/rooms/" class="nav-link" data-page="rooms">🚪 Salles <span class="nav-count" id="navCntRooms">—</span></a>
     <a href="/admin/reports/" class="nav-link" data-page="reports">📊 Rapports</a>
     <a href="/admin/statistics/" class="nav-link" data-page="statistics">📈 Statistiques</a>
     <a href="/admin/settings/" class="nav-link" data-page="settings">⚙️ Paramètres</a>
@@ -81,10 +81,29 @@
 
     setupModalCloseHandlers();
 
+    await loadSidebarCounts();
+
     if (typeof initPage === 'function') {
       await initPage();
     }
   })();
+
+  async function loadSidebarCounts() {
+    try {
+      const d = await API.apiFetch('/dashboard/counts/');
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('navCntAttendance', d.attendances);
+      set('navCntUsers', d.users);
+      set('navCntTeachers', d.teachers);
+      set('navCntStudents', d.students);
+      set('navCntClasses', d.classes);
+      set('navCntCurriculum', d.modules);
+      set('navCntSessions', d.sessions);
+      set('navCntDepartments', d.departments);
+      set('navCntFilieres', d.filieres);
+      set('navCntRooms', d.rooms);
+    } catch (e) { /* silently ignore sidebar count errors */ }
+  }
 
   const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
   const roleBadgeClass = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };

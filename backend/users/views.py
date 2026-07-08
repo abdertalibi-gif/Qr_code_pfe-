@@ -548,3 +548,31 @@ def department_detail(request, pk):
             )
         dept.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_counts(request):
+    """Return all entity counts for the admin dashboard."""
+    from users.models import Classe, Block, Room, Amphitheater, Department
+    from curriculum.models import Filiere, Module
+    from courses.models import Session
+    from attendance.models import Attendance
+
+    return Response({
+        "users": User.objects.count(),
+        "admins": User.objects.filter(role="admin").count(),
+        "teachers": User.objects.filter(role="teacher").count(),
+        "students": User.objects.filter(role="student").count(),
+        "department_heads": User.objects.filter(role="department_head").count(),
+        "program_managers": User.objects.filter(role="program_manager").count(),
+        "classes": Classe.objects.count(),
+        "filieres": Filiere.objects.count(),
+        "modules": Module.objects.count(),
+        "sessions": Session.objects.count(),
+        "departments": Department.objects.count(),
+        "blocks": Block.objects.count(),
+        "rooms": Room.objects.count(),
+        "amphitheaters": Amphitheater.objects.count(),
+        "attendances": Attendance.objects.count(),
+    })
