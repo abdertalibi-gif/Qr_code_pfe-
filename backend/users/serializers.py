@@ -161,6 +161,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         queryset=Classe.objects.all(),
         required=False,
     )
+    department_id = serializers.PrimaryKeyRelatedField(
+        source="department",
+        queryset=Department.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    filiere_id = serializers.PrimaryKeyRelatedField(
+        source="filiere",
+        queryset=Filiere.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = User
@@ -172,6 +184,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "password",
             "password_confirm",
             "assigned_class_ids",
+            "department_id",
+            "filiere_id",
+            "is_also_teacher",
         ]
 
     def validate(self, data):
@@ -184,20 +199,42 @@ class UserCreateSerializer(serializers.ModelSerializer):
         data.pop("password_confirm", None)
         assigned = data.get("assigned_classes", [])
         role = data.get("role", "teacher")
-        if role != "teacher" and assigned:
+        can_have_classes = ("teacher", "department_head", "program_manager")
+        if role not in can_have_classes and assigned:
             raise serializers.ValidationError(
-                {"assigned_class_ids": "Seuls les enseignants peuvent avoir des classes."}
+                {"assigned_class_ids": "Seuls les enseignants, chefs de département et responsables de filière peuvent avoir des classes."}
             )
+        department = data.get("department")
+        filiere = data.get("filiere")
+        if role == "department_head" and not department:
+            raise serializers.ValidationError(
+                {"department_id": "Le département est obligatoire pour le chef de département."}
+            )
+        if role == "program_manager" and not filiere:
+            raise serializers.ValidationError(
+                {"filiere_id": "La filière est obligatoire pour le responsable de filière."}
+            )
+        if role != "teacher":
+            data.pop("is_also_teacher", None)
         return data
 
     def create(self, validated_data):
+        role = validated_data.get("role", "teacher")
         assigned_classes = validated_data.pop("assigned_classes", [])
+        department = validated_data.pop("department", None)
+        filiere = validated_data.pop("filiere", None)
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
         user.save()
         if assigned_classes:
             user.assigned_classes.set(assigned_classes)
+        if department and role == "department_head":
+            department.head = user
+            department.save(update_fields=["head"])
+        if filiere and role == "program_manager":
+            filiere.manager = user
+            filiere.save(update_fields=["manager"])
         return user
 
 
@@ -215,6 +252,18 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         queryset=Classe.objects.all(),
         required=False,
     )
+    department_id = serializers.PrimaryKeyRelatedField(
+        source="department",
+        queryset=Department.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    filiere_id = serializers.PrimaryKeyRelatedField(
+        source="filiere",
+        queryset=Filiere.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = User
@@ -226,20 +275,29 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "is_active",
             "password",
             "assigned_class_ids",
+            "department_id",
+            "filiere_id",
+            "is_also_teacher",
         ]
 
     def validate(self, data):
         role = data.get("role", getattr(self.instance, "role", None))
         assigned = data.get("assigned_classes")
-        if assigned is not None and role != "teacher" and assigned:
+        can_have_classes = ("teacher", "department_head", "program_manager")
+        if assigned is not None and role not in can_have_classes and assigned:
             raise serializers.ValidationError(
-                {"assigned_class_ids": "Seuls les enseignants peuvent avoir des classes."}
+                {"assigned_class_ids": "Seuls les enseignants, chefs de département et responsables de filière peuvent avoir des classes."}
             )
+        if role != "teacher":
+            data.pop("is_also_teacher", None)
         return data
 
     def update(self, instance, validated_data):
         assigned_classes = validated_data.pop("assigned_classes", None)
+        department = validated_data.pop("department", None)
+        filiere = validated_data.pop("filiere", None)
         password = validated_data.pop("password", None)
+        role = validated_data.get("role", instance.role)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
@@ -247,6 +305,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         if assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
+        if department is not None and role == "department_head":
+            department.head = instance
+            department.save(update_fields=["head"])
+        if filiere is not None and role == "program_manager":
+            filiere.manager = instance
+            filiere.save(update_fields=["manager"])
         return instance
 
 class ClasseSerializer(serializers.ModelSerializer):

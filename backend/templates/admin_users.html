@@ -5,7 +5,7 @@
 <div class="page-hero">
   <div class="page-hero-text">
     <h1>Utilisateurs</h1>
-    <p>Gérez les comptes administrateurs, enseignants et étudiants.</p>
+    <p>Gérez tous les comptes utilisateurs du système.</p>
   </div>
 </div>
 
@@ -64,14 +64,60 @@
           <option value="teacher">Enseignant</option>
           <option value="admin">Admin</option>
           <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
+
+      <!-- Department (teacher / department_head) -->
+      <div class="field role-field" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="uDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Filiere (teacher / program_manager) -->
+      <div class="field role-field" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="uFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- is_also_teacher (teacher only) -->
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
+        </label>
+      </div>
+
+      <!-- Student fields -->
+      <div class="role-field" data-roles="student" style="display:none">
+        <div class="field-row">
+          <div class="field">
+            <label>Code Massar</label>
+            <input type="text" id="uCodeMassar" placeholder="ex: MA1234567890" />
+          </div>
+          <div class="field">
+            <label>Code Apogée</label>
+            <input type="text" id="uCodeApogee" placeholder="optionnel" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Classe</label>
+          <select id="uStudentClasse"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="uStudentFiliere"><option value="">— Sélectionner —</option></select>
+        </div>
+      </div>
+
       <div class="field">
         <label>Mot de passe</label>
         <input type="password" id="uPassword" placeholder="••••••••" />
       </div>
-      <div class="field" id="uClassesWrap" style="display:none">
-        <label>Classes assignées (enseignant)</label>
+
+      <!-- Assigned classes (teacher / department_head / program_manager) -->
+      <div class="field role-field" data-roles="teacher,department_head,program_manager" style="display:none">
+        <label>Classes assignées</label>
         <select id="uClasses" multiple size="4"></select>
         <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
           Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
@@ -105,12 +151,35 @@
           <option value="teacher">Enseignant</option>
           <option value="admin">Admin</option>
           <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
-      <div class="field" id="euClassesWrap" style="display:none">
-        <label>Classes assignées (enseignant)</label>
+
+      <!-- Department (teacher / department_head) -->
+      <div class="field role-field-edit" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="euDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Filiere (teacher / program_manager) -->
+      <div class="field role-field-edit" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="euFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- is_also_teacher (teacher only) -->
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="euIsAlsoTeacher" /> Est également enseignant
+        </label>
+      </div>
+
+      <div class="field role-field-edit" data-roles="teacher,department_head,program_manager" style="display:none">
+        <label>Classes assignées</label>
         <select id="euClasses" multiple size="4"></select>
       </div>
+
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
     </div>
     <div class="modal-footer">

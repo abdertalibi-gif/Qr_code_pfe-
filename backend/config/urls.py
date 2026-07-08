@@ -8,6 +8,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import include, path, re_path
 from django.views.generic import RedirectView, TemplateView
 from drf_yasg import openapi
@@ -69,6 +70,15 @@ def serve_template(filename):
         except Exception:
             f.close()
             raise
+
+    return view
+
+
+def serve_admin_page(template_name):
+    """Return a view that renders an admin Django template."""
+
+    def view(request):
+        return render(request, template_name)
 
     return view
 
@@ -141,6 +151,22 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/login/", permanent=False)),
     path("login/", serve_template("login.html"), name="login-page"),
     path("admin-ui/", serve_template("admin.html"), name="admin-page"),
+
+    # Admin sub-pages (independent routes)
+    path("admin/attendance-live/", serve_admin_page("admin_attendance_live.html"), name="admin-attendance-live"),
+    path("admin/users/", serve_admin_page("admin_users.html"), name="admin-users"),
+    path("admin/teachers/", serve_admin_page("admin_teachers.html"), name="admin-teachers"),
+    path("admin/students/", serve_admin_page("admin_students.html"), name="admin-students"),
+    path("admin/classes/", serve_admin_page("admin_classes.html"), name="admin-classes"),
+    path("admin/curriculum/", serve_admin_page("admin_curriculum.html"), name="admin-curriculum"),
+    path("admin/sessions/", serve_admin_page("admin_sessions.html"), name="admin-sessions"),
+    path("admin/departments/", serve_admin_page("admin_departments.html"), name="admin-departments"),
+    path("admin/filieres/", serve_admin_page("admin_filieres.html"), name="admin-filieres"),
+    path("admin/rooms/", serve_admin_page("admin_rooms.html"), name="admin-rooms"),
+    path("admin/reports/", serve_admin_page("admin_reports.html"), name="admin-reports"),
+    path("admin/statistics/", serve_admin_page("admin_statistics.html"), name="admin-statistics"),
+    path("admin/settings/", serve_admin_page("admin_settings.html"), name="admin-settings"),
+
     path("teacher/", serve_template("teacher.html"), name="teacher-page"),
     path("student/", serve_template("student.html"), name="student-page"),
     path("attend/", serve_template("attend.html"), name="attend-page"),
@@ -152,6 +178,20 @@ urlpatterns = [
     path("api.js", serve_js("api.js"), name="api-js"),
     path("i18n-fr.js", serve_js("i18n-fr.js"), name="i18n-fr"),
     path("session-form.js", serve_js("session_form.js"), name="session-form-js"),
+    path("admin-common.js", serve_js("admin-common.js"), name="admin-common-js"),
+    path("admin-attendance-live.js", serve_js("admin-attendance-live.js"), name="admin-attendance-live-js"),
+    path("admin-users.js", serve_js("admin-users.js"), name="admin-users-js"),
+    path("admin-teachers.js", serve_js("admin-teachers.js"), name="admin-teachers-js"),
+    path("admin-students.js", serve_js("admin-students.js"), name="admin-students-js"),
+    path("admin-classes.js", serve_js("admin-classes.js"), name="admin-classes-js"),
+    path("admin-curriculum.js", serve_js("admin-curriculum.js"), name="admin-curriculum-js"),
+    path("admin-sessions.js", serve_js("admin-sessions.js"), name="admin-sessions-js"),
+    path("admin-departments.js", serve_js("admin-departments.js"), name="admin-departments-js"),
+    path("admin-filieres.js", serve_js("admin-filieres.js"), name="admin-filieres-js"),
+    path("admin-rooms.js", serve_js("admin-rooms.js"), name="admin-rooms-js"),
+    path("admin-reports.js", serve_js("admin-reports.js"), name="admin-reports-js"),
+    path("admin-statistics.js", serve_js("admin-statistics.js"), name="admin-statistics-js"),
+    path("admin-settings.js", serve_js("admin-settings.js"), name="admin-settings-js"),
     path("dashboard.css", serve_css("dashboard.css"), name="dashboard-css"),
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_v1_urlpatterns)),
