@@ -75,6 +75,9 @@
     <button class="tab-btn" data-tab="teacher-import">
       👨‍🏫 Import enseignants <span class="tab-count" id="cntTeacherImport">—</span>
     </button>
+    <button class="tab-btn" data-tab="rooms">
+      🚪 Salles &amp; Amphithéâtres <span class="tab-count" id="cntRooms">—</span>
+    </button>
   </div>
 
   <!-- LIVE ATTENDANCE PANEL -->
@@ -87,62 +90,19 @@
           <div class="value" id="statTotal">—</div>
         </div>
       </div>
-    <div class="stat-card">
-      <div class="stat-icon green">✓</div>
-      <div>
-        <div class="label">Aujourd'hui</div>
-        <div class="value" id="statToday">—</div>
+      <div class="stat-card">
+        <div class="stat-icon green">✓</div>
+        <div>
+          <div class="label">Aujourd'hui</div>
+          <div class="value" id="statToday">—</div>
+        </div>
       </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon purple">📚</div>
-      <div>
-        <div class="label">Matières actives</div>
-        <div class="value" id="statActiveCourses">—</div>
-      </div>
-    </div>
-
-    <!-- NEW: Room/Block/Amphitheater Stats Cards -->
-    <div class="stat-card" style="border-left:4px solid var(--indigo)">
-      <div class="stat-icon indigo">🏢</div>
-      <div>
-        <div class="label">Total Bloc</div>
-        <div class="value" id="statBlockCount">—</div>
-      </div>
-    </div>
-    <div class="stat-card" style="border-left:4px solid var(--purple)">
-      <div class="stat-icon purple">🚪</div>
-      <div>
-        <div class="label">Total Salles</div>
-        <div class="value" id="statRoomCount">—</div>
-      </div>
-    </div>
-    <div class="stat-card" style="border-left:4px solid var(--green)">
-      <div class="stat-icon green">🎭</div>
-      <div>
-        <div class="label">Total Amphithéâtres</div>
-        <div class="value" id="statAmphiCount">—</div>
-      </div>
-    </div>
-    <div class="stat-card" style="border-left:4px solid var(--yellow)">
-      <div class="stat-icon yellow">🟢 Libres</div>
-      <div>
-        <div class="label">Salles Disponibles</div>
-        <div class="value" id="statAvailableRooms">—</div>
-      </div>
-    </div>
-    <div class="stat-card" style="border-left:4px solid var(--red)">
-      <div class="stat-icon red">🔴 Occupées</div>
-      <div>
-        <div class="label">Salles Occupées</div>
-        <div class="value" id="statOccupiedRooms">—</div>
-      </div>
-    </div>
-    <div class="stat-card" style="border-left:4px solid var(--blue)">
-      <div class="stat-icon blue">👨‍🏫</div>
-      <div>
-        <div class="label">Enseignants en Cours</div>
-        <div class="value" id="statActiveTeachers">—</div>
+      <div class="stat-card">
+        <div class="stat-icon purple">📚</div>
+        <div>
+          <div class="label">Matières actives</div>
+          <div class="value" id="statActiveCourses">—</div>
+        </div>
       </div>
     </div>
 
@@ -432,25 +392,73 @@
         <button class="btn" id="btnOpenAddDepartment">+ Nouveau département</button>
       </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Nom</th>
-            <th>Chef de département</th>
-            <th>Filières</th>
-            <th>Responsables de filière</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="departmentsBody">
-          <tr class="empty-row"><td colspan="5">Chargement…</td></tr>
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom</th>
+              <th>Chef de département</th>
+              <th>Filières</th>
+              <th>Responsables de filière</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="departmentsBody">
+            <tr class="empty-row"><td colspan="5">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-</main>
+
+    <!-- ROOMS & AMPHITHEATERS PANEL -->
+    <div class="tab-panel" id="tab-rooms">
+      <div class="section-head">
+        <h2>Blocs</h2>
+        <div class="section-actions">
+          <input type="search" class="search-input" id="searchBlocks" placeholder="Rechercher un bloc…" />
+          <button class="btn" id="btnOpenAddBlock">+ Nouveau bloc</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom du bloc</th>
+              <th>Salles</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="blocksBody">
+            <tr class="empty-row"><td colspan="4">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-head" style="margin-top:2rem">
+        <h2>Amphithéâtres</h2>
+        <div class="section-actions">
+          <input type="search" class="search-input" id="searchAmphis" placeholder="Rechercher un amphithéâtre…" />
+          <button class="btn" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="amphisBody">
+            <tr class="empty-row"><td colspan="3">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
 
 <!-- ── MODAL: Department ── -->
 <div class="modal-backdrop" id="modalDepartment">
@@ -838,6 +846,8 @@
           <option value="teacher">Enseignant</option>
           <option value="admin">Admin</option>
           <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
       <div class="field" id="euClassesWrap">
@@ -846,9 +856,76 @@
       </div>
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
     </div>
+      <div class="modal-footer">
+        <button class="btn outline" data-close="modalEditUser">Annuler</button>
+        <button class="btn" id="btnSubmitEditUser">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+<!-- ── MODAL: Add/Edit Block ── -->
+<div class="modal-backdrop" id="modalBlock">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="blockModalTitle">Ajouter un bloc</h3>
+      <button class="modal-close" data-close="modalBlock">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="blkId" />
+      <div class="field">
+        <label>Nom du bloc <span class="req">*</span></label>
+        <input type="text" id="blkName" placeholder="Bloc 1" />
+      </div>
+    </div>
     <div class="modal-footer">
-      <button class="btn outline" data-close="modalEditUser">Annuler</button>
-      <button class="btn" id="btnSubmitEditUser">Enregistrer</button>
+      <button class="btn outline" data-close="modalBlock">Annuler</button>
+      <button class="btn" id="btnSubmitBlock">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Amphi ── -->
+<div class="modal-backdrop" id="modalAmphi">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="amphiModalTitle">Ajouter un amphithéâtre</h3>
+      <button class="modal-close" data-close="modalAmphi">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="amId" />
+      <div class="field">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="amName" placeholder="Amphi A" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAmphi">Annuler</button>
+      <button class="btn" id="btnSubmitAmphi">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Room (inside Block) ── -->
+<div class="modal-backdrop" id="modalRoom">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="roomModalTitle">Ajouter une salle</h3>
+      <button class="modal-close" data-close="modalRoom">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rmId" />
+      <div class="field">
+        <label>Bloc <span class="req">*</span></label>
+        <select id="rmBlock"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Nom de la salle <span class="req">*</span></label>
+        <input type="text" id="rmName" placeholder="Salle 1" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalRoom">Annuler</button>
+      <button class="btn" id="btnSubmitRoom">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1078,6 +1155,9 @@
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     setupDepartmentUI();
+    setupRoomsEventListeners();
+    loadBlocks();
+    loadAmphitheaters();
   }
 
   async function loadDashboardCounts() {
@@ -1088,6 +1168,7 @@
       set('cntCurriculum', d.modules);
       set('cntDepartments', d.departments);
       set('cntTeacherImport', d.teachers);
+      set('cntRooms', d.rooms);
       set('heroTeacherCount', d.teachers);
       set('heroStudentCount', d.students);
       set('heroSessionCount', d.sessions);
@@ -3126,6 +3207,228 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     } catch (e) {
       showToast('Erreur: ' + esc(e.message), 'error');
     }
+  }
+
+  /* ── Rooms & Amphitheaters management ── */
+  let allBlocks = [];
+  let allAmphis = [];
+
+  async function loadBlocks() {
+    try {
+      const data = await API.apiFetch('/blocks/');
+      allBlocks = Array.isArray(data) ? data : [];
+      renderBlocks();
+    } catch (e) {
+      const tbody = document.getElementById('blocksBody');
+      if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+  }
+
+  async function loadAmphitheaters() {
+    try {
+      const data = await API.apiFetch('/amphitheaters/');
+      allAmphis = Array.isArray(data) ? data : [];
+      renderAmphis();
+    } catch (e) {
+      const tbody = document.getElementById('amphisBody');
+      if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+  }
+
+  function renderBlocks() {
+    const tbody = document.getElementById('blocksBody');
+    if (!tbody) return;
+    const query = searchQuery('searchBlocks');
+    const filtered = allBlocks.filter(b => matchesQuery(query, b.name));
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">' + (query ? 'Aucun résultat.' : 'Aucun bloc.') + '</td></tr>';
+      return;
+    }
+    let html = '';
+    filtered.forEach(function (b, i) {
+      const rooms = b.rooms || [];
+      html += '<tr>' +
+        '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+        '<td><strong>' + esc(b.name) + '</strong></td>' +
+        '<td>' + (rooms.length ? rooms.length + ' salle(s)' : '—') + '</td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn sm outline" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
+          '<button class="btn sm outline" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
+          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Supprimer</button>' +
+        '</td>' +
+      '</tr>';
+      rooms.forEach(function (r) {
+        html += '<tr class="room-sub-row">' +
+          '<td></td>' +
+          '<td style="padding-left:2rem"><span style="color:var(--muted)">↳</span> ' + esc(r.name) + '</td>' +
+          '<td style="font-size:.85rem;color:var(--muted)">' + esc(b.name) + '</td>' +
+          '<td class="actions-cell">' +
+            '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + b.id + ')">Modifier</button>' +
+            '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Supprimer</button>' +
+          '</td>' +
+        '</tr>';
+      });
+    });
+    tbody.innerHTML = html;
+  }
+
+  function renderAmphis() {
+    const tbody = document.getElementById('amphisBody');
+    if (!tbody) return;
+    const query = searchQuery('searchAmphis');
+    const filtered = allAmphis.filter(a => matchesQuery(query, a.name));
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">' + (query ? 'Aucun résultat.' : 'Aucun amphithéâtre.') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map((a, i) => '<tr>' +
+      '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+      '<td><strong>' + esc(a.name) + '</strong></td>' +
+      '<td class="actions-cell">' +
+        '<button class="btn sm outline" onclick="openEditAmphi(' + a.id + ')">Modifier</button>' +
+        '<button class="btn sm outline" style="color:var(--red)" onclick="deleteAmphi(' + a.id + ')">Supprimer</button>' +
+      '</td>' +
+    '</tr>').join('');
+  }
+
+  function openEditBlock(id) {
+    const b = allBlocks.find(x => x.id === id);
+    if (!b) return;
+    document.getElementById('blkId').value = b.id;
+    document.getElementById('blockModalTitle').textContent = 'Modifier le bloc';
+    document.getElementById('blkName').value = b.name;
+    openModal('modalBlock');
+  }
+
+  async function deleteBlock(id) {
+    if (!confirm('Supprimer ce bloc et ses salles ?')) return;
+    try {
+      await API.apiFetch('/blocks/' + id + '/', { method: 'DELETE' });
+      showToast('Bloc supprimé.', 'success');
+      await loadBlocks();
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  function openAddRoom(blockId) {
+    document.getElementById('rmId').value = '';
+    document.getElementById('roomModalTitle').textContent = 'Ajouter une salle';
+    document.getElementById('rmName').value = '';
+    const sel = document.getElementById('rmBlock');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allBlocks.map(b => '<option value="' + b.id + '"' + (b.id === blockId ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('');
+    openModal('modalRoom');
+  }
+
+  async function openEditRoom(roomId, blockId) {
+    try {
+      const r = await API.apiFetch('/rooms/' + roomId + '/');
+      document.getElementById('rmId').value = r.id;
+      document.getElementById('roomModalTitle').textContent = 'Modifier la salle';
+      document.getElementById('rmName').value = r.name || '';
+      const sel = document.getElementById('rmBlock');
+      sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allBlocks.map(b => '<option value="' + b.id + '">' + esc(b.name) + '</option>').join('');
+      sel.value = r.block || blockId || '';
+      openModal('modalRoom');
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+  }
+
+  async function deleteRoom(id) {
+    if (!confirm('Supprimer cette salle ?')) return;
+    try {
+      await API.apiFetch('/rooms/' + id + '/', { method: 'DELETE' });
+      showToast('Salle supprimée.', 'success');
+      await loadBlocks();
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  function openEditAmphi(id) {
+    const a = allAmphis.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('amId').value = a.id;
+    document.getElementById('amphiModalTitle').textContent = 'Modifier l\'amphithéâtre';
+    document.getElementById('amName').value = a.name;
+    openModal('modalAmphi');
+  }
+
+  async function deleteAmphi(id) {
+    if (!confirm('Supprimer cet amphithéâtre ?')) return;
+    try {
+      await API.apiFetch('/amphitheaters/' + id + '/', { method: 'DELETE' });
+      showToast('Amphithéâtre supprimé.', 'success');
+      await loadAmphitheaters();
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  function setupRoomsEventListeners() {
+    bindSearchInput('searchBlocks', renderBlocks);
+    bindSearchInput('searchAmphis', renderAmphis);
+
+    document.getElementById('btnOpenAddBlock')?.addEventListener('click', () => {
+      document.getElementById('blkId').value = '';
+      document.getElementById('blockModalTitle').textContent = 'Ajouter un bloc';
+      document.getElementById('blkName').value = '';
+      openModal('modalBlock');
+    });
+
+    document.getElementById('btnSubmitBlock')?.addEventListener('click', async () => {
+      const id = document.getElementById('blkId').value;
+      const name = document.getElementById('blkName').value.trim();
+      if (!name) { showToast('Le nom est requis.', 'error'); return; }
+      try {
+        if (id) {
+          await API.apiFetch('/blocks/' + id + '/', { method: 'PATCH', body: JSON.stringify({ name }) });
+        } else {
+          await API.apiFetch('/blocks/', { method: 'POST', body: JSON.stringify({ name }) });
+        }
+        closeModal('modalBlock');
+        showToast('Bloc enregistré.', 'success');
+        await loadBlocks();
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+
+    document.getElementById('btnOpenAddAmphi')?.addEventListener('click', () => {
+      document.getElementById('amId').value = '';
+      document.getElementById('amphiModalTitle').textContent = 'Ajouter un amphithéâtre';
+      document.getElementById('amName').value = '';
+      openModal('modalAmphi');
+    });
+
+    document.getElementById('btnSubmitAmphi')?.addEventListener('click', async () => {
+      const id = document.getElementById('amId').value;
+      const name = document.getElementById('amName').value.trim();
+      if (!name) { showToast('Le nom est requis.', 'error'); return; }
+      try {
+        if (id) {
+          await API.apiFetch('/amphitheaters/' + id + '/', { method: 'PATCH', body: JSON.stringify({ name }) });
+        } else {
+          await API.apiFetch('/amphitheaters/', { method: 'POST', body: JSON.stringify({ name }) });
+        }
+        closeModal('modalAmphi');
+        showToast('Amphithéâtre enregistré.', 'success');
+        await loadAmphitheaters();
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+
+    document.getElementById('btnSubmitRoom')?.addEventListener('click', async () => {
+      const id = document.getElementById('rmId').value;
+      const blockId = document.getElementById('rmBlock').value;
+      const name = document.getElementById('rmName').value.trim();
+      if (!name || !blockId) { showToast('Nom et bloc sont requis.', 'error'); return; }
+      try {
+        const body = { block: parseInt(blockId), name: name };
+        if (id) {
+          await API.apiFetch('/rooms/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
+        } else {
+          await API.apiFetch('/rooms/', { method: 'POST', body: JSON.stringify(body) });
+        }
+        closeModal('modalRoom');
+        showToast('Salle enregistrée.', 'success');
+        await loadBlocks();
+      } catch (e) { showToast(e.message, 'error'); }
+    });
   }
 </script>
 </body>

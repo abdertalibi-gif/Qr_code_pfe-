@@ -609,3 +609,23 @@ class ModuleStudentSerializer(serializers.ModelSerializer):
             return None
         enrollment = obj.module_enrollments.filter(module_id=module_id).first()
         return enrollment.enrolled_at if enrollment else None
+
+
+class BlockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Block
+        fields = ["id", "name"]
+
+
+class RoomSerializer(serializers.ModelSerializer):
+    block_name = serializers.CharField(source="block.name", read_only=True)
+
+    class Meta:
+        model = Room
+        fields = ["id", "name", "block_name"]
+
+
+class AmphitheaterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Amphitheater
+        fields = ["id", "name"]

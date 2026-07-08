@@ -1,13 +1,58 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Count
 
-from .models import Classe, Student, StudentModuleEnrollment, User
+from .models import (
+    Amphitheater, Block, Classe, Department, Room, Student,
+    StudentModuleEnrollment, User,
+)
 
 
 class StudentModuleEnrollmentInline(admin.TabularInline):
     model = StudentModuleEnrollment
     extra = 0
     autocomplete_fields = ["module"]
+
+
+@admin.register(Block)
+class BlockAdmin(admin.ModelAdmin):
+    list_display = ["name", "room_count", "amphitheater_count"]
+    search_fields = ["name"]
+    ordering = ["name"]
+
+    def room_count(self, obj):
+        return obj.rooms.count()
+    room_count.short_description = "Salles"
+
+    def amphitheater_count(self, obj):
+        return obj.classes.filter(amphitheater__isnull=False).count()
+    amphitheater_count.short_description = "Amphithéâtres"
+
+
+@admin.register(Room)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ["name", "block", "get_status"]
+    search_fields = ["name", "block__name"]
+    list_filter = ["block"]
+    autocomplete_fields = ["block"]
+
+    def get_status(self, obj):
+        return "Libre"
+    get_status.short_description = "Status"
+
+
+@admin.register(Amphitheater)
+class AmphitheaterAdmin(admin.ModelAdmin):
+    list_display = ["name", "capacity", "get_status"]
+    search_fields = ["name"]
+
+    def capacity(self, obj):
+        return 0
+    capacity.short_description = "Capacité"
+
+    def get_status(self, obj):
+        return "Libre"
+    get_status.short_description = "Status"
 
 
 @admin.register(Classe)
