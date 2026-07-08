@@ -3,6 +3,7 @@
 
   window.SessionForm = {
     isAdmin: false,
+    userRole: null,
     classeId: null,
     blocksData: [],
     amphiData: [],
@@ -12,11 +13,13 @@
 
     async init(options) {
       this.isAdmin = options && options.isAdmin === true;
+      this.userRole = (options && options.userRole) || null;
       this._ensureModal();
+      var needsTeacher = this.userRole !== 'teacher';
       await Promise.all([
         this._loadBlocksAmphis(),
         this._loadNiveaux(),
-        this.isAdmin ? this._loadTeachers() : Promise.resolve(),
+        needsTeacher ? this._loadTeachers() : Promise.resolve(),
       ]);
       this._bindEvents();
     },
@@ -90,7 +93,7 @@
           <select id="sfAmphi"><option value="">— Sélectionner un amphithéâtre —</option></select>
         </div>
       </div>
-      <div class="field" id="sfTeacherField"${this.isAdmin ? '' : ' style="display:none"'}>
+      <div class="field" id="sfTeacherField"${this.userRole !== 'teacher' ? '' : ' style="display:none"'}>
         <label>Enseignant</label>
         <select id="sfTeacher"><option value="">— Sélectionner —</option></select>
       </div>
@@ -229,6 +232,109 @@
       }
     },
 
+    /* ── AVAILABILITY ── */
+
+    async _fetchAvailableRooms() {
+      const date = document.getElementById('sfDate').value;
+      const startTime = document.getElementById('sfStartTime').value;
+      const endTime = document.getElementById('sfEndTime').value;
+      const locType = document.getElementById('sfLocationType').value;
+      if (!date || !startTime || !endTime || !locType) return;
+
+      try {
+        const params = new URLSearchParams({
+          date: date,
+          start_time: startTime,
+          end_time: endTime,
+          location_type: locType,
+        });
+        const data = await API.apiFetch('/sessions/available-rooms/?' + params.toString());
+
+        if (locType === 'block' && data && data.blocks) {
+          this._availableBlocks = data.blocks;
+          this._populateBlockSelects(data.blocks);
+          // Clear room selection if current room is no longer available
+          this._validateCurrentSelection('sfBlock', 'sfRoom', data.blocks);
+        } else if (locType === 'amphitheater' && data && data.amphitheaters) {
+          this._availableAmphis = data.amphitheaters;
+          this._populateAmphiSelect(data.amphitheaters);
+          this._validateCurrentSelection('sfAmphi', null, data.amphitheaters);
+        }
+      } catch (e) {
+        // Fall back to full lists on error
+        this._populateLocationSelects();
+      }
+    },
+
+    _populateBlockSelects(blocks) {
+      const blockSel = document.getElementById('sfBlock');
+      const currentBlock = blockSel.value;
+      blockSel.innerHTML = '<option value="">— Sélectionner un bloc —</option>';
+      var hasRooms = false;
+      blocks.forEach(function (b) {
+        if (b.rooms && b.rooms.length) {
+          hasRooms = true;
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = b.name + ' (' + b.rooms.length + ' salle' + (b.rooms.length > 1 ? 's' : '') + ' disponible' + (b.rooms.length > 1 ? 's' : '') + ')';
+          blockSel.appendChild(opt);
+        }
+      });
+      if (!hasRooms) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— Aucune salle disponible —';
+        opt.disabled = true;
+        blockSel.appendChild(opt);
+      }
+      // Restore previous selection if still available
+      if (currentBlock && blocks.some(function (b) { return String(b.id) === currentBlock; })) {
+        blockSel.value = currentBlock;
+      }
+      blockSel.dispatchEvent(new Event('change'));
+    },
+
+    _populateAmphiSelect(amphis) {
+      const sel = document.getElementById('sfAmphi');
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
+      (amphis || []).forEach(function (a) {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.name;
+        sel.appendChild(opt);
+      });
+      if (!amphis || !amphis.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— Aucun amphithéâtre disponible —';
+        opt.disabled = true;
+        sel.appendChild(opt);
+      }
+      if (currentVal && amphis.some(function (a) { return String(a.id) === currentVal; })) {
+        sel.value = currentVal;
+      }
+    },
+
+    _validateCurrentSelection(parentId, childId, availableList) {
+      if (!availableList || !availableList.length) return;
+      if (childId) {
+        var parentSel = document.getElementById(parentId);
+        var childSel = document.getElementById(childId);
+        if (parentSel.value && childSel.value) {
+          var block = availableList.find(function (b) { return String(b.id) === parentSel.value; });
+          if (block && !block.rooms.some(function (r) { return String(r.id) === childSel.value; })) {
+            childSel.value = '';
+          }
+        }
+      } else {
+        var sel = document.getElementById(parentId);
+        if (sel.value && !availableList.some(function (a) { return String(a.id) === sel.value; })) {
+          sel.value = '';
+        }
+      }
+    },
+
     async _loadTeachers() {
       const sel = document.getElementById('sfTeacher');
       sel.innerHTML = '<option value="">— Sélectionner —</option>';
@@ -328,6 +434,21 @@
         const val = this.value;
         document.getElementById('sfBlockGroup').style.display = val === 'block' ? 'block' : 'none';
         document.getElementById('sfAmphiGroup').style.display = val === 'amphitheater' ? 'block' : 'none';
+        // When location type changes, restore full lists first, then filter by availability
+        self._populateLocationSelects();
+        self._fetchAvailableRooms();
+      });
+
+      // Re-check availability when date or time changes
+      ['sfDate', 'sfStartTime', 'sfEndTime'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function () {
+          const locType = document.getElementById('sfLocationType').value;
+          if (locType) {
+            // Restore full lists and filter
+            self._populateLocationSelects();
+            self._fetchAvailableRooms();
+          }
+        });
       });
 
       document.getElementById('sfBlock').addEventListener('change', function () {
@@ -392,7 +513,7 @@
         body.amphitheater = Number(amphiId);
       }
 
-      if (this.isAdmin) {
+      if (this.userRole !== 'teacher') {
         const teacherVal = document.getElementById('sfTeacher').value;
         if (!teacherVal) { showToast('Veuillez sélectionner un enseignant.', 'error'); return; }
         body.teacher = Number(teacherVal);

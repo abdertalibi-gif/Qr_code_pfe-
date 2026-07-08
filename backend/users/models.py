@@ -9,6 +9,8 @@ ROLE_CHOICES = [
     ("admin", "Admin"),
     ("teacher", "Enseignant"),
     ("student", "Étudiant"),
+    ("department_head", "Chef de département"),
+    ("program_manager", "Responsable de filière"),
 ]
 
 
@@ -43,6 +45,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         related_name="teachers",
         help_text="Classes assignées (enseignants uniquement).",
     )
+    is_also_teacher = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
@@ -58,6 +61,29 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class Department(models.Model):
+    """Département académique (Mathématiques, Informatique, etc.)"""
+    name = models.CharField(max_length=200, verbose_name="Département")
+    head = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="headed_department",
+        verbose_name="Chef de département",
+    )
+
+    class Meta:
+        managed = False
+        db_table = "departments"
+        ordering = ["name"]
+        verbose_name = "Département"
+        verbose_name_plural = "Départements"
+
+    def __str__(self):
+        return self.name
 
 
 class Block(models.Model):
@@ -135,6 +161,62 @@ NIVEAU_SEMESTRE_MAP = {
 }
 
 
+class AcademicYear(models.Model):
+    """Année universitaire de référence."""
+    label = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_current = models.BooleanField(default=False)
+
+    class Meta:
+        managed = False
+        db_table = "academic_years"
+        verbose_name = "Année universitaire"
+        verbose_name_plural = "Années universitaires"
+
+    def __str__(self):
+        return self.label
+
+
+class Group(models.Model):
+    """Groupe d'étudiants."""
+    name = models.CharField(max_length=200)
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.CASCADE,
+        related_name="groups",
+    )
+    department = models.ForeignKey(
+        Department, on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="groups",
+    )
+
+    class Meta:
+        managed = False
+        db_table = "groups"
+        verbose_name = "Groupe"
+        verbose_name_plural = "Groupes"
+
+    def __str__(self):
+        return self.name
+
+
+class Faculty(models.Model):
+    """Faculté."""
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=20, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+
+    class Meta:
+        managed = False
+        db_table = "faculties"
+        verbose_name = "Faculté"
+        verbose_name_plural = "Facultés"
+
+    def __str__(self):
+        return self.name
+
+
 class Classe(models.Model):
     """Groupe d'étudiants (niveau, filière, semestre, année universitaire)."""
 
@@ -201,6 +283,30 @@ class Classe(models.Model):
         blank=True,
         related_name="classes",
         verbose_name="Amphithéâtre",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="classes",
+        verbose_name="Département",
+    )
+    group = models.ForeignKey(
+        "Group",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="classes",
+        verbose_name="Groupe",
+    )
+    academic_year_ref = models.ForeignKey(
+        "AcademicYear",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="classes",
+        verbose_name="Année universitaire (réf)",
     )
     level = models.CharField(max_length=50, blank=True, default="", verbose_name="Niveau (legacy)")
     field = models.CharField(max_length=100, blank=True, default="", verbose_name="Domaine (legacy)")

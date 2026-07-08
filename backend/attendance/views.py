@@ -28,7 +28,7 @@ from rest_framework.views import APIView
 
 from courses.models import Session
 from users.models import Classe, Student
-from users.permissions import IsAdminOrTeacher, IsStudent
+from users.permissions import IsAdminOrTeacher, IsStudent, apply_role_filtering
 
 from .models import Attendance, SuspiciousAttempt
 from .serializers import (
@@ -214,6 +214,10 @@ class AllAttendanceListView(ListAPIView):
         user = self.request.user
         if user.role == "teacher":
             qs = qs.filter(session__teacher=user)
+        elif user.role == "department_head":
+            qs = apply_role_filtering(qs, "attendance", self.request)
+        elif user.role == "program_manager":
+            qs = apply_role_filtering(qs, "attendance", self.request)
 
         session_id = self.request.query_params.get("session")
         classe_id = self.request.query_params.get("classe")
@@ -223,6 +227,12 @@ class AllAttendanceListView(ListAPIView):
             qs = qs.filter(session__classe_id=classe_id)
 
         return qs
+
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
 
 class SessionAttendanceListView(ListAPIView):
@@ -247,6 +257,12 @@ class SessionAttendanceListView(ListAPIView):
             "student__classe", "session__teacher", "session__classe"
         ).filter(session_id=session_id).order_by("-validation_time")
 
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
 
 class SessionSuspiciousAttemptsView(ListAPIView):
     serializer_class = SuspiciousAttemptSerializer
@@ -267,6 +283,12 @@ class SessionSuspiciousAttemptsView(ListAPIView):
         return SuspiciousAttempt.objects.filter(session_id=session_id).order_by(
             "-created_at"
         )
+
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
 
 class SessionStatsView(APIView):
@@ -335,6 +357,12 @@ class SessionStatsView(APIView):
                 ],
             }
         )
+
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
 
 class ExportAttendanceView(APIView):
@@ -431,6 +459,12 @@ class ExportAttendanceView(APIView):
         )
         return response
 
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
 
 class SessionReportView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrTeacher]
@@ -472,10 +506,15 @@ class SessionReportView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
 
 def _get_export_queryset(request):
-    """Build filtered attendance queryset respecting teacher permissions."""
+    """Build filtered attendance queryset respecting role permissions."""
     qs = Attendance.objects.select_related(
         "student__classe__filiere",
         "student__classe__semestre",
@@ -484,12 +523,11 @@ def _get_export_queryset(request):
     )
 
     if request.user.role == "teacher":
-        # Enseignant : ne peut exporter que ses propres séances
         qs = qs.filter(session__teacher=request.user)
-
-        # Sécurité : si un client tente d'envoyer enseignant_id, on l'ignore
-        # (et on forcera la contrainte via la condition ci-dessus)
-
+    elif request.user.role == "department_head":
+        qs = apply_role_filtering(qs, "attendance", request)
+    elif request.user.role == "program_manager":
+        qs = apply_role_filtering(qs, "attendance", request)
 
     niveau = request.query_params.get("niveau")
     if niveau:
@@ -529,21 +567,17 @@ def _get_export_queryset(request):
         if statut == "present":
             qs = qs.filter(attendance_status=Attendance.STATUS_CONFIRMED)
         elif statut == "absent":
-            # Dans ce projet, l'absence est stockée dans STATUS_ABSENT
             qs = qs.filter(attendance_status=Attendance.STATUS_ABSENT)
 
-    # Filtre classe optionnel
     classe_id = request.query_params.get("classe_id") or request.query_params.get("classe")
     if classe_id:
         qs = qs.filter(session__classe_id=classe_id)
 
-    # Filtre enseignant (admin uniquement)
     enseignant_id = request.query_params.get("enseignant_id")
     if enseignant_id and request.user.role == "admin":
         qs = qs.filter(session__teacher_id=enseignant_id)
 
     return qs
-
 
 
 def _build_export_rows(qs):
@@ -576,7 +610,6 @@ def _build_export_rows(qs):
         "statut": att.attendance_status,
     })
     return rows
-
 
 
 def _compute_stats(rows, export_request):
@@ -620,7 +653,6 @@ EXPORT_HEADERS = [
 ]
 
 
-
 def _export_xlsx(rows, stats):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -653,7 +685,6 @@ def _export_xlsx(rows, stats):
                 statut_label,
             ]
         )
-
 
     # Statistics section
     ws.append([])
@@ -834,6 +865,12 @@ class AttendanceExportView(APIView):
         logger.info(f"Exported attendance report ({ext}) by {request.user.email}")
         return response
 
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
 
 class ExportWizardView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrTeacher]
@@ -898,6 +935,10 @@ class ExportWizardView(APIView):
         if request.user.role == "teacher":
             filters.pop("enseignant_id", None)
 
+        # For department_head/program_manager, ensure enseignant_id is not used to bypass role filtering
+        if request.user.role in ("department_head", "program_manager"):
+            filters.pop("enseignant_id", None)
+
         try:
             content, filename = ExportWizardService.generate_xlsx(request, filters)
         except Exception as e:
@@ -915,3 +956,9 @@ class ExportWizardView(APIView):
         response["Content-Disposition"] = f'attachment; filename="{safe_filename}"'
         logger.info(f"Export wizard successful for {request.user.email} (mode={filters['export_mode']})")
         return response
+
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()

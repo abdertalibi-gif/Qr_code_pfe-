@@ -23,7 +23,7 @@
     <div class="user-pill">
       <div class="user-avatar" id="avatarInitials">?</div>
       <span id="navUserName">Chargement…</span>
-      <span class="badge badge-admin">Administrateur</span>
+      <span class="badge" id="navRoleBadge">Administrateur</span>
     </div>
     <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -64,6 +64,9 @@
     </button>
     <button class="tab-btn" data-tab="sessions">
       📅 Séances <span class="tab-count" id="cntSessions">—</span>
+    </button>
+    <button class="tab-btn" data-tab="departments">
+      🏛️ Départements <span class="tab-count" id="cntDepartments">—</span>
     </button>
   </div>
 
@@ -342,7 +345,111 @@
       </table>
     </div>
   </div>
+
+  <!-- DEPARTMENTS PANEL -->
+  <div class="tab-panel" id="tab-departments">
+    <div class="section-head">
+      <h2>Départements</h2>
+      <div class="section-actions">
+        <input type="search" class="search-input" id="searchDepartments" placeholder="Rechercher un département…" />
+        <button class="btn" id="btnOpenAddDepartment">+ Nouveau département</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nom</th>
+            <th>Chef de département</th>
+            <th>Filières</th>
+            <th>Responsables de filière</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="departmentsBody">
+          <tr class="empty-row"><td colspan="5">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </main>
+
+<!-- ── MODAL: Department ── -->
+<div class="modal-backdrop" id="modalDepartment">
+  <div class="modal medium">
+    <div class="modal-header">
+      <h3 id="departmentModalTitle">➕ Nouveau département</h3>
+      <button class="modal-close" data-close="modalDepartment">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="departmentForm">
+        <div class="field">
+          <label for="deptName">Nom du département <span class="req">*</span></label>
+          <input type="text" id="deptName" required />
+        </div>
+        <div class="field">
+          <label for="deptHead">Chef de département</label>
+          <select id="deptHead">
+            <option value="">— Non assigné —</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn" id="btnSaveDepartment">💾 Enregistrer</button>
+          <button type="button" class="btn outline" data-close="modalDepartment">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Assign Department to Filiere ── -->
+<div class="modal-backdrop" id="modalAssignDept">
+  <div class="modal medium">
+    <div class="modal-header">
+      <h3>🏛️ Affecter les filières aux départements</h3>
+      <button class="modal-close" data-close="modalAssignDept">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+        <table>
+          <thead>
+            <tr><th>Filière</th><th>Département</th></tr>
+          </thead>
+          <tbody id="assignDeptBody"></tbody>
+        </table>
+      </div>
+      <div class="form-actions" style="margin-top:1rem">
+        <button class="btn" id="btnSaveAssignDept">💾 Enregistrer les affectations</button>
+        <button type="button" class="btn outline" data-close="modalAssignDept">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Filiere Managers ── -->
+<div class="modal-backdrop" id="modalFiliereManagers">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3 id="filiereManagersTitle">🎯 Gérer les responsables de filière</h3>
+      <button class="modal-close" data-close="modalFiliereManagers">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:450px;overflow-y:auto">
+        <table>
+          <thead>
+            <tr><th>Filière</th><th>Responsable actuel</th><th>Nouveau responsable</th></tr>
+          </thead>
+          <tbody id="filiereManagersBody"></tbody>
+        </table>
+      </div>
+      <div class="form-actions" style="margin-top:1rem">
+        <button class="btn" id="btnSaveFiliereManagers">💾 Enregistrer les responsables</button>
+        <button type="button" class="btn outline" data-close="modalFiliereManagers">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ── MODAL: Export Wizard ── -->
 <div class="modal-backdrop" id="modalExportWizard">
@@ -690,11 +797,12 @@
 
   (async () => {
     try {
-      currentUser = await API.requireAuth('admin');
+      currentUser = await API.requireAuth(['admin', 'department_head', 'program_manager']);
       document.getElementById('navUserName').textContent =
         `${currentUser.first_name} ${currentUser.last_name}`;
       document.getElementById('avatarInitials').textContent =
         (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
+      updateRoleUI(currentUser);
     } catch {}
 
     loadAll();
@@ -704,6 +812,7 @@
   let allUsers    = [];
   let allStudents = [];
   let allClasses  = [];
+  let allDepartments = [];
   let allSessions = [];
   let allAttendance = [];
   let curriculumData = [];
@@ -819,10 +928,11 @@
   }
 
   async function loadAll() {
-    await Promise.all([loadUsers(), loadClasses(), loadStudents(), loadSessions(), loadCurriculum()]);
+    await Promise.all([loadUsers(), loadClasses(), loadStudents(), loadSessions(), loadCurriculum(), loadDepartments()]);
     await loadAttendance();
     connectAdminLiveWS();
-    await SessionForm.init({ isAdmin: true });
+    await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
+    setupDepartmentUI();
   }
 
   /* ── Load Users ── */
@@ -840,7 +950,30 @@
     }
   }
 
-  const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant' };
+  const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
+  const roleBadgeClass = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };
+
+  function updateRoleUI(user) {
+    const badge = document.getElementById('navRoleBadge');
+    if (badge) {
+      badge.textContent = roleLabel[user.role] || user.role;
+      badge.className = 'badge ' + (roleBadgeClass[user.role] || '');
+    }
+    // Show/hide tabs based on role
+    const isAdmin = user.role === 'admin';
+    const allTabs = ['attendance', 'users', 'students', 'classes', 'curriculum', 'sessions', 'departments'];
+    const allowedTabs = isAdmin
+      ? allTabs
+      : ['departments', 'attendance', 'sessions', 'curriculum'];  // department_head/program_manager
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      const tab = btn.dataset.tab;
+      btn.style.display = allowedTabs.includes(tab) ? '' : 'none';
+    });
+    // Hide admin-only buttons
+    if (!isAdmin) {
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
+  }
 
   function renderUsers() {
     const tbody = document.getElementById('usersBody');
@@ -2605,6 +2738,239 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     t.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${msg}</span>`;
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+  }
+
+  /* ── Departments ── */
+
+  async function loadDepartments() {
+    try {
+      const data = await API.apiFetch('/departments/');
+      allDepartments = Array.isArray(data) ? data : (data.results || []);
+      renderDepartments();
+      document.getElementById('cntDepartments').textContent = allDepartments.length;
+    } catch (e) {
+      showToast('Erreur chargement départements: ' + esc(e.message), 'error');
+    }
+  }
+
+  function renderDepartments() {
+    const q = searchQuery('searchDepartments');
+    const tbody = document.getElementById('departmentsBody');
+    const list = allDepartments.filter(function (d) { return !q || d.name.toLowerCase().includes(q); });
+    if (!list.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun département trouvé.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(function (d) {
+      var headName = d.head_name || '—';
+      var filiereCount = d.filiere_count || 0;
+      return '<tr>' +
+        '<td>' + d.id + '</td>' +
+        '<td><strong>' + esc(d.name) + '</strong></td>' +
+        '<td>' + esc(headName) + '</td>' +
+        '<td>' + filiereCount + '</td>' +
+        '<td><button class="btn-sm outline" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn-sm" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
+          '<button class="btn-sm outline admin-only" onclick="deleteDepartment(' + d.id + ')">🗑️</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  bindSearchInput('searchDepartments', renderDepartments);
+
+  var editingDepartmentId = null;
+
+  function setupDepartmentUI() {
+    var isRestricted = currentUser.role === 'department_head' || currentUser.role === 'program_manager';
+    if (isRestricted) {
+      var deptBtn = document.getElementById('btnOpenAddDepartment');
+      if (deptBtn) deptBtn.style.display = 'none';
+    }
+
+    document.getElementById('btnOpenAddDepartment').addEventListener('click', function () {
+      openDepartmentModal(null);
+    });
+
+    document.getElementById('departmentForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      await saveDepartment();
+    });
+  }
+
+  async function loadDeptHeadSelect() {
+    var sel = document.getElementById('deptHead');
+    sel.innerHTML = '<option value="">— Non assigné —</option>';
+    var teachers = [];
+    try {
+      var data = await API.apiFetch('/users/?role=teacher');
+      teachers = Array.isArray(data) ? data : (data.results || []);
+      var admins = await API.apiFetch('/users/?role=admin');
+      var adminList = Array.isArray(admins) ? admins : (admins.results || []);
+      teachers = teachers.concat(adminList);
+    } catch (e) {
+      // fallback to allUsers
+      teachers = allUsers.filter(function (u) { return u.role === 'teacher' || u.role === 'admin'; });
+    }
+    teachers.forEach(function (u) {
+      var opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.full_name + ' (' + u.email + ')';
+      sel.appendChild(opt);
+    });
+  }
+
+  function openDepartmentModal(dept) {
+    document.getElementById('departmentForm').reset();
+    editingDepartmentId = null;
+    loadDeptHeadSelect();
+
+    if (dept) {
+      editingDepartmentId = dept.id;
+      document.getElementById('departmentModalTitle').textContent = '✏️ Modifier ' + dept.name;
+      document.getElementById('deptName').value = dept.name;
+      if (dept.head) {
+        document.getElementById('deptHead').value = dept.head;
+      }
+    } else {
+      document.getElementById('departmentModalTitle').textContent = '➕ Nouveau département';
+    }
+    document.getElementById('modalDepartment').classList.add('show');
+  }
+
+  async function editDepartment(id) {
+    var dept = allDepartments.find(function (d) { return d.id === id; });
+    if (dept) openDepartmentModal(dept);
+  }
+
+  async function deleteDepartment(id) {
+    if (!confirm('Supprimer ce département ?')) return;
+    try {
+      await API.apiFetch('/departments/' + id + '/', { method: 'DELETE' });
+      showToast('Département supprimé', 'success');
+      await loadDepartments();
+    } catch (e) {
+      showToast('Erreur: ' + esc(e.message), 'error');
+    }
+  }
+
+  /* ── Filiere Managers ── */
+  var _currentDeptIdForManagers = null;
+  var _filiereManagerChanges = [];
+
+  async function manageFiliereManagers(deptId) {
+    _currentDeptIdForManagers = deptId;
+    _filiereManagerChanges = [];
+    var dept = allDepartments.find(function (d) { return d.id === deptId; });
+    document.getElementById('filiereManagersTitle').textContent =
+      '🎯 Gérer les responsables — ' + (dept ? dept.name : 'Département #' + deptId);
+
+    try {
+      // Load filieres for this department
+      var filieres = await API.apiFetch('/curriculum/filieres/?department_id=' + deptId);
+      filieres = Array.isArray(filieres) ? filieres : [];
+
+      // Load eligible users (teachers + existing managers)
+      var eligible = [];
+      try {
+        var users = await API.apiFetch('/users/');
+        eligible = Array.isArray(users) ? users : (users.results || []);
+      } catch (e) {
+        eligible = allUsers;
+      }
+
+      var tbody = document.getElementById('filiereManagersBody');
+      if (!filieres.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière dans ce département.</td></tr>';
+        document.getElementById('btnSaveFiliereManagers').disabled = true;
+        document.getElementById('modalFiliereManagers').classList.add('show');
+        return;
+      }
+
+      tbody.innerHTML = filieres.map(function (f) {
+        var currentManagerId = f.manager_id || '';
+        var currentManagerName = '';
+        if (currentManagerId) {
+          var u = eligible.find(function (x) { return String(x.id) === String(currentManagerId); });
+          currentManagerName = u ? (u.full_name || u.first_name + ' ' + u.last_name) : '#' + currentManagerId;
+        }
+        var options = '<option value="">— Non assigné —</option>';
+        var eligibleUsers = eligible.filter(function (u) {
+          return u.role === 'teacher' || u.role === 'program_manager' || u.role === 'admin';
+        });
+        eligibleUsers.forEach(function (u) {
+          var selected = String(u.id) === String(currentManagerId) ? ' selected' : '';
+          options += '<option value="' + u.id + '"' + selected + '>' +
+            esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>';
+        });
+        return '<tr>' +
+          '<td><strong>' + esc(f.name) + '</strong></td>' +
+          '<td>' + esc(currentManagerName || '—') + '</td>' +
+          '<td><select class="filiere-manager-select" data-filiere-id="' + f.id + '" style="width:100%">' + options + '</select></td>' +
+        '</tr>';
+      }).join('');
+
+      document.getElementById('btnSaveFiliereManagers').disabled = false;
+      document.getElementById('modalFiliereManagers').classList.add('show');
+    } catch (e) {
+      showToast('Erreur: ' + esc(e.message), 'error');
+    }
+  }
+
+  document.getElementById('btnSaveFiliereManagers')?.addEventListener('click', async function () {
+    var selects = document.querySelectorAll('.filiere-manager-select');
+    var updates = [];
+    selects.forEach(function (sel) {
+      var filiereId = sel.dataset.filiereId;
+      var managerId = sel.value || null;
+      updates.push({ id: filiereId, manager_id: managerId });
+    });
+
+    var successCount = 0;
+    var errorCount = 0;
+    for (var i = 0; i < updates.length; i++) {
+      try {
+        await API.apiFetch('/curriculum/filieres/' + parseInt(updates[i].id) + '/', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            manager_id: updates[i].manager_id ? parseInt(updates[i].manager_id) : null,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        successCount++;
+      } catch (e) {
+        errorCount++;
+      }
+    }
+    if (errorCount) {
+      showToast(successCount + ' mis à jour, ' + errorCount + ' erreur(s).', errorCount ? 'error' : 'success');
+    } else {
+      showToast('Tous les responsables ont été mis à jour.', 'success');
+    }
+    document.getElementById('modalFiliereManagers').classList.remove('show');
+    await loadDepartments();
+    await loadUsers();
+  });
+
+  async function saveDepartment() {
+    var name = document.getElementById('deptName').value.trim();
+    if (!name) { showToast('Le nom est requis', 'error'); return; }
+    var head = document.getElementById('deptHead').value || null;
+
+    var payload = { name: name, head: head };
+    var method = editingDepartmentId ? 'PUT' : 'POST';
+    var url = editingDepartmentId ? '/departments/' + editingDepartmentId + '/' : '/departments/';
+
+    try {
+      await API.apiFetch(url, { method: method, body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+      showToast(editingDepartmentId ? 'Département modifié' : 'Département créé', 'success');
+      document.getElementById('modalDepartment').classList.remove('show');
+      await loadDepartments();
+      await loadUsers();
+    } catch (e) {
+      showToast('Erreur: ' + esc(e.message), 'error');
+    }
   }
 </script>
 </body>

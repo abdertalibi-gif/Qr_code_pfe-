@@ -21,6 +21,8 @@ from users.views import (
     ClasseViewSet,
     block_list,
     amphitheater_list,
+    department_list,
+    department_detail,
     teacher_list,
 )
 from courses.views import SessionViewSet
@@ -125,6 +127,8 @@ api_v1_urlpatterns = [
     path("blocks/", block_list, name="block-list"),
     path("amphitheaters/", amphitheater_list, name="amphitheater-list"),
     path("teachers/", teacher_list, name="teacher-list"),
+    path("departments/", department_list, name="department-list"),
+    path("departments/<int:pk>/", department_detail, name="department-detail"),
     path("", include("curriculum.urls")),
 ]
 

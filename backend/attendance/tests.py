@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from curriculum.models import Filiere, Module, Semestre
-from users.models import Classe, Student, User
+from users.models import Amphitheater, Block, Classe, Room, Student, User
 from courses.models import Session
 from .models import Attendance
 
@@ -570,3 +570,213 @@ class ExportWizardTests(TestCase):
         codes = [r[1] for r in data_rows if r[1]]
         self.assertIn("CNE001", codes)
         self.assertNotIn("CNE002", codes)
+
+
+class RoomConflictTests(TestCase):
+    """Tests that two sessions cannot share the same room/amphi at the same time."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+        self.admin = User.objects.create_user(
+            email="admin@test.ma", password="password123",
+            first_name="Admin", last_name="Root", role="admin",
+        )
+        self.teacher = User.objects.create_user(
+            email="teacher@test.ma", password="password123",
+            first_name="Jean", last_name="Dupont", role="teacher",
+        )
+        self.teacher2 = User.objects.create_user(
+            email="teacher2@test.ma", password="password123",
+            first_name="Marie", last_name="Curie", role="teacher",
+        )
+
+        self.semestre = Semestre.objects.create(name="S5")
+        self.filiere = Filiere.objects.create(
+            name="Genie Informatique", semestre=self.semestre, niveau="LIC"
+        )
+        self.module = Module.objects.create(
+            name="Programmation Web", filiere=self.filiere
+        )
+        self.classe = Classe.objects.create(
+            name="GI S5", filiere=self.filiere, semestre=self.semestre,
+            module=self.module, niveau="LIC", academic_year="2025-2026",
+        )
+
+        self.block = Block.objects.create(name="Bloc A")
+        self.room1 = Room.objects.create(name="Salle 101", block=self.block)
+        self.room2 = Room.objects.create(name="Salle 102", block=self.block)
+        self.amphi = Amphitheater.objects.create(name="Amphi 1")
+
+        self.today = date.today()
+
+    def _login(self, user):
+        self.client.force_authenticate(user=user)
+
+    def _session_url(self):
+        return "/api/v1/sessions/"
+
+    def _available_url(self):
+        return "/api/v1/sessions/available-rooms/"
+
+    def test_two_teachers_cannot_book_same_room_same_time(self):
+        self._login(self.admin)
+        resp = self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        resp2 = self.client.post(self._session_url(), {
+            "subject": "Physique", "module_id": self.module.id,
+            "teacher": self.teacher2.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("occup", str(resp2.data).lower())
+
+    def test_room_available_when_free(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.post(self._session_url(), {
+            "subject": "Physique", "module_id": self.module.id,
+            "teacher": self.teacher2.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room2.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+    def test_edit_session_ignores_self(self):
+        self._login(self.admin)
+        resp = self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        sid = resp.data["id"]
+        resp2 = self.client.patch(
+            self._session_url() + str(sid) + "/",
+            {"subject": "Maths Avancees"},
+            format="json",
+        )
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+
+    def test_cannot_edit_into_conflicting_room(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        resp2 = self.client.post(self._session_url(), {
+            "subject": "Physique", "module_id": self.module.id,
+            "teacher": self.teacher2.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room2.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp2.status_code, status.HTTP_201_CREATED)
+        sid2 = resp2.data["id"]
+        resp3 = self.client.patch(
+            self._session_url() + str(sid2) + "/",
+            {"room": self.room1.id},
+            format="json",
+        )
+        self.assertEqual(resp3.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_amphitheater_conflict(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Conf", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "amphitheater",
+            "amphitheater": self.amphi.id,
+            "date": self.today.isoformat(),
+            "start_time": "14:00", "end_time": "16:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.post(self._session_url(), {
+            "subject": "Sem", "module_id": self.module.id,
+            "teacher": self.teacher2.id, "classe": self.classe.id,
+            "location_type": "amphitheater",
+            "amphitheater": self.amphi.id,
+            "date": self.today.isoformat(),
+            "start_time": "14:00", "end_time": "16:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_amphitheater_available_different_time(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Conf", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "amphitheater",
+            "amphitheater": self.amphi.id,
+            "date": self.today.isoformat(),
+            "start_time": "14:00", "end_time": "16:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.post(self._session_url(), {
+            "subject": "Sem", "module_id": self.module.id,
+            "teacher": self.teacher2.id, "classe": self.classe.id,
+            "location_type": "amphitheater",
+            "amphitheater": self.amphi.id,
+            "date": self.today.isoformat(),
+            "start_time": "16:00", "end_time": "18:00",
+            "session_type": "Cours",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+    def test_available_rooms_endpoint_excludes_occupied(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._available_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "location_type": "block",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for b in resp.data.get("blocks", []) for r in b.get("rooms", [])]
+        self.assertNotIn(self.room1.id, room_ids)
+        self.assertIn(self.room2.id, room_ids)
+
+    def test_available_endpoint_without_location_type(self):
+        self._login(self.admin)
+        resp = self.client.get(self._available_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("blocks", resp.data)
+        self.assertIn("amphitheaters", resp.data)

@@ -54,6 +54,7 @@ class SessionSerializer(serializers.ModelSerializer):
     is_qr_valid = serializers.BooleanField(read_only=True)
     is_within_session_window = serializers.BooleanField(read_only=True)
     can_generate_qr = serializers.BooleanField(read_only=True)
+    is_active = serializers.BooleanField(default=True, required=False)
     is_closed = serializers.BooleanField(read_only=True)
     report_file = serializers.CharField(read_only=True)
     report_url = serializers.SerializerMethodField()
@@ -228,6 +229,54 @@ class SessionSerializer(serializers.ModelSerializer):
             # Auto-assign teacher when a teacher creates the session
             if request and request.user.role == "teacher" and not data.get("teacher"):
                 data["teacher"] = request.user
+
+            # ── Room/Amphitheater conflict check ──
+            location_type = data.get("location_type", getattr(self.instance, "location_type", None))
+            date_val = data.get("date", getattr(self.instance, "date", None))
+            st = data.get("start_time", getattr(self.instance, "start_time", None))
+            et = data.get("end_time", getattr(self.instance, "end_time", None))
+            exclude_id = self.instance.id if self.instance else None
+
+            if location_type and date_val and st and et:
+                from courses.utils import get_conflicting_sessions
+
+                if location_type == "block":
+                    room = data.get("room", getattr(self.instance, "room", None))
+                    if room:
+                        conflicts = get_conflicting_sessions(
+                            date=date_val,
+                            start_time=st,
+                            end_time=et,
+                            location_type="block",
+                            room_id=room.id if hasattr(room, "id") else room,
+                            exclude_session_id=exclude_id,
+                        )
+                        if conflicts.exists():
+                            conflict = conflicts.first()
+                            raise serializers.ValidationError(
+                                f"Cette salle est déjà occupée par une autre séance "
+                                f"entre {conflict.start_time.strftime('%H:%M')} et "
+                                f"{conflict.end_time.strftime('%H:%M')}."
+                            )
+                elif location_type == "amphitheater":
+                    amphi = data.get("amphitheater", getattr(self.instance, "amphitheater", None))
+                    if amphi:
+                        conflicts = get_conflicting_sessions(
+                            date=date_val,
+                            start_time=st,
+                            end_time=et,
+                            location_type="amphitheater",
+                            amphitheater_id=amphi.id if hasattr(amphi, "id") else amphi,
+                            exclude_session_id=exclude_id,
+                        )
+                        if conflicts.exists():
+                            conflict = conflicts.first()
+                            raise serializers.ValidationError(
+                                f"Cet amphithéâtre est déjà occupé par une autre séance "
+                                f"entre {conflict.start_time.strftime('%H:%M')} et "
+                                f"{conflict.end_time.strftime('%H:%M')}."
+                            )
+
             logger.info(f"Validation passed for SessionSerializer")
             return data
         except serializers.ValidationError:

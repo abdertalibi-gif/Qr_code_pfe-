@@ -37,6 +37,22 @@ class Filiere(models.Model):
         blank=True,
         default="",
     )
+    department = models.ForeignKey(
+        "users.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="filieres",
+        verbose_name="Département",
+    )
+    manager = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_filieres",
+        verbose_name="Responsable de filière",
+    )
 
     class Meta:
         db_table = "filieres"

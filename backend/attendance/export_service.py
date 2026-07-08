@@ -9,6 +9,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 from courses.models import Session
 from users.models import Classe, Student
+from users.permissions import apply_role_filtering
 
 from .models import Attendance
 
@@ -79,6 +80,10 @@ class ExportWizardService:
 
         if request.user.role == "teacher":
             qs = qs.filter(session__teacher=request.user)
+        elif request.user.role == "department_head":
+            qs = apply_role_filtering(qs, "attendance", request)
+        elif request.user.role == "program_manager":
+            qs = apply_role_filtering(qs, "attendance", request)
 
         start_date = filters.get("start_date")
         if start_date:

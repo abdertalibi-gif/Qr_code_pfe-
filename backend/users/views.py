@@ -14,10 +14,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Amphitheater, Block, Classe, Room, Student, User
-from .permissions import IsAdmin, IsAdminOrTeacher
+from .models import Amphitheater, Block, Classe, Department, Room, Student, User
+from .permissions import (
+    IsAdmin,
+    IsAdminOrTeacher,
+    apply_role_filtering,
+    get_user_department,
+    get_user_filiere_ids,
+)
 from .serializers import (
     ClasseSerializer,
+    DepartmentSerializer,
     LoginSerializer,
     ModuleStudentSerializer,
     StudentSerializer,
@@ -77,6 +84,42 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserUpdateSerializer
         return UserSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        role_param = self.request.query_params.get("role")
+        if role_param:
+            qs = qs.filter(role=role_param)
+        if self.request.user.role == "department_head":
+            dept = get_user_department(self.request.user)
+            if dept:
+                qs = qs.filter(
+                    Q(role="department_head", id=self.request.user.id)
+                    | Q(role__in=("teacher", "admin"), assigned_classes__department=dept)
+                    | Q(role="teacher", sessions__classe__department=dept)
+                    | Q(role="student", student_profile__classe__department=dept)
+                    | Q(role="program_manager", managed_filieres__department=dept)
+                ).distinct()
+            else:
+                qs = qs.none()
+        elif self.request.user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(self.request.user)
+            if filiere_ids:
+                qs = qs.filter(
+                    Q(role="program_manager", id=self.request.user.id)
+                    | Q(role__in=("teacher", "admin"), assigned_classes__filiere_id__in=filiere_ids)
+                    | Q(role="teacher", sessions__classe__filiere_id__in=filiere_ids)
+                    | Q(role="student", student_profile__classe__filiere_id__in=filiere_ids)
+                ).distinct()
+            else:
+                qs = qs.none()
+        return qs
+
+    def get_permissions(self):
+        if self.request.user.is_authenticated and self.request.user.role in ("department_head", "program_manager"):
+            if self.action in ("list", "retrieve"):
+                return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAdmin()]
+
     @action(detail=True, methods=["post"], url_path="toggle-active")
     def toggle_active(self, request, pk=None):
         user = self.get_object()
@@ -115,6 +158,10 @@ class ClasseViewSet(viewsets.ModelViewSet):
             qs = qs.filter(
                 Q(teachers=user) | Q(sessions__teacher=user)
             ).distinct()
+        elif user.role == "department_head":
+            qs = apply_role_filtering(qs, "classe", self.request)
+        elif user.role == "program_manager":
+            qs = apply_role_filtering(qs, "classe", self.request)
         filiere_id = self.request.query_params.get("filiere_id")
         if filiere_id:
             qs = qs.filter(filiere_id=filiere_id)
@@ -162,6 +209,16 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+        if user.role == "teacher":
+            qs = qs.filter(
+                Q(classe__teachers=user)
+                | Q(classe__sessions__teacher=user)
+            ).distinct()
+        elif user.role == "department_head":
+            qs = apply_role_filtering(qs, "student", self.request)
+        elif user.role == "program_manager":
+            qs = apply_role_filtering(qs, "student", self.request)
         search = self.request.query_params.get("search", "").strip()
         if search:
             qs = qs.filter(
@@ -183,11 +240,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         module_id = self.request.query_params.get("module_id")
         if module_id:
             qs = qs.filter(modules__id=module_id)
-        if self.request.user.role == "teacher":
-            qs = qs.filter(
-                Q(classe__teachers=self.request.user)
-                | Q(classe__sessions__teacher=self.request.user)
-            ).distinct()
         return qs
 
     def get_permissions(self):
@@ -220,6 +272,12 @@ class StudentViewSet(viewsets.ModelViewSet):
             .order_by("last_name", "first_name")
             .distinct()
         )
+
+        user = request.user
+        if user.role == "department_head":
+            queryset = apply_role_filtering(queryset, "student", request)
+        elif user.role == "program_manager":
+            queryset = apply_role_filtering(queryset, "student", request)
 
         search = request.query_params.get("search", "").strip()
         if search:
@@ -357,9 +415,15 @@ class MeView(APIView):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated])
 def teacher_list(request):
     teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
+    if request.user.role == "department_head":
+        teachers = apply_role_filtering(teachers, "teacher_list", request)
+    elif request.user.role == "program_manager":
+        teachers = apply_role_filtering(teachers, "teacher_list", request)
+    elif request.user.role not in ("admin",):
+        return Response([])
     data = [
         {"id": t.id, "full_name": t.full_name, "email": t.email}
         for t in teachers
@@ -386,3 +450,71 @@ def block_list(request):
 def amphitheater_list(request):
     amphis = Amphitheater.objects.all().order_by("name").values("id", "name")
     return Response(list(amphis))
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def department_list(request):
+    if request.method == "GET":
+        depts = Department.objects.select_related("head").all().order_by("name")
+        user = request.user
+        if user.role == "department_head":
+            depts = apply_role_filtering(depts, "department", request)
+        elif user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(user)
+            if filiere_ids:
+                depts = depts.filter(filieres__id__in=filiere_ids).distinct()
+        elif user.role not in ("admin",):
+            return Response([])
+        serializer = DepartmentSerializer(depts, many=True)
+        return Response(serializer.data)
+    elif request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = DepartmentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def department_detail(request, pk):
+    try:
+        dept = Department.objects.select_related("head").get(pk=pk)
+    except Department.DoesNotExist:
+        return Response({"detail": "Département introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    user = request.user
+    if user.role not in ("admin", "department_head", "program_manager"):
+        return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+    if user.role == "department_head":
+        try:
+            if user.headed_department.pk != dept.pk:
+                return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        except Department.DoesNotExist:
+            return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "GET":
+        serializer = DepartmentSerializer(dept)
+        return Response(serializer.data)
+    elif request.method in ("PUT", "PATCH"):
+        if user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        partial = request.method == "PATCH"
+        serializer = DepartmentSerializer(dept, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == "DELETE":
+        if user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        if dept.filieres.exists():
+            return Response(
+                {"detail": "Impossible de supprimer ce département car des filières y sont rattachées."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        dept.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

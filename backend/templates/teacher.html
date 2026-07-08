@@ -22,7 +22,7 @@
                 <div class="user-pill">
                     <div class="user-avatar" id="avatarInitials">?</div>
                     <span id="navUserName">Chargement…</span>
-                    <span class="badge badge-teacher">Enseignant</span>
+                    <span class="badge badge-teacher" id="navRoleBadge">Enseignant</span>
                 </div>
                 <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -296,17 +296,22 @@
 ═══════════════════════════════════════════════════════════════════ */
             (async () => {
                 try {
-                    currentUser = await API.requireAuth(["teacher", "admin"]);
+                    currentUser = await API.requireAuth(["teacher", "admin", "department_head", "program_manager"]);
                     document.getElementById("navUserName").textContent = `${currentUser.first_name} ${currentUser.last_name}`;
                     document.getElementById("avatarInitials").textContent =
                         (currentUser.first_name?.[0] || "") + (currentUser.last_name?.[0] || "");
+                    // Update role badge
+                    var roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
+                    var roleClasses = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };
+                    var rBadge = document.getElementById('navRoleBadge');
+                    if (rBadge) { rBadge.textContent = roleLabels[currentUser.role] || currentUser.role; rBadge.className = 'badge ' + (roleClasses[currentUser.role] || ''); }
                 } catch {
                     return;
                 }
 
                 await loadClasses();
                 await Promise.all([loadCurriculum()]);
-                await SessionForm.init({ isAdmin: false });
+                await SessionForm.init({ isAdmin: false, userRole: currentUser.role });
                 await loadLiveAttendance();
                 connectTeacherLiveWS();
 

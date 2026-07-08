@@ -8,10 +8,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from users.permissions import IsAdminOrTeacher
+from rest_framework import status
+
+from users.permissions import IsAdmin, IsAdminOrTeacher, apply_role_filtering, get_user_filiere_ids
 
 from .models import Filiere, Module, NIVEAU_CHOICES, Semestre
-from .serializers import SemestreSerializer
+from .serializers import FiliereSerializer, SemestreSerializer
 
 
 CACHE_TTL = 300  # 5 minutes
@@ -682,11 +684,6 @@ def semestre_list(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdminOrTeacher])
 def semestres_par_niveau(request):
-    """
-    Retourne les semestres disponibles pour un niveau donne.
-    Workflow: Niveau -> Semestre -> Filiere -> Module
-    Enforce : LIC = S1-S6, LIC_EXC = S5-S6, MAS = S7-S10, MAS_EXC = S7-S10
-    """
     from users.models import NIVEAU_SEMESTRE_MAP
 
     niveau = request.query_params.get("niveau", "")
@@ -715,16 +712,26 @@ def semestres_par_niveau(request):
     return Response(data)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
 def filiere_list(request):
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        serializer = FiliereSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
     semestre_id = request.query_params.get("semestre_id", "")
     niveau = request.query_params.get("niveau", "")
-    cache_key = _cache_key("filieres", semestre_id, niveau)
+    department_id = request.query_params.get("department_id", "")
+    cache_key = _cache_key("filieres", semestre_id, niveau, department_id)
     cached = _cached_response(cache_key)
     if cached:
         return cached
-    queryset = Filiere.objects.order_by("name").only("id", "name", "semestre_id", "niveau")
+    queryset = Filiere.objects.select_related("department", "manager").order_by("name")
     if semestre_id:
         queryset = queryset.filter(semestre_id=semestre_id)
     if niveau:
@@ -742,13 +749,42 @@ def filiere_list(request):
             )
         else:
             queryset = queryset.filter(niveau=niveau)
-    data = list(queryset.values("id", "name", "semestre_id", "niveau"))
+    if department_id:
+        queryset = queryset.filter(department_id=department_id)
+    if request.user.role == "department_head":
+        queryset = apply_role_filtering(queryset, "filiere", request)
+    elif request.user.role == "program_manager":
+        queryset = apply_role_filtering(queryset, "filiere", request)
+    data = list(queryset.values("id", "name", "semestre_id", "niveau", "department_id", "manager_id"))
     cache.set(cache_key, data, CACHE_TTL)
     return Response(data)
 
 
+@api_view(["GET", "PATCH"])
+@permission_classes([IsAuthenticated])
+def filiere_detail(request, pk):
+    try:
+        filiere = Filiere.objects.get(pk=pk)
+    except Filiere.DoesNotExist:
+        return Response({"detail": "Filière introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        serializer = FiliereSerializer(filiere)
+        return Response(serializer.data)
+
+    if request.method == "PATCH":
+        if request.user.role not in ("admin", "department_head", "program_manager"):
+            return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = FiliereSerializer(filiere, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            cache.clear()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+@permission_classes([IsAuthenticated])
 def module_list(request):
     filiere_id = request.query_params.get("filiere_id", "")
     semestre_id = request.query_params.get("semestre_id", "")
@@ -764,6 +800,10 @@ def module_list(request):
         queryset = queryset.filter(filiere__semestre_id=semestre_id)
     if niveau:
         queryset = queryset.filter(filiere__niveau=niveau)
+    if request.user.role == "department_head":
+        queryset = apply_role_filtering(queryset, "module", request)
+    elif request.user.role == "program_manager":
+        queryset = apply_role_filtering(queryset, "module", request)
     data = list(queryset.values("id", "name", "filiere_id"))
     cache.set(cache_key, data, CACHE_TTL)
     return Response(data)

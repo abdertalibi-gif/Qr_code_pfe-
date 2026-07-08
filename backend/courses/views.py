@@ -11,10 +11,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from config.site_url import build_attend_url
-from users.permissions import IsAdmin, IsAdminOrTeacher
+from users.permissions import (
+    IsAdmin,
+    IsAdminOrTeacher,
+    apply_role_filtering,
+)
 
 from .models import Session
 from .serializers import GenerateQRSerializer, SessionSerializer
+from .utils import get_occupied_location_ids
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,10 @@ class SessionViewSet(viewsets.ModelViewSet):
 
         if user.role == "teacher":
             qs = qs.filter(teacher=user)
+        elif user.role == "department_head":
+            qs = apply_role_filtering(qs, "session", self.request)
+        elif user.role == "program_manager":
+            qs = apply_role_filtering(qs, "session", self.request)
 
         classe_id = self.request.query_params.get("classe")
         if classe_id:
@@ -38,16 +47,26 @@ class SessionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(teacher_id=teacher_id)
         return qs
 
+    def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         try:
             user = self.request.user
             if user.role == "teacher":
                 session = serializer.save(teacher=user)
             else:
+                if "teacher" not in serializer.validated_data or not serializer.validated_data.get("teacher"):
+                    raise serializers.ValidationError({"teacher": "Un enseignant doit être sélectionné."})
                 session = serializer.save()
             teacher = session.teacher
             if teacher.role == "teacher":
                 teacher.assigned_classes.add(session.classe)
+        except serializers.ValidationError:
+            raise
         except Exception as e:
             raise serializers.ValidationError({"detail": f"Erreur lors de la création de la séance: {str(e)}"})
 
@@ -90,6 +109,62 @@ class SessionViewSet(viewsets.ModelViewSet):
             "is_qr_valid": session.is_qr_valid,
             "qr_image_base64": f"data:image/png;base64,{b64}",
         }
+
+    @action(detail=False, methods=["get"], url_path="available-rooms")
+    def available_rooms(self, request):
+        """Return rooms/amphitheaters available for a given date/time slot."""
+        date = request.query_params.get("date")
+        start_time = request.query_params.get("start_time")
+        end_time = request.query_params.get("end_time")
+        location_type = request.query_params.get("location_type")
+        exclude_id = request.query_params.get("exclude_session_id")
+
+        if not all([date, start_time, end_time]):
+            return Response(
+                {"error": "Les paramètres date, start_time et end_time sont requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        occupied = get_occupied_location_ids(
+            date, start_time, end_time, exclude_session_id=exclude_id
+        )
+
+        if location_type == "block" or not location_type:
+            blocks_data = []
+            from users.models import Block
+            blocks = Block.objects.prefetch_related("rooms").order_by("name")
+            for b in blocks:
+                available_rooms = [
+                    {"id": r.id, "name": r.name}
+                    for r in b.rooms.all()
+                    if r.id not in occupied["room_ids"]
+                ]
+                blocks_data.append({
+                    "id": b.id,
+                    "name": b.name,
+                    "rooms": available_rooms,
+                })
+            if location_type == "block":
+                return Response({"blocks": blocks_data})
+            elif not location_type:
+                from users.models import Amphitheater
+                amphis = Amphitheater.objects.all().order_by("name").values("id", "name")
+                available_amphis = [
+                    a for a in amphis
+                    if a["id"] not in occupied["amphitheater_ids"]
+                ]
+                return Response({"blocks": blocks_data, "amphitheaters": list(available_amphis)})
+
+        if location_type == "amphitheater":
+            from users.models import Amphitheater
+            amphis = Amphitheater.objects.all().order_by("name").values("id", "name")
+            available = [
+                a for a in amphis
+                if a["id"] not in occupied["amphitheater_ids"]
+            ]
+            return Response({"amphitheaters": list(available)})
+
+        return Response({"error": "Type de lieu invalide."}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["get"], url_path="current-qr")
     def current_qr(self, request, pk=None):
@@ -197,4 +272,3 @@ class SessionViewSet(viewsets.ModelViewSet):
                 {"error": f"Erreur lors de la clôture de la séance: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-

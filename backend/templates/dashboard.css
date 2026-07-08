@@ -322,11 +322,13 @@ nav {
   letter-spacing: .05em;
   white-space: nowrap;
 }
-.badge-admin   { background: var(--purple-soft); color: var(--purple); }
-.badge-teacher { background: var(--accent-soft); color: var(--accent); }
-.badge-student { background: var(--green-soft); color: var(--green); }
-.badge-present { background: var(--green-soft); color: var(--green); }
-.badge-absent  { background: var(--red-soft); color: var(--red); }
+.badge-admin           { background: var(--purple-soft); color: var(--purple); }
+.badge-department-head { background: var(--orange-soft, #fff3e0); color: var(--orange, #e65100); }
+.badge-program-manager { background: var(--blue-soft, #e3f2fd); color: var(--blue, #1565c0); }
+.badge-teacher         { background: var(--accent-soft); color: var(--accent); }
+.badge-student         { background: var(--green-soft); color: var(--green); }
+.badge-present         { background: var(--green-soft); color: var(--green); }
+.badge-absent          { background: var(--red-soft); color: var(--red); }
 
 .btn-icon {
   background: var(--surface);

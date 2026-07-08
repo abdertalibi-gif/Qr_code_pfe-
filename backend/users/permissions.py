@@ -1,9 +1,9 @@
 from rest_framework.permissions import BasePermission
 
+from .models import Department
+
 
 class IsAdmin(BasePermission):
-    """Allows access only to users with role='admin'."""
-
     def has_permission(self, request, view):
         return bool(
             request.user
@@ -13,8 +13,6 @@ class IsAdmin(BasePermission):
 
 
 class IsAdminOrTeacher(BasePermission):
-    """Allows access to admin and teacher roles."""
-
     def has_permission(self, request, view):
         return bool(
             request.user
@@ -24,11 +22,127 @@ class IsAdminOrTeacher(BasePermission):
 
 
 class IsStudent(BasePermission):
-    """Allows access only to users with role='student'."""
-
     def has_permission(self, request, view):
         return bool(
             request.user
             and request.user.is_authenticated
             and request.user.role == "student"
         )
+
+
+class IsDepartmentHead(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role == "department_head"
+        )
+
+
+class IsFiliereManager(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role == "program_manager"
+        )
+
+
+class IsAdminOrDepartmentHeadOrFiliereManager(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in ("admin", "department_head", "program_manager")
+        )
+
+
+def get_user_department(user):
+    """Return the Department for a department_head user, or None."""
+    if user.role != "department_head":
+        return None
+    try:
+        return user.headed_department
+    except Department.DoesNotExist:
+        return None
+
+
+def get_user_filiere_ids(user):
+    """Return list of filiere IDs managed by a program_manager, or empty."""
+    if user.role != "program_manager":
+        return []
+    return list(user.managed_filieres.values_list("id", flat=True))
+
+
+def apply_role_filtering(queryset, model_type, request):
+    """
+    Apply role-based filtering to any queryset.
+
+    model_type values:
+      'classe', 'student', 'user_teacher', 'user_student',
+      'session', 'attendance', 'suspicious',
+      'filiere', 'module',
+      'teacher_list'
+
+    Returns the filtered queryset.
+    """
+    user = request.user
+    if not user.is_authenticated:
+        return queryset.none()
+
+    # Admin sees all
+    if user.role == "admin":
+        return queryset
+
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        if dept is None:
+            return queryset.none()
+
+        filters = {
+            "classe": {"department": dept},
+            "student": {"classe__department": dept},
+            "user_teacher": {
+                "assigned_classes__department": dept,
+                "sessions__classe__department": dept,
+            },
+            "user_student": {"student_profile__classe__department": dept},
+            "session": {"classe__department": dept},
+            "attendance": {"session__classe__department": dept},
+            "suspicious": {"session__classe__department": dept},
+            "filiere": {"department": dept},
+            "module": {"filiere__department": dept},
+            "teacher_list": {"headed_department": dept},
+            "department": {"id": dept.id},
+        }
+        f = filters.get(model_type)
+        if f:
+            return queryset.filter(**f).distinct()
+        return queryset
+
+    if user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(user)
+        if not filiere_ids:
+            return queryset.none()
+
+        filters = {
+            "classe": {"filiere_id__in": filiere_ids},
+            "student": {"classe__filiere_id__in": filiere_ids},
+            "user_teacher": {
+                "assigned_classes__filiere_id__in": filiere_ids,
+                "sessions__classe__filiere_id__in": filiere_ids,
+            },
+            "user_student": {"student_profile__classe__filiere_id__in": filiere_ids},
+            "session": {"classe__filiere_id__in": filiere_ids},
+            "attendance": {"session__classe__filiere_id__in": filiere_ids},
+            "suspicious": {"session__classe__filiere_id__in": filiere_ids},
+            "filiere": {"id__in": filiere_ids},
+            "module": {"filiere_id__in": filiere_ids},
+            "teacher_list": {"managed_filieres__id__in": filiere_ids},
+        }
+        f = filters.get(model_type)
+        if f:
+            return queryset.filter(**f).distinct()
+        return queryset
+
+    return queryset

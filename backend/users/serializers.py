@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from curriculum.models import Filiere, Module, Semestre
 from users.models import NIVEAU_SEMESTRE_MAP
-from .models import Amphitheater, Block, Classe, Room, Student, StudentModuleEnrollment, User
+from .models import Amphitheater, Block, Classe, Department, Room, Student, StudentModuleEnrollment, User
 
 
 class EmailBackend(ModelBackend):
@@ -19,6 +19,23 @@ class EmailBackend(ModelBackend):
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    head_name = serializers.SerializerMethodField()
+    filiere_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Department
+        fields = ["id", "name", "head", "head_name", "filiere_count"]
+
+    def get_head_name(self, obj):
+        if obj.head:
+            return f"{obj.head.first_name} {obj.head.last_name}"
+        return None
+
+    def get_filiere_count(self, obj):
+        return obj.filieres.count()
 
 
 class LoginSerializer(serializers.Serializer):
@@ -57,6 +74,8 @@ class UserSerializer(serializers.ModelSerializer):
         queryset=Classe.objects.all(),
         required=False,
     )
+    managed_department = serializers.SerializerMethodField()
+    managed_filieres = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -68,8 +87,11 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "is_active",
+            "is_also_teacher",
             "assigned_class_ids",
             "student_profile",
+            "managed_department",
+            "managed_filieres",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -96,10 +118,29 @@ class UserSerializer(serializers.ModelSerializer):
             "classe_name": str(profile.classe) if profile.classe else "",
         }
 
+    def get_managed_department(self, obj):
+        if obj.role != "department_head":
+            return None
+        try:
+            dept = obj.headed_department
+        except Department.DoesNotExist:
+            return None
+        if dept is None:
+            return None
+        return {"id": dept.id, "name": dept.name}
+
+    def get_managed_filieres(self, obj):
+        if obj.role not in ("program_manager", "admin", "department_head"):
+            return []
+        return [
+            {"id": f.id, "name": f.name}
+            for f in obj.managed_filieres.all()
+        ]
+
     def validate_assigned_class_ids(self, value):
-        if self.instance and self.instance.role != "teacher" and value:
+        if self.instance and self.instance.role not in ("teacher", "department_head", "program_manager") and value:
             raise serializers.ValidationError(
-                "Seuls les enseignants peuvent être affectés à des classes."
+                "Seuls les enseignants, chefs de département et responsables de filière peuvent être affectés à des classes."
             )
         return value
 
