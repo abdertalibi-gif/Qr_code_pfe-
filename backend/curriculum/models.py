@@ -68,11 +68,22 @@ class Filiere(models.Model):
 class Module(models.Model):
     """Module académique (Algorithmique, Math, etc.)"""
     name = models.CharField(max_length=200, verbose_name="Module")
+    code = models.CharField(max_length=50, blank=True, default="", verbose_name="Code")
     filiere = models.ForeignKey(
         Filiere,
         on_delete=models.CASCADE,
         related_name="modules",
         verbose_name="Filière"
+    )
+    coefficient = models.PositiveIntegerField(default=1, verbose_name="Coefficient")
+    total_hours = models.PositiveIntegerField(null=True, blank=True, verbose_name="Heures totales")
+    teacher = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="taught_modules",
+        verbose_name="Enseignant",
     )
 
     class Meta:

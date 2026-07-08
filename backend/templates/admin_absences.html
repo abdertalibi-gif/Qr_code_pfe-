@@ -1,0 +1,35 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Absences{% endblock %}
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Absences</h1>
+    <p>Consultez la liste des absences enregistrées.</p>
+  </div>
+</div>
+<div class="live-toolbar">
+  <div class="filters">
+    <input type="search" class="search-input" id="searchAbsences" placeholder="Rechercher étudiant, séance…" />
+    <input type="date" id="filterAbDate" class="search-input" style="width:auto;min-width:150px" />
+  </div>
+  <div><span class="badge badge-absent" id="abTotal" style="font-size:.9rem;padding:.4rem .8rem">— absences</span></div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Étudiant</th>
+        <th>Code Massar</th>
+        <th>Séance</th>
+        <th>Classe</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody id="absencesBody"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="/admin-absences.js"></script>
+{% endblock %}

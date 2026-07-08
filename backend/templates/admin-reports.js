@@ -110,14 +110,13 @@ async function generateReport() {
   const type = document.getElementById('repType').value;
   const mode = document.getElementById('repMode').value;
   const enseignant = document.getElementById('repEnseignant').value;
-  if (semestre) params.set('semestre_id', semestre);
-  if (filiere) params.set('filiere_id', filiere);
-  if (moduleId) params.set('module_id', moduleId);
+  if (semestre) params.set('semestre', semestre);
+  if (filiere) params.set('filiere', filiere);
+  if (moduleId) params.set('module', moduleId);
   if (classeId) params.set('classe_id', classeId);
-  if (type) params.set('type', type);
-  if (mode) params.set('mode', mode);
-  if (enseignant) params.set('teacher_id', enseignant);
-  params.set('format', 'xlsx');
+  if (type) params.set('export_type', type);
+  if (mode) params.set('export_mode', mode);
+  if (enseignant) params.set('enseignant_id', enseignant);
 
   const progressArea = document.getElementById('repProgressArea');
   progressArea.style.display = 'block';
@@ -126,7 +125,7 @@ async function generateReport() {
   document.getElementById('btnGenerateReport').disabled = true;
 
   try {
-    const resp = await fetch('/reports/export/?' + params.toString(), {
+    const resp = await fetch('/attendance/export-wizard/?' + params.toString(), {
       headers: { 'Authorization': 'Bearer ' + (API.getToken() || '') },
     });
     if (!resp.ok) {

@@ -461,9 +461,18 @@ def teacher_list(request):
     return Response(data)
 
 
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated, IsAdminOrTeacher])
 def block_list(request):
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response({"detail": "Le nom est requis."}, status=400)
+        block = Block.objects.create(name=name)
+        return Response({"id": block.id, "name": block.name, "rooms": []}, status=201)
+
     blocks = Block.objects.prefetch_related("rooms").order_by("name")
     data = []
     for b in blocks:
@@ -475,11 +484,133 @@ def block_list(request):
     return Response(data)
 
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+def block_detail(request, pk):
+    try:
+        block = Block.objects.get(pk=pk)
+    except Block.DoesNotExist:
+        return Response({"detail": "Bloc introuvable."}, status=404)
+
+    if request.method == "GET":
+        return Response({"id": block.id, "name": block.name})
+
+    if request.method == "PATCH":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response({"detail": "Le nom est requis."}, status=400)
+        block.name = name
+        block.save()
+        return Response({"id": block.id, "name": block.name})
+
+    if request.method == "DELETE":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        block.delete()
+        return Response(status=204)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+def room_list(request):
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        name = request.data.get("name", "").strip()
+        block_id = request.data.get("block")
+        if not name or not block_id:
+            return Response({"detail": "Nom et bloc sont requis."}, status=400)
+        try:
+            block = Block.objects.get(pk=block_id)
+        except Block.DoesNotExist:
+            return Response({"detail": "Bloc introuvable."}, status=404)
+        room = Room.objects.create(name=name, block=block)
+        return Response({"id": room.id, "name": room.name, "block": block.id}, status=201)
+
+    rooms = Room.objects.select_related("block").order_by("block__name", "name")
+    data = [{"id": r.id, "name": r.name, "block": r.block_id} for r in rooms]
+    return Response(data)
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+def room_detail(request, pk):
+    try:
+        room = Room.objects.get(pk=pk)
+    except Room.DoesNotExist:
+        return Response({"detail": "Salle introuvable."}, status=404)
+
+    if request.method == "GET":
+        return Response({"id": room.id, "name": room.name, "block": room.block_id})
+
+    if request.method == "PATCH":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        if "name" in request.data:
+            name = request.data["name"].strip()
+            if not name:
+                return Response({"detail": "Le nom ne peut être vide."}, status=400)
+            room.name = name
+        if "block" in request.data:
+            block_id = request.data["block"]
+            try:
+                room.block = Block.objects.get(pk=block_id)
+            except Block.DoesNotExist:
+                return Response({"detail": "Bloc introuvable."}, status=404)
+        room.save()
+        return Response({"id": room.id, "name": room.name, "block": room.block_id})
+
+    if request.method == "DELETE":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        room.delete()
+        return Response(status=204)
+
+
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated, IsAdminOrTeacher])
 def amphitheater_list(request):
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response({"detail": "Le nom est requis."}, status=400)
+        amphi = Amphitheater.objects.create(name=name)
+        return Response({"id": amphi.id, "name": amphi.name}, status=201)
+
     amphis = Amphitheater.objects.all().order_by("name").values("id", "name")
     return Response(list(amphis))
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+def amphitheater_detail(request, pk):
+    try:
+        amphi = Amphitheater.objects.get(pk=pk)
+    except Amphitheater.DoesNotExist:
+        return Response({"detail": "Amphithéâtre introuvable."}, status=404)
+
+    if request.method == "GET":
+        return Response({"id": amphi.id, "name": amphi.name})
+
+    if request.method == "PATCH":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response({"detail": "Le nom est requis."}, status=400)
+        amphi.name = name
+        amphi.save()
+        return Response({"id": amphi.id, "name": amphi.name})
+
+    if request.method == "DELETE":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        amphi.delete()
+        return Response(status=204)
 
 
 @api_view(["GET", "POST"])
@@ -552,6 +683,116 @@ def department_detail(request, pk):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def admin_statistics(request):
+    """Return attendance statistics for the admin statistics page."""
+    from attendance.models import Attendance
+    from courses.models import Session
+    from django.db.models import Count
+    from datetime import datetime, timedelta
+    import math
+
+    period_days = int(request.query_params.get("period", "30"))
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=period_days)
+
+    total_present = Attendance.objects.filter(
+        attendance_status="confirmed",
+        timestamp__date__gte=start_date.date(),
+        timestamp__date__lte=end_date.date(),
+    ).count()
+    total_attendance = Attendance.objects.filter(
+        timestamp__date__gte=start_date.date(),
+        timestamp__date__lte=end_date.date(),
+    ).count()
+    attendance_rate = round((total_present / total_attendance * 100) if total_attendance > 0 else 0, 1)
+
+    active_classes = Session.objects.filter(
+        is_active=True,
+    ).values("classe_id").distinct().count()
+
+    total_students = User.objects.filter(role="student").count()
+
+    daily = (
+        Attendance.objects
+        .filter(timestamp__date__gte=start_date.date(), timestamp__date__lte=end_date.date())
+        .extra({"date": "date(timestamp)"})
+        .values("date")
+        .annotate(
+            present=Count("id", filter=Q(attendance_status="confirmed")),
+            total=Count("id"),
+        )
+        .order_by("date")
+    )
+
+    daily_data = [
+        {
+            "date": d["date"].isoformat() if hasattr(d["date"], "isoformat") else str(d["date"]),
+            "present": d["present"],
+            "total": d["total"],
+        }
+        for d in daily
+    ]
+
+    return Response({
+        "total_present": total_present,
+        "total_attendance": total_attendance,
+        "attendance_rate": attendance_rate,
+        "active_classes": active_classes,
+        "total_students": total_students,
+        "daily_attendance": daily_data,
+    })
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def app_settings(request):
+    """Get or save app settings (stored in cache)."""
+    from django.core.cache import cache
+
+    SETTINGS_CACHE_KEY = "app_admin_settings"
+
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        data = {
+            "qr_expiry_minutes": request.data.get("qr_expiry_minutes", 20),
+            "geo_radius": request.data.get("geo_radius", 50),
+            "scan_limit": request.data.get("scan_limit", 1),
+        }
+        cache.set(SETTINGS_CACHE_KEY, data, timeout=None)
+        return Response(data)
+
+    settings = cache.get(SETTINGS_CACHE_KEY)
+    if settings is None:
+        settings = {
+            "qr_expiry_minutes": 20,
+            "geo_radius": 50,
+            "scan_limit": 1,
+        }
+    return Response(settings)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def system_info(request):
+    """Return system information for the admin settings page."""
+    import django
+    import sys
+    import platform
+    from django.db import connection
+
+    return Response({
+        "Django": django.get_version(),
+        "Python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "OS": platform.system(),
+        "DB Vendor": connection.vendor,
+        "DB Name": connection.settings_dict.get("NAME", ""),
+        "Hostname": platform.node(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def dashboard_counts(request):
     """Return all entity counts for the admin dashboard."""
     from users.models import Classe, Block, Room, Amphitheater, Department
@@ -563,6 +804,7 @@ def dashboard_counts(request):
         "users": User.objects.count(),
         "admins": User.objects.filter(role="admin").count(),
         "teachers": User.objects.filter(role="teacher").count(),
+        "assistants": User.objects.filter(is_also_teacher=True).count(),
         "students": User.objects.filter(role="student").count(),
         "department_heads": User.objects.filter(role="department_head").count(),
         "program_managers": User.objects.filter(role="program_manager").count(),
@@ -570,9 +812,14 @@ def dashboard_counts(request):
         "filieres": Filiere.objects.count(),
         "modules": Module.objects.count(),
         "sessions": Session.objects.count(),
+        "active_sessions": Session.objects.filter(is_active=True).count(),
+        "closed_sessions": Session.objects.filter(is_closed=True).count(),
         "departments": Department.objects.count(),
         "blocks": Block.objects.count(),
         "rooms": Room.objects.count(),
         "amphitheaters": Amphitheater.objects.count(),
         "attendances": Attendance.objects.count(),
+        "present": Attendance.objects.filter(attendance_status="confirmed").count(),
+        "absent": Attendance.objects.filter(attendance_status="absent").count(),
+        "reports": Session.objects.exclude(report_file="").count(),
     })

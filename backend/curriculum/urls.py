@@ -8,6 +8,8 @@ from .views import (
     niveau_list,
     semestre_list,
     semestres_par_niveau,
+    subject_detail,
+    subject_list,
 )
 
 urlpatterns = [
@@ -18,4 +20,6 @@ urlpatterns = [
     path("curriculum/filieres/<int:pk>/", filiere_detail, name="curriculum-filiere-detail"),
     path("curriculum/modules/", module_list, name="curriculum-modules"),
     path("curriculum/niveaux/", niveau_list, name="curriculum-niveaux"),
+    path("curriculum/subjects/", subject_list, name="curriculum-subjects"),
+    path("curriculum/subjects/<int:pk>/", subject_detail, name="curriculum-subject-detail"),
 ]

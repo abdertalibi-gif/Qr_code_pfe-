@@ -76,6 +76,13 @@ class UserSerializer(serializers.ModelSerializer):
     )
     managed_department = serializers.SerializerMethodField()
     managed_filieres = serializers.SerializerMethodField()
+    department_id = serializers.PrimaryKeyRelatedField(
+        source="department",
+        queryset=Department.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    department_name = serializers.CharField(source="department.name", read_only=True)
 
     class Meta:
         model = User
@@ -85,6 +92,10 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "full_name",
             "email",
+            "phone",
+            "cin",
+            "grade",
+            "speciality",
             "role",
             "is_active",
             "is_also_teacher",
@@ -92,6 +103,8 @@ class UserSerializer(serializers.ModelSerializer):
             "student_profile",
             "managed_department",
             "managed_filieres",
+            "department_id",
+            "department_name",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

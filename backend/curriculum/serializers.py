@@ -4,10 +4,24 @@ from users.models import Department, User
 
 
 class ModuleSerializer(serializers.ModelSerializer):
-    """Serializer for Module - returns id and name."""
+    """Serializer for Module - with filiere/teacher details."""
+    filiere_id = serializers.PrimaryKeyRelatedField(
+        source="filiere", queryset=Filiere.objects.all()
+    )
+    filiere_name = serializers.CharField(source="filiere.name", read_only=True)
+    teacher_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Module
-        fields = ["id", "name"]
+        fields = [
+            "id", "name", "code", "filiere_id", "filiere_name",
+            "coefficient", "total_hours", "teacher", "teacher_name",
+        ]
+
+    def get_teacher_name(self, obj):
+        if obj.teacher:
+            return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+        return None
 
 
 class DepartmentSerializer(serializers.ModelSerializer):

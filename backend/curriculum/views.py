@@ -13,7 +13,7 @@ from rest_framework import status
 from users.permissions import IsAdmin, IsAdminOrTeacher, apply_role_filtering, get_user_filiere_ids
 
 from .models import Filiere, Module, NIVEAU_CHOICES, Semestre
-from .serializers import FiliereSerializer, SemestreSerializer
+from .serializers import FiliereSerializer, ModuleSerializer, SemestreSerializer
 
 
 CACHE_TTL = 300  # 5 minutes
@@ -755,7 +755,8 @@ def filiere_list(request):
         queryset = apply_role_filtering(queryset, "filiere", request)
     elif request.user.role == "program_manager":
         queryset = apply_role_filtering(queryset, "filiere", request)
-    data = list(queryset.values("id", "name", "semestre_id", "niveau", "department_id", "manager_id"))
+    serializer = FiliereSerializer(queryset, many=True)
+    data = serializer.data
     cache.set(cache_key, data, CACHE_TTL)
     return Response(data)
 
@@ -819,6 +820,62 @@ def niveau_list(request):
     data = [{"id": k, "label": v} for k, v in NIVEAU_CHOICES]
     cache.set(cache_key, data, CACHE_TTL)
     return Response(data)
+
+
+# ---------------------------------------------------------------------------
+# Subjects (Modules) CRUD
+# ---------------------------------------------------------------------------
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def subject_list(request):
+    if request.method == "POST":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        serializer = ModuleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+    filiere_id = request.query_params.get("filiere_id", "")
+    queryset = Module.objects.select_related("filiere", "teacher").order_by("name")
+    if filiere_id:
+        queryset = queryset.filter(filiere_id=filiere_id)
+    if request.user.role == "department_head":
+        queryset = apply_role_filtering(queryset, "module", request)
+    elif request.user.role == "program_manager":
+        queryset = apply_role_filtering(queryset, "module", request)
+    serializer = ModuleSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def subject_detail(request, pk):
+    try:
+        subject = Module.objects.select_related("filiere", "teacher").get(pk=pk)
+    except Module.DoesNotExist:
+        return Response({"detail": "Matière introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        serializer = ModuleSerializer(subject)
+        return Response(serializer.data)
+
+    if request.method == "PATCH":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        serializer = ModuleSerializer(subject, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    if request.method == "DELETE":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        subject.delete()
+        return Response(status=204)
 
 
 def _seed_curriculum_data():

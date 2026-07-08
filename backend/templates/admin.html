@@ -87,19 +87,62 @@
           <div class="value" id="statTotal">—</div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green">✓</div>
-        <div>
-          <div class="label">Aujourd'hui</div>
-          <div class="value" id="statToday">—</div>
-        </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✓</div>
+      <div>
+        <div class="label">Aujourd'hui</div>
+        <div class="value" id="statToday">—</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon purple">📚</div>
-        <div>
-          <div class="label">Matières actives</div>
-          <div class="value" id="statActiveCourses">—</div>
-        </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">📚</div>
+      <div>
+        <div class="label">Matières actives</div>
+        <div class="value" id="statActiveCourses">—</div>
+      </div>
+    </div>
+
+    <!-- NEW: Room/Block/Amphitheater Stats Cards -->
+    <div class="stat-card" style="border-left:4px solid var(--indigo)">
+      <div class="stat-icon indigo">🏢</div>
+      <div>
+        <div class="label">Total Bloc</div>
+        <div class="value" id="statBlockCount">—</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--purple)">
+      <div class="stat-icon purple">🚪</div>
+      <div>
+        <div class="label">Total Salles</div>
+        <div class="value" id="statRoomCount">—</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--green)">
+      <div class="stat-icon green">🎭</div>
+      <div>
+        <div class="label">Total Amphithéâtres</div>
+        <div class="value" id="statAmphiCount">—</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--yellow)">
+      <div class="stat-icon yellow">🟢 Libres</div>
+      <div>
+        <div class="label">Salles Disponibles</div>
+        <div class="value" id="statAvailableRooms">—</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--red)">
+      <div class="stat-icon red">🔴 Occupées</div>
+      <div>
+        <div class="label">Salles Occupées</div>
+        <div class="value" id="statOccupiedRooms">—</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--blue)">
+      <div class="stat-icon blue">👨‍🏫</div>
+      <div>
+        <div class="label">Enseignants en Cours</div>
+        <div class="value" id="statActiveTeachers">—</div>
       </div>
     </div>
 
@@ -627,6 +670,8 @@
           <option value="teacher">Enseignant</option>
           <option value="admin">Admin</option>
           <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
       <div class="field">
@@ -639,6 +684,72 @@
         <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
           Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
         </p>
+      </div>
+      <div class="field" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="uDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="uFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
+        </label>
+      </div>
+      <div class="field" data-roles="student" style="display:none">
+        <div class="field-row">
+          <div class="field">
+            <label>Code Massar</label>
+            <input type="text" id="uCodeMassar" placeholder="ex: MA1234567890" />
+          </div>
+          <div class="field">
+            <label>Code Apogée</label>
+            <input type="text" id="uCodeApogee" placeholder="optionnel" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Classe</label>
+          <select id="uStudentClasse"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="uStudentFiliere"><option value="">— Sélectionner —</option></select>
+        </div>
+      </div>
+      <div class="field" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="uDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="uFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
+        </label>
+      </div>
+      <div class="field" data-roles="student" style="display:none">
+        <div class="field-row">
+          <div class="field">
+            <label>Code Massar</label>
+            <input type="text" id="uCodeMassar" placeholder="ex: MA1234567890" />
+          </div>
+          <div class="field">
+            <label>Code Apogée</label>
+            <input type="text" id="uCodeApogee" placeholder="optionnel" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Classe</label>
+          <select id="uStudentClasse"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="uStudentFiliere"><option value="">— Sélectionner —</option></select>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
