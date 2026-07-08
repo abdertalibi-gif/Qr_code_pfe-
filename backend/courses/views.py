@@ -17,6 +17,7 @@ from users.permissions import (
     apply_role_filtering,
 )
 
+from users.models import Amphitheater, Block, Room
 from .models import Session
 from .serializers import GenerateQRSerializer, SessionSerializer
 from .utils import get_occupied_location_ids
@@ -165,6 +166,58 @@ class SessionViewSet(viewsets.ModelViewSet):
             return Response({"amphitheaters": list(available)})
 
         return Response({"error": "Type de lieu invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path="available-locations")
+    def available_locations(self, request):
+        """Return all available rooms, blocks, and amphitheaters for a date/time slot."""
+        date = request.query_params.get("date")
+        start_time = request.query_params.get("start_time")
+        end_time = request.query_params.get("end_time")
+        exclude_id = request.query_params.get("exclude_session_id")
+
+        if not all([date, start_time, end_time]):
+            return Response(
+                {"error": "Les paramètres date, start_time et end_time sont requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        occupied = get_occupied_location_ids(
+            date, start_time, end_time, exclude_session_id=exclude_id
+        )
+
+        available_rooms = (
+            Room.objects.filter(block__isnull=False)
+            .exclude(id__in=occupied["room_ids"])
+            .select_related("block")
+            .order_by("block__name", "name")
+            .values("id", "name", "block_id", "block_name")
+        )
+
+        blocks_data = []
+        for b in Block.objects.prefetch_related("rooms").order_by("name"):
+            rooms = [
+                {"id": r.id, "name": r.name}
+                for r in b.rooms.all()
+                if r.id not in occupied["room_ids"]
+            ]
+            blocks_data.append({
+                "id": b.id,
+                "name": b.name,
+                "rooms": rooms,
+            })
+
+        available_amphis = (
+            Amphitheater.objects.all()
+            .exclude(id__in=occupied["amphitheater_ids"])
+            .order_by("name")
+            .values("id", "name")
+        )
+
+        return Response({
+            "rooms": list(available_rooms),
+            "blocks": blocks_data,
+            "amphitheaters": list(available_amphis),
+        })
 
     @action(detail=True, methods=["get"], url_path="current-qr")
     def current_qr(self, request, pk=None):
