@@ -3,31 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PrésenceQR — Administration | {% block page_title %}{% endblock %}</title>
+  <title>PrésenceQR — Administration</title>
   <link rel="stylesheet" href="/dashboard.css" />
-  {% block extra_css %}{% endblock %}
 </head>
 <body class="dashboard-app">
 <!-- NAV -->
 <nav>
   <div class="nav-brand">
     <div class="nav-brand-icon">📋</div>
-    <a href="/admin-ui/" class="nav-link" style="text-decoration:none;color:inherit">PrésenceQR</a>
+    <span>PrésenceQR</span>
   </div>
-  <div class="nav-links">
-    <a href="/admin/attendance-live/" class="nav-link {% if request.path == '/admin/attendance-live/' %}active{% endif %}">📡 Présences en direct</a>
-    <a href="/admin/users/" class="nav-link {% if request.path == '/admin/users/' %}active{% endif %}">👤 Utilisateurs</a>
-    <a href="/admin/teachers/" class="nav-link {% if request.path == '/admin/teachers/' %}active{% endif %}">👨‍🏫 Enseignants</a>
-    <a href="/admin/students/" class="nav-link {% if request.path == '/admin/students/' %}active{% endif %}">🎓 Étudiants</a>
-    <a href="/admin/classes/" class="nav-link {% if request.path == '/admin/classes/' %}active{% endif %}">🏫 Classes</a>
-    <a href="/admin/curriculum/" class="nav-link {% if request.path == '/admin/curriculum/' %}active{% endif %}">📚 Curriculum</a>
-    <a href="/admin/sessions/" class="nav-link {% if request.path == '/admin/sessions/' %}active{% endif %}">📅 Séances</a>
-    <a href="/admin/departments/" class="nav-link {% if request.path == '/admin/departments/' %}active{% endif %}">🏛️ Départements</a>
-    <a href="/admin/filieres/" class="nav-link {% if request.path == '/admin/filieres/' %}active{% endif %}">🏢 Filières</a>
-    <a href="/admin/rooms/" class="nav-link {% if request.path == '/admin/rooms/' %}active{% endif %}">🚪 Salles</a>
-    <a href="/admin/reports/" class="nav-link {% if request.path == '/admin/reports/' %}active{% endif %}">📊 Rapports</a>
-    <a href="/admin/statistics/" class="nav-link {% if request.path == '/admin/statistics/' %}active{% endif %}">📈 Statistiques</a>
-    <a href="/admin/settings/" class="nav-link {% if request.path == '/admin/settings/' %}active{% endif %}">⚙️ Paramètres</a>
+  <div class="nav-links" id="navLinks">
+    <a href="/admin/attendance-live/" class="nav-link" data-page="attendance-live">📡 Présences en direct</a>
+    <a href="/admin/users/" class="nav-link" data-page="users">👤 Utilisateurs</a>
+    <a href="/admin/teachers/" class="nav-link" data-page="teachers">👨‍🏫 Enseignants</a>
+    <a href="/admin/students/" class="nav-link" data-page="students">🎓 Étudiants</a>
+    <a href="/admin/classes/" class="nav-link" data-page="classes">🏫 Classes</a>
+    <a href="/admin/curriculum/" class="nav-link" data-page="curriculum">📚 Curriculum</a>
+    <a href="/admin/sessions/" class="nav-link" data-page="sessions">📅 Séances</a>
+    <a href="/admin/departments/" class="nav-link" data-page="departments">🏛️ Départements</a>
+    <a href="/admin/filieres/" class="nav-link" data-page="filieres">🏢 Filières</a>
+    <a href="/admin/rooms/" class="nav-link" data-page="rooms">🚪 Salles</a>
+    <a href="/admin/reports/" class="nav-link" data-page="reports">📊 Rapports</a>
+    <a href="/admin/statistics/" class="nav-link" data-page="statistics">📈 Statistiques</a>
+    <a href="/admin/settings/" class="nav-link" data-page="settings">⚙️ Paramètres</a>
   </div>
   <div class="nav-right">
     <div class="user-pill">
@@ -44,21 +43,15 @@
 
 <!-- MAIN -->
 <main>
-  {% block content %}
-  {% endblock %}
 </main>
 
 <!-- TOAST -->
 <div id="toast"></div>
 
-<!-- COMMON MODALS (can be overridden) -->
-{% block modals %}{% endblock %}
-
 <!-- COMMON SCRIPTS -->
 <script src="/api.js"></script>
 <script src="/admin-common.js"></script>
 <script src="/i18n-fr.js"></script>
-{% block extra_js %}{% endblock %}
 <script>
   /* ── Auth guard & nav init ── */
   let currentUser = null;
@@ -71,7 +64,21 @@
       document.getElementById('avatarInitials').textContent =
         (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
       updateRoleUI(currentUser);
-    } catch {}
+    } catch {
+      window.location.href = '/login/';
+      return;
+    }
+
+    // Highlight active nav link
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-link').forEach(link => {
+      if (link.getAttribute('href') === currentPath || 
+          (currentPath.startsWith('/admin/') && link.getAttribute('href') === '/admin/' + currentPath.split('/')[2] + '/')) {
+        link.classList.add('active');
+      }
+    });
+
+    setupModalCloseHandlers();
 
     if (typeof initPage === 'function') {
       await initPage();
@@ -87,6 +94,15 @@
       badge.textContent = roleLabel[user.role] || user.role;
       badge.className = 'badge ' + (roleBadgeClass[user.role] || '');
     }
+    // Show/hide nav links based on role
+    const isAdmin = user.role === 'admin';
+    document.querySelectorAll('.nav-link[data-page]').forEach(link => {
+      const page = link.dataset.page;
+      const allowedPages = isAdmin
+        ? ['attendance-live', 'users', 'teachers', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'filieres', 'rooms', 'reports', 'statistics', 'settings']
+        : ['attendance-live', 'sessions', 'curriculum', 'departments', 'filieres', 'rooms', 'reports', 'statistics'];
+      link.style.display = allowedPages.includes(page) ? '' : 'none';
+    });
   }
 </script>
 </body>
