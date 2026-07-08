@@ -185,10 +185,11 @@ class SessionViewSet(viewsets.ModelViewSet):
             date, start_time, end_time, exclude_session_id=exclude_id
         )
 
+        from django.db.models import F
         available_rooms = (
             Room.objects.filter(block__isnull=False)
             .exclude(id__in=occupied["room_ids"])
-            .select_related("block")
+            .annotate(block_name=F("block__name"))
             .order_by("block__name", "name")
             .values("id", "name", "block_id", "block_name")
         )
