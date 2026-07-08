@@ -780,3 +780,179 @@ class RoomConflictTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn("blocks", resp.data)
         self.assertIn("amphitheaters", resp.data)
+
+    # ── New available-locations endpoint tests ──
+
+    def _locations_url(self):
+        return "/api/v1/sessions/available-locations/"
+
+    def test_available_locations_returns_all_keys(self):
+        self._login(self.admin)
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("rooms", resp.data)
+        self.assertIn("blocks", resp.data)
+        self.assertIn("amphitheaters", resp.data)
+
+    def test_available_locations_requires_params(self):
+        self._login(self.admin)
+        resp = self.client.get(self._locations_url(), {})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_available_locations_excludes_occupied_room(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids)
+        self.assertIn(self.room2.id, room_ids)
+
+    def test_available_locations_excludes_occupied_amphitheater(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Conf", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "amphitheater",
+            "amphitheater": self.amphi.id,
+            "date": self.today.isoformat(),
+            "start_time": "14:00", "end_time": "16:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "14:00", "end_time": "16:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        amphi_ids = [a["id"] for a in resp.data["amphitheaters"]]
+        self.assertNotIn(self.amphi.id, amphi_ids)
+
+    def test_available_locations_blocks_show_available_rooms_only(self):
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        block = next((b for b in resp.data["blocks"] if b["id"] == self.block.id), None)
+        self.assertIsNotNone(block)
+        room_ids_in_block = [r["id"] for r in block["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids_in_block)
+        self.assertIn(self.room2.id, room_ids_in_block)
+
+    def test_available_locations_partial_overlap_start(self):
+        """Existing 09:00-11:00, new 08:30-09:30 should detect conflict."""
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Existing", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "09:00", "end_time": "11:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:30", "end_time": "09:30",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids)
+
+    def test_available_locations_partial_overlap_end(self):
+        """Existing 09:00-11:00, new 10:30-11:30 should detect conflict."""
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Existing", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "09:00", "end_time": "11:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "10:30", "end_time": "11:30",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids)
+
+    def test_available_locations_middle_overlap(self):
+        """Existing 09:00-11:00, new 09:15-10:15 should detect conflict."""
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Existing", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "09:00", "end_time": "11:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "09:15", "end_time": "10:15",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids)
+
+    def test_available_locations_total_overlap(self):
+        """Existing 09:00-11:00, new 08:00-12:00 should detect conflict."""
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Existing", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "09:00", "end_time": "11:00",
+            "session_type": "Cours",
+        })
+        resp = self.client.get(self._locations_url(), {
+            "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "12:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertNotIn(self.room1.id, room_ids)
+
+    def test_available_locations_no_conflict_different_date(self):
+        """Same room, same time but different date should show as available."""
+        self._login(self.admin)
+        self.client.post(self._session_url(), {
+            "subject": "Maths", "module_id": self.module.id,
+            "teacher": self.teacher.id, "classe": self.classe.id,
+            "location_type": "block", "block": self.block.id,
+            "room": self.room1.id, "date": self.today.isoformat(),
+            "start_time": "08:00", "end_time": "10:00",
+            "session_type": "Cours",
+        })
+        other_date = (self.today + timedelta(days=1)).isoformat()
+        resp = self.client.get(self._locations_url(), {
+            "date": other_date,
+            "start_time": "08:00", "end_time": "10:00",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        room_ids = [r["id"] for r in resp.data["rooms"]]
+        self.assertIn(self.room1.id, room_ids)

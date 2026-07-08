@@ -8,6 +8,9 @@
     blocksData: [],
     amphiData: [],
     teachersData: [],
+    _availableRooms: null,
+    _availableBlocks: null,
+    _availableAmphis: null,
 
     /* ── PUBLIC API ── */
 
@@ -234,102 +237,57 @@
 
     /* ── AVAILABILITY ── */
 
-    async _fetchAvailableRooms() {
+    async _fetchAvailableLocations() {
       const date = document.getElementById('sfDate').value;
       const startTime = document.getElementById('sfStartTime').value;
       const endTime = document.getElementById('sfEndTime').value;
-      const locType = document.getElementById('sfLocationType').value;
-      if (!date || !startTime || !endTime || !locType) return;
+      if (!date || !startTime || !endTime) return;
 
       try {
         const params = new URLSearchParams({
           date: date,
           start_time: startTime,
           end_time: endTime,
-          location_type: locType,
         });
-        const data = await API.apiFetch('/sessions/available-rooms/?' + params.toString());
+        const data = await API.apiFetch('/sessions/available-locations/?' + params.toString());
+        if (!data) return;
 
-        if (locType === 'block' && data && data.blocks) {
-          this._availableBlocks = data.blocks;
-          this._populateBlockSelects(data.blocks);
-          // Clear room selection if current room is no longer available
-          this._validateCurrentSelection('sfBlock', 'sfRoom', data.blocks);
-        } else if (locType === 'amphitheater' && data && data.amphitheaters) {
-          this._availableAmphis = data.amphitheaters;
-          this._populateAmphiSelect(data.amphitheaters);
-          this._validateCurrentSelection('sfAmphi', null, data.amphitheaters);
+        this._availableRooms = data.rooms || [];
+        this._availableBlocks = data.blocks || [];
+        this._availableAmphis = data.amphitheaters || [];
+
+        // Update whichever location group is currently visible
+        const locType = document.getElementById('sfLocationType').value;
+        if (locType === 'block') {
+          this._populateLocationSelects();
+          this._validateCurrentSelection();
+        } else if (locType === 'amphitheater') {
+          this._populateLocationSelects();
+          this._validateCurrentSelection();
         }
       } catch (e) {
         // Fall back to full lists on error
+        this._availableRooms = null;
+        this._availableBlocks = null;
+        this._availableAmphis = null;
         this._populateLocationSelects();
       }
     },
 
-    _populateBlockSelects(blocks) {
-      const blockSel = document.getElementById('sfBlock');
-      const currentBlock = blockSel.value;
-      blockSel.innerHTML = '<option value="">— Sélectionner un bloc —</option>';
-      var hasRooms = false;
-      blocks.forEach(function (b) {
-        if (b.rooms && b.rooms.length) {
-          hasRooms = true;
-          const opt = document.createElement('option');
-          opt.value = b.id;
-          opt.textContent = b.name + ' (' + b.rooms.length + ' salle' + (b.rooms.length > 1 ? 's' : '') + ' disponible' + (b.rooms.length > 1 ? 's' : '') + ')';
-          blockSel.appendChild(opt);
-        }
-      });
-      if (!hasRooms) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '— Aucune salle disponible —';
-        opt.disabled = true;
-        blockSel.appendChild(opt);
-      }
-      // Restore previous selection if still available
-      if (currentBlock && blocks.some(function (b) { return String(b.id) === currentBlock; })) {
-        blockSel.value = currentBlock;
-      }
-      blockSel.dispatchEvent(new Event('change'));
-    },
-
-    _populateAmphiSelect(amphis) {
-      const sel = document.getElementById('sfAmphi');
-      const currentVal = sel.value;
-      sel.innerHTML = '<option value="">— Sélectionner —</option>';
-      (amphis || []).forEach(function (a) {
-        const opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = a.name;
-        sel.appendChild(opt);
-      });
-      if (!amphis || !amphis.length) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '— Aucun amphithéâtre disponible —';
-        opt.disabled = true;
-        sel.appendChild(opt);
-      }
-      if (currentVal && amphis.some(function (a) { return String(a.id) === currentVal; })) {
-        sel.value = currentVal;
-      }
-    },
-
-    _validateCurrentSelection(parentId, childId, availableList) {
-      if (!availableList || !availableList.length) return;
-      if (childId) {
-        var parentSel = document.getElementById(parentId);
-        var childSel = document.getElementById(childId);
-        if (parentSel.value && childSel.value) {
-          var block = availableList.find(function (b) { return String(b.id) === parentSel.value; });
-          if (block && !block.rooms.some(function (r) { return String(r.id) === childSel.value; })) {
-            childSel.value = '';
+    _validateCurrentSelection() {
+      const locType = document.getElementById('sfLocationType').value;
+      if (locType === 'block') {
+        const blockSel = document.getElementById('sfBlock');
+        const roomSel = document.getElementById('sfRoom');
+        if (blockSel.value && this._availableBlocks) {
+          const block = this._availableBlocks.find(function (b) { return String(b.id) === blockSel.value; });
+          if (block && roomSel.value && !block.rooms.some(function (r) { return String(r.id) === roomSel.value; })) {
+            roomSel.value = '';
           }
         }
-      } else {
-        var sel = document.getElementById(parentId);
-        if (sel.value && !availableList.some(function (a) { return String(a.id) === sel.value; })) {
+      } else if (locType === 'amphitheater') {
+        const sel = document.getElementById('sfAmphi');
+        if (sel.value && this._availableAmphis && !this._availableAmphis.some(function (a) { return String(a.id) === sel.value; })) {
           sel.value = '';
         }
       }
@@ -353,22 +311,53 @@
     /* ── UI HELPERS ── */
 
     _populateLocationSelects() {
+      const locType = document.getElementById('sfLocationType').value;
       const blockSel = document.getElementById('sfBlock');
+      const currentBlock = blockSel.value;
       blockSel.innerHTML = '<option value="">— Sélectionner un bloc —</option>';
-      this.blocksData.forEach(function (b) {
-        const opt = document.createElement('option');
-        opt.value = b.id;
-        opt.textContent = b.name;
-        blockSel.appendChild(opt);
+
+      var blocks = this._availableBlocks;
+      if (!blocks) {
+        blocks = this.blocksData.map(function (b) {
+          return { id: b.id, name: b.name, rooms: (b.rooms || []) };
+        });
+      }
+      var hasRooms = false;
+      blocks.forEach(function (b) {
+        if (b.rooms && b.rooms.length) {
+          hasRooms = true;
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = b.name + ' (' + b.rooms.length + ' salle' + (b.rooms.length > 1 ? 's' : '') + ' disponible' + (b.rooms.length > 1 ? 's' : '') + ')';
+          blockSel.appendChild(opt);
+        }
       });
+      if (!hasRooms) {
+        blockSel.innerHTML = '<option value="">— Aucune salle disponible —</option>';
+        blockSel.querySelector('option').disabled = true;
+      }
+      if (currentBlock && blocks.some(function (b) { return String(b.id) === currentBlock; })) {
+        blockSel.value = currentBlock;
+      }
+      blockSel.dispatchEvent(new Event('change'));
+
       const amphiSel = document.getElementById('sfAmphi');
+      const currentAmphi = amphiSel.value;
       amphiSel.innerHTML = '<option value="">— Sélectionner un amphithéâtre —</option>';
-      this.amphiData.forEach(function (a) {
+      var amphis = this._availableAmphis || this.amphiData;
+      (amphis || []).forEach(function (a) {
         const opt = document.createElement('option');
         opt.value = a.id;
         opt.textContent = a.name;
         amphiSel.appendChild(opt);
       });
+      if (!amphis || !amphis.length) {
+        amphiSel.innerHTML = '<option value="">— Aucun amphithéâtre disponible —</option>';
+        amphiSel.querySelector('option').disabled = true;
+      }
+      if (currentAmphi && amphis.some(function (a) { return String(a.id) === currentAmphi; })) {
+        amphiSel.value = currentAmphi;
+      }
     },
 
     _reset() {
@@ -387,6 +376,9 @@
       document.getElementById('sfRoom').disabled = true;
       document.getElementById('sfAmphi').innerHTML = '<option value="">— Sélectionner un amphithéâtre —</option>';
       document.getElementById('sfSessionType').value = 'Cours';
+      this._availableRooms = null;
+      this._availableBlocks = null;
+      this._availableAmphis = null;
       this._populateLocationSelects();
       this._resetCascade(0);
     },
@@ -434,9 +426,8 @@
         const val = this.value;
         document.getElementById('sfBlockGroup').style.display = val === 'block' ? 'block' : 'none';
         document.getElementById('sfAmphiGroup').style.display = val === 'amphitheater' ? 'block' : 'none';
-        // When location type changes, restore full lists first, then filter by availability
         self._populateLocationSelects();
-        self._fetchAvailableRooms();
+        self._fetchAvailableLocations();
       });
 
       // Re-check availability when date or time changes
@@ -444,9 +435,8 @@
         document.getElementById(id).addEventListener('change', function () {
           const locType = document.getElementById('sfLocationType').value;
           if (locType) {
-            // Restore full lists and filter
             self._populateLocationSelects();
-            self._fetchAvailableRooms();
+            self._fetchAvailableLocations();
           }
         });
       });
@@ -457,14 +447,24 @@
         roomSel.innerHTML = '<option value="">— Sélectionner —</option>';
         roomSel.disabled = !blockId;
         if (blockId) {
-          const block = self.blocksData.find(function (b) { return b.id === blockId; });
-          if (block && block.rooms) {
-            block.rooms.forEach(function (r) {
+          var rooms = null;
+          if (self._availableBlocks) {
+            var ab = self._availableBlocks.find(function (b) { return b.id === blockId; });
+            if (ab) rooms = ab.rooms;
+          } else {
+            var fb = self.blocksData.find(function (b) { return b.id === blockId; });
+            if (fb) rooms = fb.rooms;
+          }
+          if (rooms && rooms.length) {
+            rooms.forEach(function (r) {
               const opt = document.createElement('option');
               opt.value = r.id;
               opt.textContent = r.name;
               roomSel.appendChild(opt);
             });
+          } else if (self._availableBlocks) {
+            roomSel.innerHTML = '<option value="">— Aucune salle disponible —</option>';
+            roomSel.querySelector('option').disabled = true;
           }
         }
       });
@@ -505,11 +505,22 @@
         const roomId = document.getElementById('sfRoom').value;
         if (!blockId) { showToast('Veuillez sélectionner un bloc.', 'error'); return; }
         if (!roomId) { showToast('Veuillez sélectionner une salle.', 'error'); return; }
+        if (this._availableBlocks) {
+          var ab = this._availableBlocks.find(function (b) { return String(b.id) === blockId; });
+          if (!ab || !ab.rooms.some(function (r) { return String(r.id) === roomId; })) {
+            showToast('Cette salle n\'est plus disponible pour ce créneau.', 'error');
+            return;
+          }
+        }
         body.block = Number(blockId);
         body.room = Number(roomId);
       } else if (locType === 'amphitheater') {
         const amphiId = document.getElementById('sfAmphi').value;
         if (!amphiId) { showToast('Veuillez sélectionner un amphithéâtre.', 'error'); return; }
+        if (this._availableAmphis && !this._availableAmphis.some(function (a) { return String(a.id) === amphiId; })) {
+          showToast('Cet amphithéâtre n\'est plus disponible pour ce créneau.', 'error');
+          return;
+        }
         body.amphitheater = Number(amphiId);
       }
 
