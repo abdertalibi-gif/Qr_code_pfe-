@@ -1,0 +1,395 @@
+"""
+Bulk teacher import from Excel (.xlsx).
+
+Expected columns:
+  first_name, last_name, email, phone, cin, department, filiere, grade, speciality
+Optional:
+  username, password
+"""
+from __future__ import annotations
+
+import io
+import logging
+import re
+import secrets
+import string
+from dataclasses import dataclass, field
+from typing import Any
+
+from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
+
+from curriculum.models import Filiere
+from users.models import Department, User
+
+logger = logging.getLogger(__name__)
+
+EMAIL_UMI_RE = re.compile(r"^[^@\s]+@umi\.ac\.ma$")
+EMAIL_GENERIC_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+HEADER_ALIASES = {
+    "first_name": {"first name", "first_name", "prenom", "prénom", "given name", "firstname"},
+    "last_name": {"last name", "last_name", "nom", "family name", "lastname"},
+    "email": {"email", "e-mail", "mail", "courriel"},
+    "phone": {"phone", "telephone", "téléphone", "tel", "mobile", "gsm"},
+    "cin": {"cin", "c.i.n", "carte nationale", "identity"},
+    "department": {"department", "departement", "département", "dept"},
+    "filiere": {"filiere", "filière", "field"},
+    "grade": {"grade", "rank"},
+    "speciality": {"speciality", "specialty", "specialite", "spécialité", "field of study"},
+    "username": {"username", "user name", "login"},
+    "password": {"password", "mot de passe", "pass"},
+}
+
+
+@dataclass
+class TeacherImportRow:
+    line_number: int
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    cin: str
+    department: str
+    filiere: str
+    grade: str
+    speciality: str
+    username: str
+    password: str
+
+
+@dataclass
+class ImportReport:
+    created: list[dict[str, Any]] = field(default_factory=list)
+    updated: list[dict[str, Any]] = field(default_factory=list)
+    skipped: int = 0
+    errors: list[dict[str, Any]] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "imported": len(self.created),
+            "updated": len(self.updated),
+            "skipped": self.skipped,
+            "errors": self.errors,
+            "created_teachers": self.created,
+            "updated_teachers": self.updated,
+            "summary": {
+                "created": len(self.created),
+                "updated": len(self.updated),
+                "skipped": self.skipped,
+                "errors": len(self.errors),
+            },
+        }
+
+
+def _normalize_header(value: str) -> str:
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("à", "a")
+    )
+
+
+def _map_headers(raw_headers: list[str]) -> dict[str, int]:
+    mapping: dict[str, int] = {}
+    for index, header in enumerate(raw_headers):
+        normalized = _normalize_header(header)
+        if not normalized:
+            continue
+        for field_name, aliases in HEADER_ALIASES.items():
+            if normalized in aliases and field_name not in mapping:
+                mapping[field_name] = index
+                break
+    return mapping
+
+
+def _validate_headers(mapping: dict[str, int]) -> list[str]:
+    required = ("first_name", "last_name", "email", "phone", "cin", "department", "filiere", "grade", "speciality")
+    labels = {
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "email": "email",
+        "phone": "phone",
+        "cin": "cin",
+        "department": "department",
+        "filiere": "filiere",
+        "grade": "grade",
+        "speciality": "speciality",
+    }
+    missing = [f"Colonne obligatoire manquante : {labels[key]}" for key in required if key not in mapping]
+    return missing
+
+
+def _cell(row: list[Any], index: int | None) -> str:
+    if index is None or index >= len(row):
+        return ""
+    value = row[index]
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _is_empty_row(row: list[Any]) -> bool:
+    return not any(str(cell or "").strip() for cell in row)
+
+
+def _parse_rows_from_xlsx(content: bytes) -> tuple[list[str], list[list[Any]]]:
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
+    sheet = workbook.active
+    rows = list(sheet.iter_rows(values_only=True))
+    workbook.close()
+    if not rows:
+        return [], []
+    headers = [str(cell or "").strip() for cell in rows[0]]
+    return headers, [list(row) for row in rows[1:]]
+
+
+def _validate_email_umi(email: str) -> bool:
+    if not email:
+        return False
+    if not EMAIL_UMI_RE.match(email):
+        return False
+    try:
+        validate_email(email)
+        return True
+    except Exception:
+        return False
+
+
+def _generate_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits + "!@#$%"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _generate_username(first_name: str, last_name: str) -> str:
+    base = f"{first_name.lower()}.{last_name.lower()}"
+    base = re.sub(r"[^a-z0-9.]", "", base)
+    username = base
+    counter = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{base}{counter}"
+        counter += 1
+    return username
+
+
+def import_teachers(uploaded_file) -> dict[str, Any]:
+    content = uploaded_file.read()
+    if not content:
+        raise ValueError("Le fichier est vide.")
+
+    if not uploaded_file.name.lower().endswith(".xlsx"):
+        raise ValueError("Seul le format .xlsx est accepté.")
+
+    headers, data_rows = _parse_rows_from_xlsx(content)
+    if not headers:
+        raise ValueError("Le fichier est vide ou illisible.")
+
+    mapping = _map_headers(headers)
+    header_errors = _validate_headers(mapping)
+    report = ImportReport()
+    if header_errors:
+        report.errors.append({"line": 1, "code": "", "messages": header_errors})
+        return report.as_dict()
+
+    rows_to_process: list[TeacherImportRow] = []
+    seen_emails: dict[str, int] = {}
+    seen_cins: dict[str, int] = {}
+
+    for offset, row in enumerate(data_rows, start=2):
+        if _is_empty_row(row):
+            continue
+
+        first_name = _cell(row, mapping.get("first_name"))
+        last_name = _cell(row, mapping.get("last_name"))
+        email = _cell(row, mapping.get("email")).lower()
+        phone = _cell(row, mapping.get("phone"))
+        cin = _cell(row, mapping.get("cin"))
+        department_name = _cell(row, mapping.get("department"))
+        filiere_name = _cell(row, mapping.get("filiere"))
+        grade = _cell(row, mapping.get("grade"))
+        speciality = _cell(row, mapping.get("speciality"))
+        username = _cell(row, mapping.get("username"))
+        password = _cell(row, mapping.get("password"))
+
+        row_errors: list[str] = []
+
+        # Required fields
+        if not first_name:
+            row_errors.append("Prénom obligatoire.")
+        if not last_name:
+            row_errors.append("Nom obligatoire.")
+        if not email:
+            row_errors.append("Email obligatoire.")
+        elif not _validate_email_umi(email):
+            row_errors.append("Email invalide. Seuls les emails @umi.ac.ma sont acceptés.")
+        elif email in seen_emails:
+            row_errors.append(f"Email en double dans le fichier (ligne {seen_emails[email]}).")
+        else:
+            seen_emails[email] = offset
+        if not phone:
+            row_errors.append("Téléphone obligatoire.")
+        if not cin:
+            row_errors.append("CIN obligatoire.")
+        elif cin in seen_cins:
+            row_errors.append(f"CIN en double dans le fichier (ligne {seen_cins[cin]}).")
+        else:
+            seen_cins[cin] = offset
+        if not department_name:
+            row_errors.append("Département obligatoire.")
+        if not filiere_name:
+            row_errors.append("Filière obligatoire.")
+        if not grade:
+            row_errors.append("Grade obligatoire.")
+        if not speciality:
+            row_errors.append("Spécialité obligatoire.")
+
+        if row_errors:
+            report.errors.append({"line": offset, "email": email, "messages": row_errors})
+            continue
+
+        rows_to_process.append(TeacherImportRow(
+            line_number=offset,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            phone=phone,
+            cin=cin,
+            department=department_name,
+            filiere=filiere_name,
+            grade=grade,
+            speciality=speciality,
+            username=username,
+            password=password or _generate_password(),
+        ))
+
+    if not rows_to_process:
+        report.errors.append({"line": 0, "email": "", "messages": ["Aucune ligne valide à importer."]})
+        return report.as_dict()
+
+    # Resolve department and filiere for each row
+    with transaction.atomic():
+        for r in rows_to_process:
+            sid = transaction.savepoint()
+            try:
+                dept = Department.objects.filter(name__iexact=r.department).first()
+                if dept is None:
+                    report.errors.append({
+                        "line": r.line_number,
+                        "email": r.email,
+                        "messages": [f"Département introuvable : {r.department}"],
+                    })
+                    transaction.savepoint_rollback(sid)
+                    report.skipped += 1
+                    continue
+
+                filiere = Filiere.objects.filter(
+                    name__iexact=r.filiere,
+                    department=dept,
+                ).first()
+                if filiere is None:
+                    report.errors.append({
+                        "line": r.line_number,
+                        "email": r.email,
+                        "messages": [f"Filière introuvable : {r.filiere} dans le département {r.department}"],
+                    })
+                    transaction.savepoint_rollback(sid)
+                    report.skipped += 1
+                    continue
+
+                existing_user = User.objects.filter(email=r.email).first()
+                if existing_user:
+                    changed = False
+                    update_fields = []
+                    for attr, val in [
+                        ("first_name", r.first_name),
+                        ("last_name", r.last_name),
+                        ("phone", r.phone),
+                        ("grade", r.grade),
+                        ("speciality", r.speciality),
+                    ]:
+                        if val and getattr(existing_user, attr, None) != val:
+                            setattr(existing_user, attr, val)
+                            update_fields.append(attr)
+                            changed = True
+
+                    # Only update CIN if not already set
+                    if r.cin and not existing_user.cin:
+                        existing_user.cin = r.cin
+                        update_fields.append("cin")
+                        changed = True
+                    elif r.cin and existing_user.cin and existing_user.cin != r.cin:
+                        existing_user.cin = r.cin
+                        update_fields.append("cin")
+                        changed = True
+
+                    if existing_user.role != "teacher":
+                        existing_user.role = "teacher"
+                        update_fields.append("role")
+                        changed = True
+
+                    if changed and update_fields:
+                        existing_user.save(update_fields=update_fields)
+
+                    report.updated.append({
+                        "id": existing_user.id,
+                        "email": existing_user.email,
+                        "first_name": existing_user.first_name,
+                        "last_name": existing_user.last_name,
+                        "cin": existing_user.cin,
+                        "updated_fields": update_fields,
+                    })
+                else:
+                    if not r.username:
+                        r.username = _generate_username(r.first_name, r.last_name)
+
+                    new_user = User.objects.create_user(
+                        email=r.email,
+                        password=r.password,
+                        first_name=r.first_name,
+                        last_name=r.last_name,
+                        role="teacher",
+                    )
+                    new_user.phone = r.phone
+                    new_user.cin = r.cin
+                    new_user.grade = r.grade
+                    new_user.speciality = r.speciality
+                    new_user.save(update_fields=["phone", "cin", "grade", "speciality"])
+
+                    report.created.append({
+                        "id": new_user.id,
+                        "email": new_user.email,
+                        "first_name": new_user.first_name,
+                        "last_name": new_user.last_name,
+                        "cin": new_user.cin,
+                    })
+
+                transaction.savepoint_commit(sid)
+
+            except IntegrityError as exc:
+                transaction.savepoint_rollback(sid)
+                logger.warning("Import integrity error line %s: %s", r.line_number, exc)
+                report.errors.append({
+                    "line": r.line_number,
+                    "email": r.email,
+                    "messages": [f"Erreur base de données : {exc}"],
+                })
+                report.skipped += 1
+            except Exception as exc:
+                transaction.savepoint_rollback(sid)
+                logger.exception("Import row failed line %s", r.line_number)
+                report.errors.append({
+                    "line": r.line_number,
+                    "email": r.email,
+                    "messages": [str(exc)],
+                })
+                report.skipped += 1
+
+    return report.as_dict()

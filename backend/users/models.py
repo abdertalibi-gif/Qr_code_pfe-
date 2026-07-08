@@ -46,6 +46,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Classes assignées (enseignants uniquement).",
     )
     is_also_teacher = models.BooleanField(default=False)
+    phone = models.CharField(max_length=30, blank=True, default="")
+    cin = models.CharField(max_length=30, blank=True, default="", null=True)
+    grade = models.CharField(max_length=100, blank=True, default="")
+    speciality = models.CharField(max_length=200, blank=True, default="")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]

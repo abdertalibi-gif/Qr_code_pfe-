@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrésenceQR — Administration | {% block page_title %}{% endblock %}</title>
+  <link rel="stylesheet" href="/dashboard.css" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="dashboard-app">
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-brand-icon">📋</div>
+    <a href="/admin-ui/" class="nav-link" style="text-decoration:none;color:inherit">PrésenceQR</a>
+  </div>
+  <div class="nav-links">
+    <a href="/admin/attendance-live/" class="nav-link {% if request.path == '/admin/attendance-live/' %}active{% endif %}">📡 Présences en direct</a>
+    <a href="/admin/users/" class="nav-link {% if request.path == '/admin/users/' %}active{% endif %}">👤 Utilisateurs</a>
+    <a href="/admin/teachers/" class="nav-link {% if request.path == '/admin/teachers/' %}active{% endif %}">👨‍🏫 Enseignants</a>
+    <a href="/admin/students/" class="nav-link {% if request.path == '/admin/students/' %}active{% endif %}">🎓 Étudiants</a>
+    <a href="/admin/classes/" class="nav-link {% if request.path == '/admin/classes/' %}active{% endif %}">🏫 Classes</a>
+    <a href="/admin/curriculum/" class="nav-link {% if request.path == '/admin/curriculum/' %}active{% endif %}">📚 Curriculum</a>
+    <a href="/admin/sessions/" class="nav-link {% if request.path == '/admin/sessions/' %}active{% endif %}">📅 Séances</a>
+    <a href="/admin/departments/" class="nav-link {% if request.path == '/admin/departments/' %}active{% endif %}">🏛️ Départements</a>
+    <a href="/admin/filieres/" class="nav-link {% if request.path == '/admin/filieres/' %}active{% endif %}">🏢 Filières</a>
+    <a href="/admin/rooms/" class="nav-link {% if request.path == '/admin/rooms/' %}active{% endif %}">🚪 Salles</a>
+    <a href="/admin/reports/" class="nav-link {% if request.path == '/admin/reports/' %}active{% endif %}">📊 Rapports</a>
+    <a href="/admin/statistics/" class="nav-link {% if request.path == '/admin/statistics/' %}active{% endif %}">📈 Statistiques</a>
+    <a href="/admin/settings/" class="nav-link {% if request.path == '/admin/settings/' %}active{% endif %}">⚙️ Paramètres</a>
+  </div>
+  <div class="nav-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="avatarInitials">?</div>
+      <span id="navUserName">Chargement…</span>
+      <span class="badge" id="navRoleBadge">Administrateur</span>
+    </div>
+    <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Déconnexion
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main>
+  {% block content %}
+  {% endblock %}
+</main>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- COMMON MODALS (can be overridden) -->
+{% block modals %}{% endblock %}
+
+<!-- COMMON SCRIPTS -->
+<script src="/api.js"></script>
+<script src="/admin-common.js"></script>
+<script src="/i18n-fr.js"></script>
+{% block extra_js %}{% endblock %}
+<script>
+  /* ── Auth guard & nav init ── */
+  let currentUser = null;
+
+  (async () => {
+    try {
+      currentUser = await API.requireAuth(['admin', 'department_head', 'program_manager']);
+      document.getElementById('navUserName').textContent =
+        `${currentUser.first_name} ${currentUser.last_name}`;
+      document.getElementById('avatarInitials').textContent =
+        (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
+      updateRoleUI(currentUser);
+    } catch {}
+
+    if (typeof initPage === 'function') {
+      await initPage();
+    }
+  })();
+
+  const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
+  const roleBadgeClass = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };
+
+  function updateRoleUI(user) {
+    const badge = document.getElementById('navRoleBadge');
+    if (badge) {
+      badge.textContent = roleLabel[user.role] || user.role;
+      badge.className = 'badge ' + (roleBadgeClass[user.role] || '');
+    }
+  }
+</script>
+</body>
+</html>

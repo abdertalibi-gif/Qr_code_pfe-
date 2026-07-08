@@ -99,52 +99,37 @@ async function apiFetch(path, options = {}) {
     if (res.status === 401) {
       try {
         token = await refreshAccessToken();
-        try {
-          res = await makeRequest(token);
-        } catch (fetchErr) {
-          if (fetchErr.name === 'AbortError') {
-            throw new Error(
-              'La requête a pris trop de temps après le renouvellement du token. ' +
-              `(timeout: ${options.timeout || FETCH_TIMEOUT}ms)`
-            );
-          }
-          throw fetchErr;
-        }
+        res = await makeRequest(token);
       } catch {
-        clearTokens();
-        window.location.href = '/login/';
-        throw new Error('Unauthenticated');
-      }
-      if (res.status === 401) {
         clearTokens();
         window.location.href = '/login/';
         throw new Error('Unauthenticated');
       }
     }
 
-  if (!res.ok) {
-    let errMsg = `HTTP ${res.status}`;
-    try {
-      const errData = await res.json();
-      if (typeof errData === 'string') {
-        errMsg = errData;
-      } else if (errData.detail) {
-        errMsg = errData.detail;
-      } else if (errData.non_field_errors) {
-        errMsg = Array.isArray(errData.non_field_errors)
-          ? errData.non_field_errors.join(' ')
-          : String(errData.non_field_errors);
-      } else if (typeof errData === 'object') {
-        const parts = [];
-        for (const [key, value] of Object.entries(errData)) {
-          if (Array.isArray(value)) parts.push(`${key}: ${value.join(', ')}`);
-          else parts.push(`${key}: ${value}`);
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errData = await res.json();
+        if (typeof errData === 'string') {
+          errMsg = errData;
+        } else if (errData.detail) {
+          errMsg = errData.detail;
+        } else if (errData.non_field_errors) {
+          errMsg = Array.isArray(errData.non_field_errors)
+            ? errData.non_field_errors.join(' ')
+            : String(errData.non_field_errors);
+        } else if (typeof errData === 'object') {
+          const parts = [];
+          for (const [key, value] of Object.entries(errData)) {
+            if (Array.isArray(value)) parts.push(`${key}: ${value.join(', ')}`);
+            else parts.push(`${key}: ${value}`);
+          }
+          errMsg = parts.join(' | ') || JSON.stringify(errData);
         }
-        errMsg = parts.join(' | ') || JSON.stringify(errData);
-      }
-    } catch {}
-    throw new Error(errMsg);
-  }
+      } catch {}
+      throw new Error(errMsg);
+    }
 
     if (res.status === 204) return null;
 

@@ -1,0 +1,72 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Présences en direct{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Présences en direct</h1>
+    <p>Surveillez les scans QR en temps réel sur toutes les séances actives.</p>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon indigo">📋</div>
+    <div>
+      <div class="label">Total des enregistrements</div>
+      <div class="value" id="statTotal">—</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">✓</div>
+    <div>
+      <div class="label">Aujourd'hui</div>
+      <div class="value" id="statToday">—</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">📚</div>
+    <div>
+      <div class="label">Matières actives</div>
+      <div class="value" id="statActiveCourses">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="live-toolbar">
+  <div class="filters">
+    <input type="search" class="search-input" id="searchAttendance" placeholder="Rechercher étudiant, matière…" />
+    <select id="filterClasse"><option value="">Toutes les classes</option></select>
+    <select id="filterSession"><option value="">Toutes les séances</option></select>
+  </div>
+  <div class="ws-status">
+    <div class="ws-dot" id="adminWsDot"></div>
+    <span id="adminWsStatus">Connexion…</span>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Étudiant</th>
+        <th>Code Massar</th>
+        <th>Matière</th>
+        <th>Classe</th>
+        <th>Enseignant</th>
+        <th>Date séance</th>
+        <th>Scanné à</th>
+        <th>Statut</th>
+      </tr>
+    </thead>
+    <tbody id="attendanceBody">
+      <tr class="empty-row"><td colspan="9">Chargement des présences…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-attendance-live.js"></script>
+{% endblock %}

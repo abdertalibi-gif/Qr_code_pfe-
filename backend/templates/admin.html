@@ -68,6 +68,9 @@
     <button class="tab-btn" data-tab="departments">
       🏛️ Départements <span class="tab-count" id="cntDepartments">—</span>
     </button>
+    <button class="tab-btn" data-tab="teacher-import">
+      👨‍🏫 Import enseignants <span class="tab-count" id="cntTeacherImport">—</span>
+    </button>
   </div>
 
   <!-- LIVE ATTENDANCE PANEL -->
@@ -159,6 +162,33 @@
           <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- TEACHER IMPORT PANEL -->
+  <div class="tab-panel hidden" id="tab-teacher-import">
+    <div class="import-panel">
+      <div class="section-head">
+        <h2>Import enseignants</h2>
+        <div class="section-actions">
+          <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+        </div>
+      </div>
+
+      <p class="field-hint" style="margin:0 0 .75rem">
+        Le fichier Excel doit contenir les colonnes :<br>
+        <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Filière, Grade, Spécialité</strong>
+        (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
+      </p>
+
+      <div class="import-upload-row" style="gap:.75rem">
+        <div class="field import-file-field">
+          <input type="file" id="impTeacherFile" accept=".xlsx" />
+        </div>
+        <button class="btn" id="btnRunTeacherImport">Importer les enseignants</button>
+        <span class="spinner" id="impTeacherSpinner" style="display:none"></span>
+      </div>
+      <div id="teacherImportReport" class="import-report hidden"></div>
     </div>
   </div>
 

@@ -38,6 +38,7 @@ from .services.student_import import (
     import_students_complete,
     import_students_for_module,
 )
+from .services.teacher_import import import_teachers
 
 logger = logging.getLogger(__name__)
 
@@ -412,6 +413,35 @@ class MeView(APIView):
             "student_profile__classe"
         ).get(pk=user.pk)
         return Response(UserSerializer(user).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def teacher_import_excel(request):
+    from rest_framework.parsers import MultiPartParser, FormParser
+    if request.method == "POST":
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response(
+                {"detail": "Un fichier Excel (.xlsx) est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not uploaded_file.name.lower().endswith(".xlsx"):
+            return Response(
+                {"detail": "Seul le format .xlsx est accepté."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            report = import_teachers(uploaded_file)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.exception("Teacher import failed")
+            return Response(
+                {"detail": f"Import échoué : {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(report, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
