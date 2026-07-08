@@ -1,0 +1,33 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Curriculum{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Curriculum</h1>
+    <p>Structure académique : niveaux, semestres, filières et modules.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Structure académique <span id="cntCurriculumDetail" style="font-size:.85rem;font-weight:400;color:var(--muted)"></span></h2>
+  <div class="section-actions">
+    <button class="btn" id="btnRefreshCurriculum">🔄 Actualiser</button>
+  </div>
+</div>
+
+<!-- Niveau tabs -->
+<div class="curric-nav" id="curricNavNiveaux" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+
+<!-- Semestre pills (shown after niveau selection) -->
+<div class="curric-nav" id="curricNavSemestres" style="display:none;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+
+<!-- Content: filieres + modules -->
+<div id="curriculumContainer">
+  <div class="curriculum-loading">Sélectionnez un niveau pour afficher le curriculum.</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-curriculum.js"></script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Filières{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Filières</h1>
+    <p>Gérez les filières et leurs responsables.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Toutes les filières</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchFilieres" placeholder="Rechercher filière, semestre, niveau…" />
+    <select id="filterFiliereSemestre" class="search-input" style="width:auto;min-width:160px">
+      <option value="">Tous les semestres</option>
+    </select>
+    <button class="btn" id="btnRefreshFilieres">🔄 Actualiser</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Filière</th>
+        <th>Semestre</th>
+        <th>Niveau</th>
+        <th>Responsable</th>
+        <th>Modules</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="filieresBody">
+      <tr class="empty-row"><td colspan="7">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add/Edit Filiere -->
+<div class="modal-backdrop" id="modalFiliere">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="filiereModalTitle">Ajouter une filière</h3>
+      <button class="modal-close" data-close="modalFiliere">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fId" />
+      <div class="field">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="fName" placeholder="L1 Informatique" />
+      </div>
+      <div class="field">
+        <label>Semestre <span class="req">*</span></label>
+        <select id="fSemestre"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Niveau</label>
+        <select id="fNiveau">
+          <option value="">— Sélectionner —</option>
+          <option value="LIC">Licence</option>
+          <option value="LIC_EXC">Licence Excellence</option>
+          <option value="MAS">Master</option>
+          <option value="MAS_EXC">Master Parcours d'excellence</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Département</label>
+        <select id="fDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Responsable de filière</label>
+        <select id="fManager"><option value="">— Non assigné —</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalFiliere">Annuler</button>
+      <button class="btn" id="btnSubmitFiliere">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-filieres.js"></script>
+{% endblock %}

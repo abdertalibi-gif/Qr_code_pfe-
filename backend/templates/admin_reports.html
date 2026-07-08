@@ -1,0 +1,90 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Rapports{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Rapports</h1>
+    <p>Générez et exportez des rapports de présence détaillés.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Assistant d'export</h2>
+  <div class="section-actions">
+    <button class="btn outline" id="btnOpenExportWizard">📥 Nouvel export</button>
+  </div>
+</div>
+
+<div class="import-panel">
+  <div class="import-grid">
+    <div class="field">
+      <label>Date de début <span class="req">*</span></label>
+      <input type="date" id="repStartDate" />
+    </div>
+    <div class="field">
+      <label>Date de fin <span class="req">*</span></label>
+      <input type="date" id="repEndDate" />
+    </div>
+  </div>
+
+  <div class="import-grid">
+    <div class="field">
+      <label>Semestre</label>
+      <select id="repSemestre"><option value="">— Sélectionner —</option></select>
+    </div>
+    <div class="field">
+      <label>Filière</label>
+      <select id="repFiliere" disabled><option value="">— Sélectionner d'abord le semestre —</option></select>
+    </div>
+    <div class="field">
+      <label>Module</label>
+      <select id="repModule" disabled><option value="">— Sélectionner d'abord la filière —</option></select>
+    </div>
+    <div class="field">
+      <label>Classe</label>
+      <select id="repClasse" disabled><option value="">— Toutes —</option></select>
+    </div>
+  </div>
+
+  <div class="import-grid">
+    <div class="field">
+      <label>Type d'export</label>
+      <select id="repType">
+        <option value="all">Tous les étudiants</option>
+        <option value="present">Présents uniquement</option>
+        <option value="absent">Absents uniquement</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Mode d'export</label>
+      <select id="repMode">
+        <option value="by_student">Par étudiant</option>
+        <option value="by_module">Par module</option>
+        <option value="by_session">Par séance</option>
+        <option value="resume_absences">Résumé des absences</option>
+        <option value="resume_presences">Résumé des présences</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Enseignant</label>
+      <select id="repEnseignant"><option value="">— Tous les enseignants —</option></select>
+    </div>
+  </div>
+
+  <div id="repProgressArea" style="display:none;margin-top:1rem">
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <span class="spinner" id="repSpinner"></span>
+      <span id="repProgressText">Génération du fichier Excel en cours...</span>
+    </div>
+  </div>
+
+  <div class="form-actions" style="margin-top:1rem">
+    <button class="btn green" id="btnGenerateReport">📊 Générer le rapport</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-reports.js"></script>
+{% endblock %}

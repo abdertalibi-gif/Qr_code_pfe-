@@ -1,0 +1,159 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Séances{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Séances</h1>
+    <p>Gérez les séances de cours et leurs QR codes de présence.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Toutes les séances</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
+    <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
+    <button class="btn" id="btnOpenAddSession">+ Nouvelle séance</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Matière</th>
+        <th>Classe</th>
+        <th>Enseignant</th>
+        <th>Date</th>
+        <th>Horaire</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="sessionsBody">
+      <tr class="empty-row"><td colspan="7">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- EXPORT WIZARD MODAL -->
+<div class="modal-backdrop" id="modalExportWizard">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3>📥 Export Wizard — Assistant d'export Excel</h3>
+      <button class="modal-close" data-close="modalExportWizard">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="field">
+          <label>Date de début <span class="req">*</span></label>
+          <input type="date" id="expStartDate" />
+        </div>
+        <div class="field">
+          <label>Date de fin <span class="req">*</span></label>
+          <input type="date" id="expEndDate" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem">
+        <div class="field">
+          <label>Semestre</label>
+          <select id="expSemestre">
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="expFiliere" disabled>
+            <option value="">— Sélectionner d'abord le semestre —</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem">
+        <div class="field">
+          <label>Module</label>
+          <select id="expModule" disabled>
+            <option value="">— Sélectionner d'abord la filière —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Classe (optionnel)</label>
+          <select id="expClasse" disabled>
+            <option value="">— Toutes —</option>
+          </select>
+        </div>
+      </div>
+
+      <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border,#e0e0e0)" />
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="field">
+          <label>Type d'export</label>
+          <select id="expType">
+            <option value="all">Tous les étudiants</option>
+            <option value="present">Présents uniquement</option>
+            <option value="absent">Absents uniquement</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Mode d'export</label>
+          <select id="expMode">
+            <option value="by_student">Par étudiant</option>
+            <option value="by_module">Par module</option>
+            <option value="by_session">Par séance</option>
+            <option value="resume_absences">Résumé des absences</option>
+            <option value="resume_presences">Résumé des présences</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:.5rem">
+        <label>Enseignant</label>
+        <select id="expEnseignant">
+          <option value="">— Tous les enseignants —</option>
+        </select>
+      </div>
+
+      <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border,#e0e0e0)" />
+
+      <div class="field" style="margin-top:.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="expFilterStudent" onchange="toggleStudentFilter()" />
+          Filtrer par étudiant spécifique
+        </label>
+        <div id="expStudentSelectArea" style="display:none;margin-top:.5rem">
+          <input type="text" id="expStudentSearch" placeholder="Rechercher un étudiant..." style="width:100%;padding:.5rem;border:1px solid var(--border,#e0e0e0);border-radius:6px;margin-bottom:.25rem;box-sizing:border-box" />
+          <select id="expEtudiant" style="width:100%">
+            <option value="">— Sélectionner d'abord les filtres ci-dessus —</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="expProgressArea" style="display:none;margin-top:1rem">
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <span class="spinner" id="expSpinner"></span>
+          <span id="expProgressText">Génération du fichier Excel en cours...</span>
+        </div>
+        <div style="margin-top:.5rem;height:6px;background:var(--border,#e0e0e0);border-radius:3px;overflow:hidden">
+          <div id="expProgressBar" style="height:100%;width:0%;background:var(--primary,#4361ee);border-radius:3px;transition:width .3s"></div>
+        </div>
+      </div>
+
+      <div id="expErrorArea" style="display:none;margin-top:1rem;padding:.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#dc2626;font-size:.9rem">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalExportWizard">Annuler</button>
+      <button class="btn green" id="btnGenerateExcelWizard" disabled>Générer le fichier Excel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/session-form.js"></script>
+<script src="/admin-sessions.js"></script>
+{% endblock %}

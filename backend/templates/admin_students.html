@@ -1,0 +1,177 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Étudiants{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Étudiants</h1>
+    <p>Importez et gérez les étudiants par module, filière et semestre.</p>
+  </div>
+</div>
+
+<!-- Import Panel -->
+<div class="import-panel">
+  <div class="section-head">
+    <h2>Import étudiants par module</h2>
+    <div class="section-actions">
+      <button class="btn outline" id="btnDownloadImportTemplate">⬇ Modèle Excel</button>
+      <button class="btn" id="btnOpenAddStudent">+ Ajouter manuellement</button>
+    </div>
+  </div>
+
+  <div class="import-grid">
+    <div class="field">
+      <label>Niveau <span class="req">*</span></label>
+      <select id="impNiveau"><option value="">— Chargement… —</option></select>
+    </div>
+    <div class="field">
+      <label>Semestre <span class="req">*</span></label>
+      <select id="impSemestre" disabled><option value="">— Sélectionnez d'abord le niveau —</option></select>
+      <span class="spinner" id="impSemestreSpinner" style="display:none"></span>
+    </div>
+    <div class="field">
+      <label>Filière <span class="req">*</span></label>
+      <select id="impFiliere" disabled><option value="">— Sélectionnez d'abord le semestre —</option></select>
+      <span class="spinner" id="impFiliereSpinner" style="display:none"></span>
+    </div>
+    <div class="field">
+      <label>Module <span class="req">*</span></label>
+      <select id="impModule" disabled><option value="">— Sélectionnez d'abord la filière —</option></select>
+      <span class="spinner" id="impModuleSpinner" style="display:none"></span>
+      <div id="impCapacityInfo" style="display:none;margin-top:.5rem;padding:.5rem .75rem;border-radius:8px;font-size:.82rem"></div>
+    </div>
+  </div>
+
+  <div class="import-upload-row">
+    <div class="field import-file-field">
+      <label>Fichier Excel (.xlsx) ou CSV</label>
+      <input type="file" id="impFile" accept=".xlsx,.csv" />
+    </div>
+    <button class="btn" id="btnRunImport" disabled>Importer les étudiants</button>
+  </div>
+
+  <div id="importReport" class="import-report hidden"></div>
+</div>
+
+<div class="import-panel" style="margin-top:1rem">
+  <div class="section-head">
+    <h3 style="font-size:.95rem">Import Excel complet</h3>
+    <button class="btn outline sm" id="btnDownloadCompleteImportTemplate">⬇ Modèle complet</button>
+  </div>
+  <p class="field-hint" style="margin:0 0 .75rem">
+    Le fichier doit contenir les colonnes :
+    <strong>Nom, Prénom, Code Massar, Email, Mot de passe, Niveau, Filière, Semestre, Module</strong>.
+    Le module est automatiquement identifié.
+  </p>
+  <div class="import-upload-row" style="gap:.75rem">
+    <div class="field import-file-field">
+      <input type="file" id="impCompleteFile" accept=".xlsx" />
+    </div>
+    <button class="btn" id="btnRunCompleteImport">Importer (format complet)</button>
+    <span class="spinner" id="impCompleteSpinner" style="display:none"></span>
+  </div>
+  <div id="importCompleteReport" class="import-report hidden"></div>
+</div>
+
+<div class="section-head" style="margin-top:1.5rem">
+  <h2 id="moduleStudentsTitle">Étudiants du module</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchModuleStudents" placeholder="Rechercher code, nom, email…" />
+    <select id="filterModuleEmail" class="search-input" style="width:auto;min-width:160px">
+      <option value="">Tous les emails</option>
+      <option value="yes">Avec email</option>
+      <option value="no">Sans email</option>
+    </select>
+  </div>
+</div>
+
+<div id="moduleStudentsHint" class="module-hint">Sélectionnez un module pour afficher les étudiants inscrits.</div>
+
+<div class="table-wrap" id="moduleStudentsWrap" style="display:none">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Code</th>
+        <th>Nom</th>
+        <th>Email</th>
+        <th>Téléphone</th>
+        <th>Classe</th>
+        <th>Inscrit le</th>
+      </tr>
+    </thead>
+    <tbody id="moduleStudentsBody"></tbody>
+  </table>
+</div>
+
+<div class="pagination-bar hidden" id="moduleStudentsPagination">
+  <button class="btn sm outline" id="btnModulePrev">← Précédent</button>
+  <span id="modulePageInfo">Page 1 / 1</span>
+  <button class="btn sm outline" id="btnModuleNext">Suivant →</button>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add Student -->
+<div class="modal-backdrop" id="modalAddStudent">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Ajouter un étudiant</h3>
+      <button class="modal-close" data-close="modalAddStudent">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Prénom <span class="req">*</span></label>
+          <input type="text" id="sFirstName" placeholder="Ayman" />
+        </div>
+        <div class="field">
+          <label>Nom <span class="req">*</span></label>
+          <input type="text" id="sLastName" placeholder="Benali" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Code Massar <span class="req">*</span></label>
+        <input type="text" id="sCode" placeholder="M123456" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="sEmail" placeholder="etudiant@umi.ac.ma" />
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="sPassword" placeholder="Laisser vide pour ne pas créer de compte" />
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:.8rem 0" />
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:.6rem">Le module détermine automatiquement la filière, le semestre et le niveau.</p>
+      <div class="field">
+        <label>Niveau <span class="req">*</span></label>
+        <select id="sNiveau"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Semestre <span class="req">*</span></label>
+        <select id="sSemestre" disabled><option value="">— Sélectionnez d'abord le niveau —</option></select>
+        <span class="spinner" id="sSemestreSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Filière <span class="req">*</span></label>
+        <select id="sFiliere" disabled><option value="">— Sélectionnez d'abord le semestre —</option></select>
+        <span class="spinner" id="sFiliereSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Module <span class="req">*</span></label>
+        <select id="sModule" disabled><option value="">— Sélectionnez d'abord la filière —</option></select>
+        <span class="spinner" id="sModuleSpinner" style="display:none"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAddStudent">Annuler</button>
+      <button class="btn" id="btnSubmitStudent">Ajouter l'étudiant</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-students.js"></script>
+{% endblock %}

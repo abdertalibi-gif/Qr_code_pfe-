@@ -1,0 +1,187 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Enseignants{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Enseignants</h1>
+    <p>Gérez les comptes enseignants et leurs classes assignées.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Tous les enseignants</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
+    <button class="btn" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
+    <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+  </div>
+</div>
+
+<!-- Teacher Import Panel -->
+<div class="import-panel" style="margin-bottom:1.5rem">
+  <div class="section-head">
+    <h3>Import enseignants par Excel</h3>
+    <div class="section-actions">
+      <button class="btn outline" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
+    </div>
+  </div>
+
+  <p class="field-hint" style="margin:0 0 .75rem">
+    Le fichier Excel doit contenir les colonnes :<br>
+    <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Filière, Grade, Spécialité</strong>
+    (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
+  </p>
+
+  <div class="import-upload-row" style="gap:.75rem">
+    <div class="field import-file-field">
+      <input type="file" id="impTeacherFile" accept=".xlsx" />
+    </div>
+    <button class="btn" id="btnRunTeacherImport">Importer les enseignants</button>
+    <span class="spinner" id="impTeacherSpinner" style="display:none"></span>
+  </div>
+  <div id="teacherImportReport" class="import-report hidden"></div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>E-mail</th>
+        <th>Téléphone</th>
+        <th>CIN</th>
+        <th>Département</th>
+        <th>Filière</th>
+        <th>Grade</th>
+        <th>Spécialité</th>
+        <th>Classes assignées</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="teachersBody">
+      <tr class="empty-row"><td colspan="12">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add Teacher -->
+<div class="modal-backdrop" id="modalAddTeacher">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3>Nouvel enseignant</h3>
+      <button type="button" class="modal-close" data-close="modalAddTeacher" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="tFirstName" placeholder="Jean" />
+        </div>
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="tLastName" placeholder="Dupont" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="tEmail" placeholder="john@school.ma" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="text" id="tPhone" placeholder="+212 6 XX XX XX XX" />
+        </div>
+        <div class="field">
+          <label>CIN</label>
+          <input type="text" id="tCin" placeholder="EE123456" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Département</label>
+        <select id="tDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Filière</label>
+        <select id="tFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Grade</label>
+          <input type="text" id="tGrade" placeholder="Professeur" />
+        </div>
+        <div class="field">
+          <label>Spécialité</label>
+          <input type="text" id="tSpeciality" placeholder="Informatique" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="tPassword" placeholder="••••••••" />
+      </div>
+      <div class="field" id="tClassesWrap">
+        <label>Classes assignées</label>
+        <select id="tClasses" multiple size="4"></select>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
+          Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAddTeacher">Annuler</button>
+      <button class="btn" id="btnSubmitTeacher">Créer l'enseignant</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Teacher -->
+<div class="modal-backdrop" id="modalEditTeacher">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3>Modifier l'enseignant</h3>
+      <button class="modal-close" data-close="modalEditTeacher">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="etId" />
+      <div class="field-row">
+        <div class="field"><label>Prénom</label><input type="text" id="etFirstName" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="etLastName" /></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" id="etEmail" /></div>
+      <div class="field-row">
+        <div class="field"><label>Téléphone</label><input type="text" id="etPhone" /></div>
+        <div class="field"><label>CIN</label><input type="text" id="etCin" /></div>
+      </div>
+      <div class="field">
+        <label>Département</label>
+        <select id="etDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Filière</label>
+        <select id="etFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Grade</label><input type="text" id="etGrade" /></div>
+        <div class="field"><label>Spécialité</label><input type="text" id="etSpeciality" /></div>
+      </div>
+      <div class="field" id="etClassesWrap">
+        <label>Classes assignées</label>
+        <select id="etClasses" multiple size="4"></select>
+      </div>
+      <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="etPassword" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalEditTeacher">Annuler</button>
+      <button class="btn" id="btnSubmitEditTeacher">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-teachers.js"></script>
+{% endblock %}

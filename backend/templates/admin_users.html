@@ -1,0 +1,126 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Utilisateurs{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Utilisateurs</h1>
+    <p>Gérez les comptes administrateurs, enseignants et étudiants.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Tous les utilisateurs</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchUsers" placeholder="Rechercher nom, e-mail, rôle…" />
+    <button class="btn" id="btnOpenAddUser">+ Nouvel utilisateur</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>E-mail</th>
+        <th>Rôle</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="usersBody">
+      <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add User -->
+<div class="modal-backdrop" id="modalAddUser">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nouvel utilisateur</h3>
+      <button type="button" class="modal-close" data-close="modalAddUser" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="uFirstName" placeholder="Jean" />
+        </div>
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="uLastName" placeholder="Dupont" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="uEmail" placeholder="john@school.ma" />
+      </div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="uRole">
+          <option value="teacher">Enseignant</option>
+          <option value="admin">Admin</option>
+          <option value="student">Étudiant</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="uPassword" placeholder="••••••••" />
+      </div>
+      <div class="field" id="uClassesWrap" style="display:none">
+        <label>Classes assignées (enseignant)</label>
+        <select id="uClasses" multiple size="4"></select>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
+          Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAddUser">Annuler</button>
+      <button class="btn" id="btnSubmitUser">Créer l'utilisateur</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit User -->
+<div class="modal-backdrop" id="modalEditUser">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Modifier l'utilisateur</h3>
+      <button class="modal-close" data-close="modalEditUser">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="euId" />
+      <div class="field-row">
+        <div class="field"><label>Prénom</label><input type="text" id="euFirstName" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="euLastName" /></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" id="euEmail" /></div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="euRole">
+          <option value="teacher">Enseignant</option>
+          <option value="admin">Admin</option>
+          <option value="student">Étudiant</option>
+        </select>
+      </div>
+      <div class="field" id="euClassesWrap" style="display:none">
+        <label>Classes assignées (enseignant)</label>
+        <select id="euClasses" multiple size="4"></select>
+      </div>
+      <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalEditUser">Annuler</button>
+      <button class="btn" id="btnSubmitEditUser">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-users.js"></script>
+{% endblock %}

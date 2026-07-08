@@ -1,0 +1,47 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Paramètres{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Paramètres</h1>
+    <p>Configurez les paramètres système et les préférences.</p>
+  </div>
+</div>
+
+<div class="import-panel">
+  <div class="section-head">
+    <h2>Paramètres généraux</h2>
+  </div>
+
+  <div class="field">
+    <label>Durée d'expiration du QR Code (minutes)</label>
+    <input type="number" id="setQrExpiry" min="5" max="120" value="20" />
+  </div>
+
+  <div class="field">
+    <label>Rayon de géolocalisation par défaut (mètres)</label>
+    <input type="number" id="setGeoRadius" min="10" max="500" value="50" />
+  </div>
+
+  <div class="field">
+    <label>Limite de tentatives de scan par séance</label>
+    <input type="number" id="setScanLimit" min="1" max="10" value="1" />
+  </div>
+
+  <div class="form-actions" style="margin-top:1rem">
+    <button class="btn" id="btnSaveSettings">💾 Enregistrer les paramètres</button>
+  </div>
+</div>
+
+<div class="import-panel" style="margin-top:1.5rem">
+  <div class="section-head">
+    <h2>Informations système</h2>
+  </div>
+  <div id="systemInfo">Chargement…</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-settings.js"></script>
+{% endblock %}

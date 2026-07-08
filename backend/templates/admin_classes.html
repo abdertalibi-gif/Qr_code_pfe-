@@ -1,0 +1,121 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Classes{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Classes</h1>
+    <p>Gérez les classes, leurs niveaux, filières et localisations.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Toutes les classes</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchClasses" placeholder="Rechercher niveau, filière, année…" />
+    <button class="btn" id="btnOpenAddClasse">+ Nouvelle classe</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Niveau</th>
+        <th>Filière</th>
+        <th>Semestre</th>
+        <th>Année</th>
+        <th>Localisation</th>
+        <th>Étudiants</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="classesBody">
+      <tr class="empty-row"><td colspan="8">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add/Edit Classe -->
+<div class="modal-backdrop" id="modalClasse">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalClasseTitle">Ajouter une classe</h3>
+      <button class="modal-close" data-close="modalClasse">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="clId" />
+      <div class="field">
+        <label>Niveau <span class="req">*</span></label>
+        <select id="clNiveau">
+          <option value="">— Sélectionner —</option>
+          <option value="LIC">Licence</option>
+          <option value="LIC_EXC">Licence Excellence</option>
+          <option value="MAS">Master</option>
+          <option value="MAS_EXC">Master Parcours d'excellence</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Semestre <span class="req">*</span></label>
+        <select id="clSemestre" disabled>
+          <option value="">— Sélectionnez d'abord le niveau —</option>
+        </select>
+        <span class="spinner" id="clSemestreSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Filière <span class="req">*</span></label>
+        <select id="clFiliere" disabled>
+          <option value="">— Sélectionnez d'abord le semestre —</option>
+        </select>
+        <span class="spinner" id="clFiliereSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Module <span class="req">*</span></label>
+        <select id="clModule" disabled>
+          <option value="">— Sélectionnez d'abord la filière —</option>
+        </select>
+        <span class="spinner" id="clModuleSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Année universitaire <span class="req">*</span></label>
+        <input type="text" id="clYear" />
+      </div>
+      <div class="field">
+        <label>Type de localisation <span class="req">*</span></label>
+        <select id="clLocationType">
+          <option value="">— Sélectionner —</option>
+          <option value="BLOC">Bloc + Salle</option>
+          <option value="AMPHI">Amphithéâtre</option>
+          <option value="BOTH_ALLOWED">Bloc + Amphi (les deux)</option>
+        </select>
+      </div>
+      <div id="clBlockGroup" style="display:none">
+        <div class="field">
+          <label>Bloc <span class="req">*</span></label>
+          <select id="clBlock"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Salle <span class="req">*</span></label>
+          <select id="clRoom"><option value="">— Sélectionner —</option></select>
+        </div>
+      </div>
+      <div id="clAmphiGroup" style="display:none">
+        <div class="field">
+          <label>Amphithéâtre <span class="req">*</span></label>
+          <select id="clAmphi"><option value="">— Sélectionner —</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalClasse">Annuler</button>
+      <button class="btn" id="btnSubmitClasse">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-classes.js"></script>
+{% endblock %}
