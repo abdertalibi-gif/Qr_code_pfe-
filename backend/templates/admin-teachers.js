@@ -64,7 +64,7 @@ function renderTeachers() {
     '<td>' + esc(t.phone || '—') + '</td>' +
     '<td>' + esc(t.cin || '—') + '</td>' +
     '<td>' + esc((t.department_name || t.department) || '—') + '</td>' +
-    '<td>' + '—' + '</td>' +
+    '<td>' + esc(t.filiere_name || '—') + '</td>' +
     '<td>' + esc(t.grade || '—') + '</td>' +
     '<td>' + esc(t.speciality || '—') + '</td>' +
     '<td>' + (t.class_count ?? (t.assigned_class_ids ? t.assigned_class_ids.length : '—')) + '</td>' +
