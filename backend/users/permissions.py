@@ -99,20 +99,54 @@ def apply_role_filtering(queryset, model_type, request):
 
         if model_type == "teacher_list":
             return queryset.filter(
-                Q(assigned_classes__department=dept) | Q(sessions__classe__department=dept)
+                Q(assigned_classes__department=dept)
+                | Q(sessions__classe__department=dept)
+                | Q(sessions__classe__filiere__department=dept)
+                | Q(taught_modules__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "classe":
+            return queryset.filter(
+                Q(department=dept) | Q(filiere__department=dept)
+            ).distinct()
+
+        if model_type == "student":
+            return queryset.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "user_teacher":
+            return queryset.filter(
+                Q(assigned_classes__department=dept)
+                | Q(sessions__classe__department=dept)
+                | Q(sessions__classe__filiere__department=dept)
+                | Q(taught_modules__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "user_student":
+            return queryset.filter(
+                Q(student_profile__classe__department=dept)
+                | Q(student_profile__classe__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "session":
+            return queryset.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "attendance":
+            return queryset.filter(
+                Q(session__classe__department=dept)
+                | Q(session__classe__filiere__department=dept)
+            ).distinct()
+
+        if model_type == "suspicious":
+            return queryset.filter(
+                Q(session__classe__department=dept)
+                | Q(session__classe__filiere__department=dept)
             ).distinct()
 
         filters = {
-            "classe": {"department": dept},
-            "student": {"classe__department": dept},
-            "user_teacher": {
-                "assigned_classes__department": dept,
-                "sessions__classe__department": dept,
-            },
-            "user_student": {"student_profile__classe__department": dept},
-            "session": {"classe__department": dept},
-            "attendance": {"session__classe__department": dept},
-            "suspicious": {"session__classe__department": dept},
             "filiere": {"department": dept},
             "module": {"filiere__department": dept},
             "department": {"id": dept.id},
@@ -133,6 +167,7 @@ def apply_role_filtering(queryset, model_type, request):
             "user_teacher": {
                 "assigned_classes__filiere_id__in": filiere_ids,
                 "sessions__classe__filiere_id__in": filiere_ids,
+                "taught_modules__filiere_id__in": filiere_ids,
             },
             "user_student": {"student_profile__classe__filiere_id__in": filiere_ids},
             "session": {"classe__filiere_id__in": filiere_ids},

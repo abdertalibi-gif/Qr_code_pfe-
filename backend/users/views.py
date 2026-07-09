@@ -98,7 +98,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     Q(role="department_head", id=self.request.user.id)
                     | Q(role__in=("teacher", "admin"), assigned_classes__department=dept)
                     | Q(role="teacher", sessions__classe__department=dept)
+                    | Q(role="teacher", sessions__classe__filiere__department=dept)
+                    | Q(role="teacher", taught_modules__filiere__department=dept)
                     | Q(role="student", student_profile__classe__department=dept)
+                    | Q(role="student", student_profile__classe__filiere__department=dept)
                     | Q(role="program_manager", managed_filieres__department=dept)
                 ).distinct()
             else:
@@ -110,6 +113,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     Q(role="program_manager", id=self.request.user.id)
                     | Q(role__in=("teacher", "admin"), assigned_classes__filiere_id__in=filiere_ids)
                     | Q(role="teacher", sessions__classe__filiere_id__in=filiere_ids)
+                    | Q(role="teacher", taught_modules__filiere_id__in=filiere_ids)
                     | Q(role="student", student_profile__classe__filiere_id__in=filiere_ids)
                 ).distinct()
             else:
@@ -708,10 +712,19 @@ def admin_statistics(request):
         attend_qs = apply_role_filtering(attend_qs, "attendance", request)
         dept = get_user_department(request.user)
         if dept:
-            session_qs = session_qs.filter(classe__department=dept)
-            student_qs = User.objects.filter(
-                role="student", student_profile__classe__department=dept
+            session_qs = session_qs.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
             )
+            student_qs = User.objects.filter(
+                role="student",
+                student_profile__classe__department=dept
+            ) | User.objects.filter(
+                role="student",
+                student_profile__classe__filiere__department=dept
+            )
+        else:
+            session_qs = session_qs.none()
+            student_qs = User.objects.none()
     elif request.user.role == "program_manager":
         filiere_ids = get_user_filiere_ids(request.user)
         if filiere_ids:
@@ -814,7 +827,10 @@ def absence_statistics(request):
     if request.user.role == "department_head":
         dept = get_user_department(request.user)
         if dept:
-            qs = qs.filter(student__classe__department_id=dept.id)
+            qs = qs.filter(
+                Q(student__classe__department_id=dept.id)
+                | Q(student__classe__filiere__department_id=dept.id)
+            )
         else:
             qs = qs.none()
     elif request.user.role == "program_manager":
