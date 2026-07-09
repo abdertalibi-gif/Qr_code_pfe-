@@ -651,6 +651,7 @@ main {
 .stat-icon.indigo { background: var(--accent-soft); }
 .stat-icon.green  { background: var(--green-soft); }
 .stat-icon.purple { background: var(--purple-soft); }
+.stat-icon.teal   { background: var(--teal-soft); }
 
 .stat-card .label {
   font-size: .7rem;

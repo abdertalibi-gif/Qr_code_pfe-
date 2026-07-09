@@ -5,11 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PrésenceQR — Administration</title>
   <link rel="stylesheet" href="/dashboard.css" />
+  <script src="/admin-teachers.js"></script>
   <style>
     .req { color: var(--red, #e74c3c); }
     .spinner { display:inline-block; width:16px; height:16px; border:2px solid #ccc; border-top-color:var(--primary,#4361ee); border-radius:50%; animation:spin .6s linear infinite; margin-left:8px; vertical-align:middle; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .field .spinner { display:none; }
+    .sub-tabs { display:flex; gap:0; border-bottom:2px solid var(--border,#e2e8f0); margin-bottom:1.5rem; }
+    .sub-tab-btn { padding:.65rem 1.25rem; border:none; background:none; cursor:pointer; font-weight:600; font-size:.85rem; color:var(--muted,#64748b); border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--transition,.18s ease); white-space:nowrap; }
+    .sub-tab-btn:hover { color:var(--text,#0f172a); background:var(--surface2,#f8fafc); }
+    .sub-tab-btn.active { color:var(--accent,#4f46e5); border-bottom-color:var(--accent,#4f46e5); }
+    .sub-tab-panel { display:none; }
+    .sub-tab-panel.active { display:block; }
+    .stat-icon.red { background:var(--red-soft,#fef2f2); }
+    .stat-icon.amber { background:var(--amber-soft,#fffbeb); }
   </style>
 </head>
 <body class="dashboard-app">
@@ -46,6 +55,9 @@
       <span class="hero-chip">🎓 <strong id="heroStudentCount">—</strong> étudiants</span>
       <span class="hero-chip">📅 <strong id="heroSessionCount">—</strong> séances</span>
       <span class="hero-chip">📚 <strong id="heroModuleCount">—</strong> modules</span>
+      <span class="hero-chip">🚪 <strong id="heroRoomCount">—</strong> salles</span>
+      <span class="hero-chip">🏗️ <strong id="heroBlockCount">—</strong> blocs</span>
+      <span class="hero-chip">🎭 <strong id="heroAmphiCount">—</strong> amphithéâtres</span>
     </div>
   </div>
 
@@ -56,6 +68,9 @@
     </button>
     <button class="tab-btn active" data-tab="users">
       👤 Utilisateurs <span class="tab-count" id="cntUsers">—</span>
+    </button>
+    <button class="tab-btn" data-tab="teacher-import">
+      👨‍🏫 Enseignants <span class="tab-count" id="cntTeacherImport">—</span>
     </button>
     <button class="tab-btn" data-tab="students">
       🎓 Étudiants <span class="tab-count" id="cntStudents">—</span>
@@ -72,11 +87,11 @@
     <button class="tab-btn" data-tab="departments">
       🏛️ Départements <span class="tab-count" id="cntDepartments">—</span>
     </button>
-    <button class="tab-btn" data-tab="teacher-import">
-      👨‍🏫 Import enseignants <span class="tab-count" id="cntTeacherImport">—</span>
-    </button>
     <button class="tab-btn" data-tab="rooms">
-      🚪 Salles &amp; Amphithéâtres <span class="tab-count" id="cntRooms">—</span>
+      🏢 Gestion des salles <span class="tab-count" id="cntRooms">—</span>
+    </button>
+    <button class="tab-btn" data-tab="absence-stats">
+      📊 Statistiques des absences <span class="tab-count" id="cntAbsenceStats">—</span>
     </button>
   </div>
 
@@ -172,13 +187,47 @@
     </div>
   </div>
 
-  <!-- TEACHER IMPORT PANEL -->
+  <!-- TEACHERS PANEL -->
   <div class="tab-panel hidden" id="tab-teacher-import">
-    <div class="import-panel">
+    <div class="section-head">
+      <h2>Tous les enseignants</h2>
+      <div class="section-actions">
+        <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
+        <button class="btn" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
+        <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nom</th>
+            <th>E-mail</th>
+            <th>Téléphone</th>
+            <th>CIN</th>
+            <th>Département</th>
+            <th>Filière</th>
+            <th>Grade</th>
+            <th>Spécialité</th>
+            <th>Classes assignées</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="teachersBody">
+          <tr class="empty-row"><td colspan="12">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Teacher Import Panel -->
+    <div class="import-panel" style="margin-top:1.5rem">
       <div class="section-head">
-        <h2>Import enseignants</h2>
+        <h3>Import enseignants par Excel</h3>
         <div class="section-actions">
-          <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+          <button class="btn outline" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
         </div>
       </div>
 
@@ -411,51 +460,234 @@
       </div>
     </div>
 
-    <!-- ROOMS & AMPHITHEATERS PANEL -->
+    <!-- ROOMS & AMPHITHEATERS PANEL — Gestion des salles -->
     <div class="tab-panel" id="tab-rooms">
-      <div class="section-head">
-        <h2>Blocs</h2>
-        <div class="section-actions">
-          <input type="search" class="search-input" id="searchBlocks" placeholder="Rechercher un bloc…" />
-          <button class="btn" id="btnOpenAddBlock">+ Nouveau bloc</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nom du bloc</th>
-              <th>Salles</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="blocksBody">
-            <tr class="empty-row"><td colspan="4">Chargement…</td></tr>
-          </tbody>
-        </table>
+      <!-- Stats cards -->
+      <div class="stats-grid" style="margin-bottom:1.5rem">
+        <div class="stat-card"><div class="stat-icon purple">🏗️</div><div><div class="label">Blocs</div><div class="value" id="statBlocks">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon indigo">🚪</div><div><div class="label">Salles</div><div class="value" id="statRooms">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon teal">🎭</div><div><div class="label">Amphithéâtres</div><div class="value" id="statAmphis">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">🔴</div><div><div class="label">Salles occupées</div><div class="value" id="statOccRooms">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">🟢</div><div><div class="label">Salles libres</div><div class="value" id="statFreeRooms">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">🔴</div><div><div class="label">Amphis occupés</div><div class="value" id="statOccAmphis">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">🟢</div><div><div class="label">Amphis libres</div><div class="value" id="statFreeAmphis">—</div></div></div>
       </div>
 
-      <div class="section-head" style="margin-top:2rem">
-        <h2>Amphithéâtres</h2>
-        <div class="section-actions">
-          <input type="search" class="search-input" id="searchAmphis" placeholder="Rechercher un amphithéâtre…" />
-          <button class="btn" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
+      <!-- Sub-tabs -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" data-subtab="blocs">🏗️ Blocs</button>
+        <button class="sub-tab-btn" data-subtab="salles">🚪 Salles</button>
+        <button class="sub-tab-btn" data-subtab="amphis">🎭 Amphithéâtres</button>
+        <button class="sub-tab-btn" data-subtab="occupation">📡 Occupation en direct</button>
+      </div>
+
+      <!-- BLOCS sub-tab -->
+      <div class="sub-tab-panel active" id="subtab-blocs">
+        <div class="section-head">
+          <h2>Liste des blocs</h2>
+          <div class="section-actions">
+            <input type="search" class="search-input" id="searchBlocks" placeholder="Rechercher un bloc…" />
+            <button class="btn" id="btnOpenAddBlock">+ Nouveau bloc</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nom du bloc</th>
+                <th>Salles</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="blocksBody">
+              <tr class="empty-row"><td colspan="4">Chargement…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nom</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="amphisBody">
-            <tr class="empty-row"><td colspan="3">Chargement…</td></tr>
-          </tbody>
-        </table>
+
+      <!-- SALLES sub-tab -->
+      <div class="sub-tab-panel" id="subtab-salles">
+        <div class="section-head">
+          <h2>Liste des salles</h2>
+          <div class="section-actions">
+            <input type="search" class="search-input" id="searchSalles" placeholder="Rechercher une salle…" />
+            <button class="btn" id="btnOpenAddRoom">+ Nouvelle salle</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Salle</th>
+                <th>Bloc</th>
+                <th>Occupation</th>
+                <th>Enseignant</th>
+                <th>Séance</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sallesBody">
+              <tr class="empty-row"><td colspan="7">Chargement…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AMPHIS sub-tab -->
+      <div class="sub-tab-panel" id="subtab-amphis">
+        <div class="section-head">
+          <h2>Liste des amphithéâtres</h2>
+          <div class="section-actions">
+            <input type="search" class="search-input" id="searchAmphis" placeholder="Rechercher un amphithéâtre…" />
+            <button class="btn" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nom</th>
+                <th>Occupation</th>
+                <th>Enseignant</th>
+                <th>Séance</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="amphisListBody">
+              <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- OCCUPATION EN DIRECT sub-tab -->
+      <div class="sub-tab-panel" id="subtab-occupation">
+        <div class="section-head">
+          <h2>Occupation en direct</h2>
+          <div class="section-actions">
+            <span style="font-size:.8rem;color:var(--muted)" id="occupationLastRefresh">Auto‑actualisation toutes les 15s</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lieu</th>
+                <th>Type</th>
+                <th>Bloc</th>
+                <th>Enseignant</th>
+                <th>Filière</th>
+                <th>Classe</th>
+                <th>Module</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th>Temps restant</th>
+              </tr>
+            </thead>
+            <tbody id="occupationBody">
+              <tr class="empty-row"><td colspan="10">Chargement…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATISTIQUES DES ABSENCES PANEL -->
+    <div class="tab-panel" id="tab-absence-stats">
+      <!-- 8 stat cards -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">📊</div><div><div class="label">Total</div><div class="value" id="absStatTotal">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="label">Présences</div><div class="value" id="absStatPresent">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="label">Absences</div><div class="value" id="absStatAbsent">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⚠️</div><div><div class="label">Taux d'absence</div><div class="value" id="absStatRate">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">👨‍🎓</div><div><div class="label">Étudiants</div><div class="value" id="absStatStudents">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon indigo">📅</div><div><div class="label">Séances</div><div class="value" id="absStatSessions">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon teal">👨‍🏫</div><div><div class="label">Enseignants</div><div class="value" id="absStatTeachers">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon pink">📚</div><div><div class="label">Modules</div><div class="value" id="absStatModules">—</div></div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:end">
+        <div class="field" style="flex:1;min-width:140px">
+          <label>Du</label>
+          <input type="date" id="absDateFrom" class="form-control" />
+        </div>
+        <div class="field" style="flex:1;min-width:140px">
+          <label>Au</label>
+          <input type="date" id="absDateTo" class="form-control" />
+        </div>
+        <div class="field" style="flex:1;min-width:160px">
+          <label>Filière</label>
+          <select id="absFiliere" class="form-control"><option value="">Toutes</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:160px">
+          <label>Module</label>
+          <select id="absModule" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:160px">
+          <label>Enseignant</label>
+          <select id="absTeacher" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:160px">
+          <label>Département</label>
+          <select id="absDepartment" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="applyAbsenceFilters()" style="height:38px">🔍 Appliquer</button>
+        <button class="btn btn-secondary" onclick="resetAbsenceFilters()" style="height:38px">↺ Réinitialiser</button>
+      </div>
+
+      <!-- Chart section -->
+      <div style="background:var(--card-bg);border-radius:10px;padding:1rem;margin-bottom:1rem">
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap">
+          <button class="btn btn-sm chart-type-btn active" data-chart="histogram" onclick="switchAbsenceChart('histogram')">📊 Histogramme</button>
+          <button class="btn btn-sm chart-type-btn" data-chart="pie" onclick="switchAbsenceChart('pie')">🥧 Camembert</button>
+          <button class="btn btn-sm chart-type-btn" data-chart="line" onclick="switchAbsenceChart('line')">📈 Courbe</button>
+          <button class="btn btn-sm chart-type-btn" data-chart="bar" onclick="switchAbsenceChart('bar')">📊 Barres</button>
+          <div style="margin-left:auto;display:flex;gap:0.5rem">
+            <button class="btn btn-sm btn-success" onclick="exportAbsenceExcel()">📥 Excel</button>
+            <button class="btn btn-sm btn-danger" onclick="exportAbsencePDF()">📥 PDF</button>
+          </div>
+        </div>
+        <canvas id="absenceChart" height="300"></canvas>
+      </div>
+
+      <!-- Data sub-tabs -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" data-subtab="abs-student">👨‍🎓 Par étudiant</button>
+        <button class="sub-tab-btn" data-subtab="abs-teacher">👨‍🏫 Par enseignant</button>
+        <button class="sub-tab-btn" data-subtab="abs-module">📚 Par module</button>
+        <button class="sub-tab-btn" data-subtab="abs-filiere">🏫 Par filière</button>
+        <button class="sub-tab-btn" data-subtab="abs-period">📅 Par période</button>
+        <button class="sub-tab-btn" data-subtab="abs-recent">🕐 Récentes</button>
+      </div>
+
+      <!-- Par étudiant -->
+      <div class="sub-tab-panel active" id="abs-student">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Code Massar</th><th>Nom</th><th>Prénom</th><th>Total</th><th>Absences</th><th>Taux</th></tr></thead><tbody id="absStudentBody"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table></div>
+      </div>
+      <!-- Par enseignant -->
+      <div class="sub-tab-panel" id="abs-teacher">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Enseignant</th><th>Total</th><th>Absences</th><th>Taux</th></tr></thead><tbody id="absTeacherBody"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody></table></div>
+      </div>
+      <!-- Par module -->
+      <div class="sub-tab-panel" id="abs-module">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Module</th><th>Total</th><th>Absences</th><th>Taux</th></tr></thead><tbody id="absModuleBody"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody></table></div>
+      </div>
+      <!-- Par filière -->
+      <div class="sub-tab-panel" id="abs-filiere">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Filière</th><th>Total</th><th>Absences</th><th>Taux</th></tr></thead><tbody id="absFiliereBody"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody></table></div>
+      </div>
+      <!-- Par période -->
+      <div class="sub-tab-panel" id="abs-period">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Présents</th><th>Absents</th><th>Total</th><th>Taux d'absence</th></tr></thead><tbody id="absPeriodBody"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody></table></div>
+      </div>
+      <!-- Récentes -->
+      <div class="sub-tab-panel" id="abs-recent">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Étudiant</th><th>Code Massar</th><th>Module</th><th>Enseignant</th><th>Date</th><th>Heure</th></tr></thead><tbody id="absRecentBody"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table></div>
       </div>
     </div>
   </main>
@@ -692,39 +924,6 @@
         <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
           Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
         </p>
-      </div>
-      <div class="field" data-roles="teacher,department_head" style="display:none">
-        <label>Département</label>
-        <select id="uDepartment"><option value="">— Sélectionner —</option></select>
-      </div>
-      <div class="field" data-roles="teacher,program_manager" style="display:none">
-        <label>Filière</label>
-        <select id="uFiliere"><option value="">— Sélectionner —</option></select>
-      </div>
-      <div class="field role-field" data-roles="teacher" style="display:none">
-        <label class="checkbox-label">
-          <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
-        </label>
-      </div>
-      <div class="field" data-roles="student" style="display:none">
-        <div class="field-row">
-          <div class="field">
-            <label>Code Massar</label>
-            <input type="text" id="uCodeMassar" placeholder="ex: MA1234567890" />
-          </div>
-          <div class="field">
-            <label>Code Apogée</label>
-            <input type="text" id="uCodeApogee" placeholder="optionnel" />
-          </div>
-        </div>
-        <div class="field">
-          <label>Classe</label>
-          <select id="uStudentClasse"><option value="">— Sélectionner —</option></select>
-        </div>
-        <div class="field">
-          <label>Filière</label>
-          <select id="uStudentFiliere"><option value="">— Sélectionner —</option></select>
-        </div>
       </div>
       <div class="field" data-roles="teacher,department_head" style="display:none">
         <label>Département</label>
@@ -1007,9 +1206,83 @@
   </div>
 </div>
 
+<!-- ── MODAL: Add Teacher ── -->
+<div class="modal-backdrop" id="modalAddTeacher">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3>Nouvel enseignant</h3>
+      <button type="button" class="modal-close" data-close="modalAddTeacher" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Prénom</label><input type="text" id="tFirstName" placeholder="Jean" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="tLastName" placeholder="Dupont" /></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" id="tEmail" placeholder="john@school.ma" /></div>
+      <div class="field-row">
+        <div class="field"><label>Téléphone</label><input type="text" id="tPhone" placeholder="+212 6X XX XX XX" /></div>
+        <div class="field"><label>CIN</label><input type="text" id="tCin" placeholder="EE123456" /></div>
+      </div>
+      <div class="field"><label>Département</label><select id="tDepartment"><option value="">— Sélectionner —</option></select></div>
+      <div class="field"><label>Filière</label><select id="tFiliere"><option value="">— Sélectionner —</option></select></div>
+      <div class="field-row">
+        <div class="field"><label>Grade</label><input type="text" id="tGrade" placeholder="Professeur" /></div>
+        <div class="field"><label>Spécialité</label><input type="text" id="tSpeciality" placeholder="Informatique" /></div>
+      </div>
+      <div class="field"><label>Mot de passe</label><input type="password" id="tPassword" placeholder="••••••••" /></div>
+      <div class="field" id="tClassesWrap">
+        <label>Classes assignées</label>
+        <select id="tClasses" multiple size="4"></select>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAddTeacher">Annuler</button>
+      <button class="btn" id="btnSubmitTeacher">Créer l'enseignant</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Edit Teacher ── -->
+<div class="modal-backdrop" id="modalEditTeacher">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3>Modifier l'enseignant</h3>
+      <button class="modal-close" data-close="modalEditTeacher">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Prénom</label><input type="text" id="etFirstName" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="etLastName" /></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" id="etEmail" /></div>
+      <div class="field-row">
+        <div class="field"><label>Téléphone</label><input type="text" id="etPhone" /></div>
+        <div class="field"><label>CIN</label><input type="text" id="etCin" /></div>
+      </div>
+      <div class="field"><label>Département</label><select id="etDepartment"><option value="">— Sélectionner —</option></select></div>
+      <div class="field"><label>Filière</label><select id="etFiliere"><option value="">— Sélectionner —</option></select></div>
+      <div class="field-row">
+        <div class="field"><label>Grade</label><input type="text" id="etGrade" /></div>
+        <div class="field"><label>Spécialité</label><input type="text" id="etSpeciality" /></div>
+      </div>
+      <div class="field" id="etClassesWrap">
+        <label>Classes assignées</label>
+        <select id="etClasses" multiple size="4"></select>
+      </div>
+      <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="etPassword" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalEditTeacher">Annuler</button>
+      <button class="btn" id="btnSubmitEditTeacher">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="/api.js"></script>
 <script src="/i18n-fr.js"></script>
 <script src="/session-form.js"></script>
@@ -1154,10 +1427,15 @@
     await loadAttendance();
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
+    if (typeof initTeachersTab === 'function') await initTeachersTab();
     setupDepartmentUI();
     setupRoomsEventListeners();
     loadBlocks();
     loadAmphitheaters();
+    loadLiveOccupation();
+    setupAbsenceSubTabNavigation();
+    populateAbsenceFilters();
+    loadAbsenceStats();
   }
 
   async function loadDashboardCounts() {
@@ -1168,7 +1446,18 @@
       set('cntCurriculum', d.modules);
       set('cntDepartments', d.departments);
       set('cntTeacherImport', d.teachers);
+      set('heroUserCount', d.users);
       set('cntRooms', d.rooms);
+      set('heroRoomCount', d.rooms);
+      set('heroBlockCount', d.blocks);
+      set('heroAmphiCount', d.amphitheaters);
+      set('statRooms', d.rooms);
+      set('statBlocks', d.blocks);
+      set('statAmphis', d.amphitheaters);
+      set('statOccRooms', '…');
+      set('statFreeRooms', '…');
+      set('statOccAmphis', '…');
+      set('statFreeAmphis', '…');
       set('heroTeacherCount', d.teachers);
       set('heroStudentCount', d.students);
       set('heroSessionCount', d.sessions);
@@ -1200,7 +1489,7 @@
     }
     // Show/hide tabs based on role
     const isAdmin = user.role === 'admin';
-    const allTabs = ['attendance', 'users', 'students', 'classes', 'curriculum', 'sessions', 'departments'];
+    const allTabs = ['attendance', 'users', 'teacher-import', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'rooms', 'absence-stats'];
     const allowedTabs = isAdmin
       ? allTabs
       : ['departments', 'attendance', 'sessions', 'curriculum'];  // department_head/program_manager
@@ -1687,34 +1976,12 @@
     try {
       const data = await API.apiFetch('/classes/');
       allClasses = Array.isArray(data) ? data : (data.results || []);
-      await Promise.all([loadBlocks(), loadAmphitheaters()]);
       renderClasses();
       document.getElementById('cntClasses').textContent = allClasses.length;
       populateClasseSelects();
     } catch (e) {
       document.getElementById('classesBody').innerHTML =
         `<tr class="empty-row"><td colspan="8">Erreur: ${esc(e.message)}</td></tr>`;
-    }
-  }
-
-  let allBlocks = [];
-  let allAmphis = [];
-
-  async function loadBlocks() {
-    try {
-      const data = await API.apiFetch('/blocks/');
-      allBlocks = Array.isArray(data) ? data : [];
-    } catch (e) {
-      allBlocks = [];
-    }
-  }
-
-  async function loadAmphitheaters() {
-    try {
-      const data = await API.apiFetch('/amphitheaters/');
-      allAmphis = Array.isArray(data) ? data : [];
-    } catch (e) {
-      allAmphis = [];
     }
   }
 
@@ -2902,10 +3169,6 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     openModal('modalAddStudent');
   });
 
-  function showSpinner(id, show) {
-    document.getElementById(id).style.display = show ? 'inline-block' : 'none';
-  }
-
   async function loadAddStudentNiveaux() {
     try {
       const data = await API.apiFetch('/curriculum/niveaux/');
@@ -3000,6 +3263,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   async function loadDepartments() {
     try {
       const data = await API.apiFetch('/departments/');
+      console.log("Departments API response:", data.length, "items");
       allDepartments = Array.isArray(data) ? data : (data.results || []);
       renderDepartments();
       document.getElementById('cntDepartments').textContent = allDepartments.length;
@@ -3076,10 +3340,11 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     });
   }
 
-  function openDepartmentModal(dept) {
+  async function openDepartmentModal(dept) {
+    console.log("Opening department modal", dept ? "edit id=" + dept.id : "new");
     document.getElementById('departmentForm').reset();
     editingDepartmentId = null;
-    loadDeptHeadSelect();
+    await loadDeptHeadSelect();
 
     if (dept) {
       editingDepartmentId = dept.id;
@@ -3087,6 +3352,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
       document.getElementById('deptName').value = dept.name;
       if (dept.head) {
         document.getElementById('deptHead').value = dept.head;
+        console.log("Department head set to:", dept.head);
       }
     } else {
       document.getElementById('departmentModalTitle').textContent = '➕ Nouveau département';
@@ -3094,9 +3360,18 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     document.getElementById('modalDepartment').classList.add('show');
   }
 
+  var _editingDeptLoading = false;
+
   async function editDepartment(id) {
-    var dept = allDepartments.find(function (d) { return d.id === id; });
-    if (dept) openDepartmentModal(dept);
+    if (_editingDeptLoading) return;
+    _editingDeptLoading = true;
+    console.log("Editing department ID:", id);
+    try {
+      var dept = allDepartments.find(function (d) { return d.id === id; });
+      if (dept) await openDepartmentModal(dept);
+    } finally {
+      _editingDeptLoading = false;
+    }
   }
 
   async function deleteDepartment(id) {
@@ -3115,6 +3390,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   var _filiereManagerChanges = [];
 
   async function manageFiliereManagers(deptId) {
+    console.log("Opening manage department ID:", deptId);
     _currentDeptIdForManagers = deptId;
     _filiereManagerChanges = [];
     var dept = allDepartments.find(function (d) { return d.id === deptId; });
@@ -3173,7 +3449,8 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     }
   }
 
-  document.getElementById('btnSaveFiliereManagers')?.addEventListener('click', async function () {
+  async function saveFiliereManagers() {
+    console.log("Saving filiere managers");
     var selects = document.querySelectorAll('.filiere-manager-select');
     var updates = [];
     selects.forEach(function (sel) {
@@ -3195,20 +3472,24 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         });
         successCount++;
       } catch (e) {
+        console.log("Error saving filiere", updates[i].id, e.message);
         errorCount++;
       }
     }
     if (errorCount) {
-      showToast(successCount + ' mis à jour, ' + errorCount + ' erreur(s).', errorCount ? 'error' : 'success');
+      showToast(successCount + ' mis à jour, ' + errorCount + ' erreur(s).', 'error');
     } else {
       showToast('Tous les responsables ont été mis à jour.', 'success');
+      document.getElementById('modalFiliereManagers').classList.remove('show');
     }
-    document.getElementById('modalFiliereManagers').classList.remove('show');
     await loadDepartments();
     await loadUsers();
-  });
+  }
+
+  document.getElementById('btnSaveFiliereManagers').onclick = saveFiliereManagers;
 
   async function saveDepartment() {
+    console.log("Saving department", editingDepartmentId ? "edit id=" + editingDepartmentId : "new");
     var name = document.getElementById('deptName').value.trim();
     if (!name) { showToast('Le nom est requis', 'error'); return; }
     var head = document.getElementById('deptHead').value || null;
@@ -3231,12 +3512,15 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   /* ── Rooms & Amphitheaters management ── */
   let allBlocks = [];
   let allAmphis = [];
+  let occupationTimer = null;
+  let currentLiveSessions = [];
 
   async function loadBlocks() {
     try {
       const data = await API.apiFetch('/blocks/');
       allBlocks = Array.isArray(data) ? data : [];
       renderBlocks();
+      renderSalles();
     } catch (e) {
       const tbody = document.getElementById('blocksBody');
       if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Erreur: ' + esc(e.message) + '</td></tr>';
@@ -3247,10 +3531,10 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     try {
       const data = await API.apiFetch('/amphitheaters/');
       allAmphis = Array.isArray(data) ? data : [];
-      renderAmphis();
+      renderAmphisList();
     } catch (e) {
-      const tbody = document.getElementById('amphisBody');
-      if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Erreur: ' + esc(e.message) + '</td></tr>';
+      const tbody = document.getElementById('amphisListBody');
+      if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur: ' + esc(e.message) + '</td></tr>';
     }
   }
 
@@ -3273,7 +3557,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         '<td class="actions-cell">' +
           '<button class="btn sm outline" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
           '<button class="btn sm outline" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
-          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Supprimer</button>' +
+          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Désactiver</button>' +
         '</td>' +
       '</tr>';
       rooms.forEach(function (r) {
@@ -3283,7 +3567,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
           '<td style="font-size:.85rem;color:var(--muted)">' + esc(b.name) + '</td>' +
           '<td class="actions-cell">' +
             '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + b.id + ')">Modifier</button>' +
-            '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Supprimer</button>' +
+            '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
           '</td>' +
         '</tr>';
       });
@@ -3291,23 +3575,83 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     tbody.innerHTML = html;
   }
 
-  function renderAmphis() {
-    const tbody = document.getElementById('amphisBody');
+  function renderSalles() {
+    const tbody = document.getElementById('sallesBody');
+    if (!tbody) return;
+    const query = searchQuery('searchSalles');
+    let allRooms = [];
+    allBlocks.forEach(b => {
+      (b.rooms || []).forEach(r => {
+        allRooms.push({ id: r.id, name: r.name, block_id: b.id, block_name: b.name });
+      });
+    });
+    const filtered = allRooms.filter(r => matchesQuery(query, r.name, r.block_name));
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">' + (query ? 'Aucun résultat.' : 'Aucune salle.') + '</td></tr>';
+      return;
+    }
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const timeNow = now.toTimeString().slice(0, 5);
+    tbody.innerHTML = filtered.map(function (r, i) {
+      const occ = currentLiveSessions.find(s =>
+        s.room === r.id && s.date === today &&
+        s.start_time <= timeNow && s.end_time >= timeNow
+      );
+      const badge = occ
+        ? '<span class="badge badge-present">Occupée</span>'
+        : '<span class="badge badge-absent">Libre</span>';
+      const teacher = occ ? esc(occ.teacher_name || '') : '—';
+      const session = occ ? esc(occ.subject || '') : '—';
+      return '<tr>' +
+        '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+        '<td><strong>' + esc(r.name) + '</strong></td>' +
+        '<td>' + esc(r.block_name) + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-size:.85rem">' + teacher + '</td>' +
+        '<td style="font-size:.85rem">' + session + '</td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + r.block_id + ')">Modifier</button>' +
+          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderAmphisList() {
+    const tbody = document.getElementById('amphisListBody');
     if (!tbody) return;
     const query = searchQuery('searchAmphis');
     const filtered = allAmphis.filter(a => matchesQuery(query, a.name));
     if (!filtered.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">' + (query ? 'Aucun résultat.' : 'Aucun amphithéâtre.') + '</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">' + (query ? 'Aucun résultat.' : 'Aucun amphithéâtre.') + '</td></tr>';
       return;
     }
-    tbody.innerHTML = filtered.map((a, i) => '<tr>' +
-      '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
-      '<td><strong>' + esc(a.name) + '</strong></td>' +
-      '<td class="actions-cell">' +
-        '<button class="btn sm outline" onclick="openEditAmphi(' + a.id + ')">Modifier</button>' +
-        '<button class="btn sm outline" style="color:var(--red)" onclick="deleteAmphi(' + a.id + ')">Supprimer</button>' +
-      '</td>' +
-    '</tr>').join('');
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const timeNow = now.toTimeString().slice(0, 5);
+    tbody.innerHTML = filtered.map(function (a, i) {
+      const occ = currentLiveSessions.find(s =>
+        s.amphitheater === a.id && s.date === today &&
+        s.start_time <= timeNow && s.end_time >= timeNow
+      );
+      const badge = occ
+        ? '<span class="badge badge-present">Occupé</span>'
+        : '<span class="badge badge-absent">Libre</span>';
+      const teacher = occ ? esc(occ.teacher_name || '') : '—';
+      const session = occ ? esc(occ.subject || '') : '—';
+      return '<tr>' +
+        '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+        '<td><strong>' + esc(a.name) + '</strong></td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-size:.85rem">' + teacher + '</td>' +
+        '<td style="font-size:.85rem">' + session + '</td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn sm outline" onclick="openEditAmphi(' + a.id + ')">Modifier</button>' +
+          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteAmphi(' + a.id + ')">Désactiver</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
   }
 
   function openEditBlock(id) {
@@ -3320,10 +3664,10 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   }
 
   async function deleteBlock(id) {
-    if (!confirm('Supprimer ce bloc et ses salles ?')) return;
+    if (!confirm('Désactiver ce bloc et ses salles ?')) return;
     try {
       await API.apiFetch('/blocks/' + id + '/', { method: 'DELETE' });
-      showToast('Bloc supprimé.', 'success');
+      showToast('Bloc désactivé.', 'success');
       await loadBlocks();
     } catch (e) { showToast(e.message, 'error'); }
   }
@@ -3355,10 +3699,10 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   }
 
   async function deleteRoom(id) {
-    if (!confirm('Supprimer cette salle ?')) return;
+    if (!confirm('Désactiver cette salle ?')) return;
     try {
       await API.apiFetch('/rooms/' + id + '/', { method: 'DELETE' });
-      showToast('Salle supprimée.', 'success');
+      showToast('Salle désactivée.', 'success');
       await loadBlocks();
     } catch (e) { showToast(e.message, 'error'); }
   }
@@ -3373,17 +3717,354 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   }
 
   async function deleteAmphi(id) {
-    if (!confirm('Supprimer cet amphithéâtre ?')) return;
+    if (!confirm('Désactiver cet amphithéâtre ?')) return;
     try {
       await API.apiFetch('/amphitheaters/' + id + '/', { method: 'DELETE' });
-      showToast('Amphithéâtre supprimé.', 'success');
+      showToast('Amphithéâtre désactivé.', 'success');
       await loadAmphitheaters();
     } catch (e) { showToast(e.message, 'error'); }
   }
 
+  async function loadOccupationStats() {
+    try {
+      const data = await API.apiFetch('/sessions/');
+      const sessions = Array.isArray(data) ? data : (data.results || []);
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const timeNow = now.toTimeString().slice(0, 5);
+      currentLiveSessions = sessions.filter(s =>
+        s.date === today && s.start_time <= timeNow && s.end_time >= timeNow
+      );
+      const occRoomIds = new Set(currentLiveSessions.filter(s => s.room).map(s => s.room));
+      const occAmphiIds = new Set(currentLiveSessions.filter(s => s.amphitheater).map(s => s.amphitheater));
+      let totalRooms = 0;
+      allBlocks.forEach(b => { totalRooms += (b.rooms || []).length; });
+      const totalAmphis = allAmphis.length;
+      const occRooms = occRoomIds.size;
+      const occAmphis = occAmphiIds.size;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('statOccRooms', occRooms);
+      set('statFreeRooms', totalRooms - occRooms);
+      set('statOccAmphis', occAmphis);
+      set('statFreeAmphis', totalAmphis - occAmphis);
+      renderSalles();
+      renderAmphisList();
+    } catch (e) { /* ignore */ }
+  }
+
+  function renderLiveOccupation() {
+    const tbody = document.getElementById('occupationBody');
+    if (!tbody) return;
+    if (!currentLiveSessions.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Aucune occupation en cours.</td></tr>';
+      return;
+    }
+    const now = new Date();
+    tbody.innerHTML = currentLiveSessions.map(function (s) {
+      const location = s.room_name
+        ? esc(s.room_name)
+        : (s.amphitheater_name ? esc(s.amphitheater_name) : '—');
+      const type = s.room_name ? 'Salle' : 'Amphi';
+      const block = s.block_name ? esc(s.block_name) : '—';
+      const teacher = esc(s.teacher_name || '—');
+      const filiere = s.classe_field ? esc(s.classe_field) : '—';
+      const classe = esc(s.classe_name || '—');
+      const module = esc(s.module_name || '—');
+      const start = esc(s.start_time || '');
+      const end = esc(s.end_time || '');
+      let remaining = '—';
+      if (s.end_time) {
+        const endParts = s.end_time.split(':');
+        const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const diff = endMin - nowMin;
+        if (diff > 0) remaining = Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm';
+        else remaining = 'Terminé';
+      }
+      return '<tr>' +
+        '<td><strong>' + location + '</strong></td>' +
+        '<td>' + type + '</td>' +
+        '<td>' + block + '</td>' +
+        '<td>' + teacher + '</td>' +
+        '<td>' + filiere + '</td>' +
+        '<td>' + classe + '</td>' +
+        '<td>' + module + '</td>' +
+        '<td>' + start + '</td>' +
+        '<td>' + end + '</td>' +
+        '<td>' + remaining + '</td>' +
+      '</tr>';
+    }).join('');
+    const refresh = document.getElementById('occupationLastRefresh');
+    if (refresh) refresh.textContent = 'Dernière mise à jour: ' + now.toLocaleTimeString() + ' (auto 15s)';
+  }
+
+  async function loadLiveOccupation() {
+    await loadOccupationStats();
+    renderLiveOccupation();
+  }
+
+  function startOccupationAutoRefresh() {
+    if (occupationTimer) clearInterval(occupationTimer);
+    occupationTimer = setInterval(async () => {
+      await loadLiveOccupation();
+    }, 15000);
+  }
+
+  function setupSubTabNavigation() {
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sub-tab-panel').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        const panel = document.getElementById('subtab-' + this.dataset.subtab);
+        if (panel) panel.classList.add('active');
+        if (this.dataset.subtab === 'occupation') {
+          loadLiveOccupation();
+          startOccupationAutoRefresh();
+        } else {
+          if (occupationTimer) { clearInterval(occupationTimer); occupationTimer = null; }
+        }
+      });
+    });
+  }
+
+  /* ── Absence Statistics ── */
+  let absenceData = null;
+  let absenceChart = null;
+  let currentChartType = 'histogram';
+
+  async function loadAbsenceStats() {
+    const el = document.getElementById('tab-absence-stats');
+    if (!el) return;
+    const dateFrom = document.getElementById('absDateFrom')?.value || '';
+    const dateTo = document.getElementById('absDateTo')?.value || '';
+    const filiereId = document.getElementById('absFiliere')?.value || '';
+    const moduleId = document.getElementById('absModule')?.value || '';
+    const teacherId = document.getElementById('absTeacher')?.value || '';
+    const departmentId = document.getElementById('absDepartment')?.value || '';
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo) params.set('date_to', dateTo);
+    if (filiereId) params.set('filiere_id', filiereId);
+    if (moduleId) params.set('module_id', moduleId);
+    if (teacherId) params.set('teacher_id', teacherId);
+    if (departmentId) params.set('department_id', departmentId);
+    try {
+      absenceData = await API.apiFetch('/absence-stats/?' + params.toString());
+      renderAbsenceStats(absenceData);
+    } catch (e) {
+      showToast('Erreur chargement statistiques: ' + e.message, 'error');
+    }
+  }
+
+  function renderAbsenceStats(d) {
+    const s = d.summary;
+    const set = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    set('absStatTotal', s.total);
+    set('absStatPresent', s.present);
+    set('absStatAbsent', s.absent);
+    set('absStatRate', s.absence_rate + '%');
+    set('absStatStudents', s.total_students);
+    set('absStatSessions', s.total_sessions);
+    set('absStatTeachers', s.total_teachers);
+    set('absStatModules', s.total_modules);
+
+    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Étudiant', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absTeacherBody', d.by_teacher, ['teacher_name', 'total', 'absent_count', 'rate'], ['Enseignant', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absModuleBody', d.by_module, ['module_name', 'total', 'absent_count', 'rate'], ['Module', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absFiliereBody', d.by_filiere, ['filiere_name', 'total', 'absent_count', 'rate'], ['Filière', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absPeriodBody', d.by_day, ['date', 'present', 'absent', 'total', 'rate'], ['Date', 'Présents', 'Absents', 'Total', 'Taux']);
+    renderAbsenceTable('absRecentBody', d.recent_absences, ['student', 'student__code_massar', 'module', 'teacher', 'date', 'time'], ['Étudiant', 'Code Massar', 'Module', 'Enseignant', 'Date', 'Heure']);
+    renderAbsenceChart(d);
+    const cnt = document.getElementById('cntAbsenceStats');
+    if (cnt) cnt.textContent = s.total;
+  }
+
+  function renderAbsenceTable(tbodyId, data, fields, headers) {
+    var tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="' + headers.length + '">Aucune donnée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(function(row) {
+      var cells = [];
+      for (var i = 0; i < fields.length; i++) {
+        var f = fields[i];
+        var val = row[f];
+        if (val === null || val === undefined) { cells.push('<td>—</td>'); continue; }
+        var display = val;
+        if (f === 'rate' || f === 'absence_rate') display = val + '%';
+        cells.push('<td>' + display + '</td>');
+      }
+      return '<tr>' + cells.join('') + '</tr>';
+    }).join('');
+  }
+
+  function renderAbsenceChart(d) {
+    var canvas = document.getElementById('absenceChart');
+    if (!canvas) return;
+    if (absenceChart) { absenceChart.destroy(); absenceChart = null; }
+    var ctx = canvas.getContext('2d');
+    var labels, datasets, chartType;
+    switch (currentChartType) {
+      case 'histogram':
+        chartType = 'bar';
+        labels = d.by_day.slice(0, 30).map(function(x) { var d = x.date; return d ? d.slice(0, 10) : ''; });
+        datasets = [
+          { label: 'Présents', data: d.by_day.slice(0, 30).map(function(x) { return x.present; }), backgroundColor: 'rgba(34,197,94,0.7)', borderColor: 'rgb(34,197,94)', borderWidth: 1 },
+          { label: 'Absents', data: d.by_day.slice(0, 30).map(function(x) { return x.absent; }), backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgb(239,68,68)', borderWidth: 1 },
+        ];
+        break;
+      case 'pie':
+        chartType = 'pie';
+        var totalP = d.summary.present, totalA = d.summary.absent;
+        labels = ['Présents', 'Absents'];
+        datasets = [{
+          data: [totalP, totalA],
+          backgroundColor: ['rgba(34,197,94,0.8)', 'rgba(239,68,68,0.8)'],
+          borderColor: ['rgb(34,197,94)', 'rgb(239,68,68)'],
+          borderWidth: 2,
+        }];
+        break;
+      case 'line':
+        chartType = 'line';
+        labels = d.by_day.slice(0, 30).map(function(x) { var d = x.date; return d ? d.slice(0, 10) : ''; });
+        datasets = [
+          { label: 'Taux d\'absence', data: d.by_day.slice(0, 30).map(function(x) { return x.rate; }), borderColor: 'rgb(239,68,68)', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 3 },
+        ];
+        break;
+      case 'bar':
+      default:
+        chartType = 'bar';
+        var topMods = d.by_module.slice(0, 10);
+        labels = topMods.map(function(x) { var n = x.module__name || x.module_name; return n ? n.slice(0, 20) : '—'; });
+        datasets = [
+          { label: 'Absences', data: topMods.map(function(x) { return x.absent_count || 0; }), backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgb(239,68,68)', borderWidth: 1 },
+        ];
+        break;
+    }
+    absenceChart = new Chart(ctx, {
+      type: chartType,
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+        },
+        scales: chartType === 'pie' ? undefined : {
+          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  function switchAbsenceChart(type) {
+    currentChartType = type;
+    document.querySelectorAll('.chart-type-btn').forEach(function(b) { b.classList.remove('active'); });
+    var btn = document.querySelector('.chart-type-btn[data-chart="' + type + '"]');
+    if (btn) btn.classList.add('active');
+    if (absenceData) renderAbsenceChart(absenceData);
+  }
+
+  function applyAbsenceFilters() {
+    loadAbsenceStats();
+  }
+
+  function resetAbsenceFilters() {
+    var df = document.getElementById('absDateFrom'); if (df) df.value = '';
+    var dt = document.getElementById('absDateTo'); if (dt) dt.value = '';
+    var af = document.getElementById('absFiliere'); if (af) af.value = '';
+    var am = document.getElementById('absModule'); if (am) am.value = '';
+    var at = document.getElementById('absTeacher'); if (at) at.value = '';
+    var ad = document.getElementById('absDepartment'); if (ad) ad.value = '';
+    loadAbsenceStats();
+  }
+
+  function exportAbsenceExcel() {
+    if (!absenceData) { showToast('Chargez d\'abord les données.', 'error'); return; }
+    var rows = [['Code Massar', 'Nom', 'Prénom', 'Module', 'Enseignant', 'Date', 'Heure']];
+    (absenceData.recent_absences || []).forEach(function(r) {
+      rows.push([r.code_massar || '', (r.student || '').split(' ')[0] || '', (r.student || '').split(' ').slice(1).join(' ') || '', r.module || '', r.teacher || '', r.date || '', r.time || '']);
+    });
+    var csv = rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'absences.csv'; link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function exportAbsencePDF() {
+    if (!absenceData) { showToast('Chargez d\'abord les données.', 'error'); return; }
+    var w = window.open('', '_blank');
+    if (!w) { showToast('Autorisez les popups pour exporter.', 'error'); return; }
+    var s = absenceData.summary;
+    var rowsHtml = (absenceData.recent_absences || []).slice(0, 20).map(function(r) {
+      return '<tr><td>' + (r.student || '') + '</td><td>' + (r.code_massar || '') + '</td><td>' + (r.module || '') + '</td><td>' + (r.date || '') + '</td><td>' + (r.time || '') + '</td></tr>';
+    }).join('');
+    w.document.write('<html><head><meta charset="utf-8"><title>Statistiques des absences</title><style>body{font-family:sans-serif;padding:20px}h2{color:#1e293b}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left}th{background:#1e293b;color:#fff}.stats{display:flex;gap:1rem;flex-wrap:wrap;margin:10px 0}.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;text-align:center}.stat .val{font-size:1.4rem;font-weight:700;color:#0f172a}.stat .lbl{font-size:.8rem;color:#64748b}</style></head><body>');
+    w.document.write('<h2>Statistiques des absences</h2>');
+    w.document.write('<div class="stats"><div class="stat"><div class="val">' + s.total + '</div><div class="lbl">Total</div></div><div class="stat"><div class="val">' + s.present + '</div><div class="lbl">Présents</div></div><div class="stat"><div class="val" style="color:#dc2626">' + s.absent + '</div><div class="lbl">Absents</div></div><div class="stat"><div class="val" style="color:#dc2626">' + s.absence_rate + '%</div><div class="lbl">Taux absence</div></div></div>');
+    w.document.write('<h3>Récentes absences (20 dernières)</h3><table><thead><tr><th>Étudiant</th><th>Code Massar</th><th>Module</th><th>Date</th><th>Heure</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>');
+    w.document.write('<p style="margin-top:20px;font-size:.8rem;color:#94a3b8">Généré le ' + new Date().toLocaleString() + '</p>');
+    w.document.write('</body></html>');
+    w.document.close();
+    w.print();
+  }
+
+  function setupAbsenceSubTabNavigation() {
+    document.querySelectorAll('#tab-absence-stats .sub-tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var parent = this.closest('#tab-absence-stats');
+        parent.querySelectorAll('.sub-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        parent.querySelectorAll('.sub-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        this.classList.add('active');
+        var panel = document.getElementById(this.dataset.subtab);
+        if (panel) panel.classList.add('active');
+      });
+    });
+  }
+
+  function populateAbsenceFilters() {
+    Promise.all([
+      API.apiFetch('/curriculum/filieres/').catch(function() { return []; }),
+      API.apiFetch('/curriculum/modules/').catch(function() { return []; }),
+      API.apiFetch('/teachers/').catch(function() { return []; }),
+      API.apiFetch('/departments/').catch(function() { return []; }),
+    ]).then(function(results) {
+      var filieres = results[0] || [], modules = results[1] || [], teachers = results[2] || [], departments = results[3] || [];
+      var fSel = document.getElementById('absFiliere');
+      if (fSel) {
+        filieres.forEach(function(f) {
+          var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
+        });
+      }
+      var mSel = document.getElementById('absModule');
+      if (mSel) {
+        modules.forEach(function(m) {
+          var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
+        });
+      }
+      var tSel = document.getElementById('absTeacher');
+      if (tSel) {
+        teachers.forEach(function(t) {
+          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
+        });
+      }
+      var dSel = document.getElementById('absDepartment');
+      if (dSel) {
+        departments.forEach(function(d) {
+          var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name; dSel.appendChild(opt);
+        });
+      }
+    });
+  }
+
   function setupRoomsEventListeners() {
     bindSearchInput('searchBlocks', renderBlocks);
-    bindSearchInput('searchAmphis', renderAmphis);
+    bindSearchInput('searchAmphis', renderAmphisList);
+    bindSearchInput('searchSalles', renderSalles);
+    setupSubTabNavigation();
 
     document.getElementById('btnOpenAddBlock')?.addEventListener('click', () => {
       document.getElementById('blkId').value = '';
@@ -3447,6 +4128,10 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         showToast('Salle enregistrée.', 'success');
         await loadBlocks();
       } catch (e) { showToast(e.message, 'error'); }
+    });
+
+    document.getElementById('btnOpenAddRoom')?.addEventListener('click', () => {
+      openAddRoom(null);
     });
   }
 </script>

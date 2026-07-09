@@ -697,12 +697,12 @@ def admin_statistics(request):
 
     total_present = Attendance.objects.filter(
         attendance_status="confirmed",
-        timestamp__date__gte=start_date.date(),
-        timestamp__date__lte=end_date.date(),
+        validation_time__date__gte=start_date.date(),
+        validation_time__date__lte=end_date.date(),
     ).count()
     total_attendance = Attendance.objects.filter(
-        timestamp__date__gte=start_date.date(),
-        timestamp__date__lte=end_date.date(),
+        validation_time__date__gte=start_date.date(),
+        validation_time__date__lte=end_date.date(),
     ).count()
     attendance_rate = round((total_present / total_attendance * 100) if total_attendance > 0 else 0, 1)
 
@@ -714,8 +714,8 @@ def admin_statistics(request):
 
     daily = (
         Attendance.objects
-        .filter(timestamp__date__gte=start_date.date(), timestamp__date__lte=end_date.date())
-        .extra({"date": "date(timestamp)"})
+        .filter(validation_time__date__gte=start_date.date(), validation_time__date__lte=end_date.date())
+        .extra({"date": "date(validation_time)"})
         .values("date")
         .annotate(
             present=Count("id", filter=Q(attendance_status="confirmed")),
@@ -743,6 +743,180 @@ def admin_statistics(request):
     })
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def absence_statistics(request):
+    """Return comprehensive absence statistics for the Statistiques des absences tab."""
+    from attendance.models import Attendance
+    from users.models import Student
+    from courses.models import Session
+    from django.db.models import Count, Q
+    from django.db.models.functions import TruncDate, TruncWeek
+    from datetime import datetime, timedelta
+
+    date_from = request.query_params.get("date_from", "")
+    date_to = request.query_params.get("date_to", "")
+    filiere_id = request.query_params.get("filiere_id", "")
+    module_id = request.query_params.get("module_id", "")
+    teacher_id = request.query_params.get("teacher_id", "")
+    department_id = request.query_params.get("department_id", "")
+
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=30)
+    if date_from:
+        try:
+            start_date = datetime.strptime(date_from, "%Y-%m-%d")
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            end_date = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
+        except ValueError:
+            pass
+
+    qs = Attendance.objects.filter(
+        validation_time__gte=start_date,
+        validation_time__lt=end_date,
+    )
+
+    if filiere_id:
+        qs = qs.filter(student__classe__filiere_id=filiere_id)
+    if module_id:
+        qs = qs.filter(session__module_id=module_id)
+    if teacher_id:
+        qs = qs.filter(session__teacher_id=teacher_id)
+    if department_id:
+        qs = qs.filter(student__classe__department_id=department_id)
+
+    total = qs.count()
+    present = qs.filter(attendance_status="confirmed").count()
+    absent = qs.filter(attendance_status="absent").count()
+    absence_rate = round((absent / total * 100) if total > 0 else 0, 1)
+
+    total_students = qs.values("student_id").distinct().count()
+    total_sessions = qs.values("session_id").distinct().count()
+    total_teachers = qs.values("session__teacher_id").distinct().count()
+    total_modules = qs.values("session__module_id").distinct().count()
+    total_filieres = qs.values("student__classe__filiere_id").distinct().count()
+    total_departments = qs.values("student__classe__department_id").distinct().count()
+
+    by_student = list(
+        qs.values("student_id", "student__first_name", "student__last_name", "student__code_massar")
+        .annotate(
+            total=Count("id"),
+            absent_count=Count("id", filter=Q(attendance_status="absent")),
+        )
+        .order_by("-absent_count")[:30]
+    )
+    for s in by_student:
+        s["rate"] = round((s["absent_count"] / s["total"] * 100) if s["total"] > 0 else 0, 1)
+        s["student_name"] = (s.get("student__first_name") or "") + " " + (s.get("student__last_name") or "")
+
+    by_teacher = list(
+        qs.values("session__teacher_id", "session__teacher__first_name", "session__teacher__last_name")
+        .annotate(
+            total=Count("id"),
+            absent_count=Count("id", filter=Q(attendance_status="absent")),
+        )
+        .order_by("-absent_count")
+    )
+    for t in by_teacher:
+        t["rate"] = round((t["absent_count"] / t["total"] * 100) if t["total"] > 0 else 0, 1)
+        t["teacher_name"] = (t.get("session__teacher__first_name") or "") + " " + (t.get("session__teacher__last_name") or "")
+
+    by_module = list(
+        qs.values("session__module_id", "session__module__name")
+        .annotate(
+            total=Count("id"),
+            absent_count=Count("id", filter=Q(attendance_status="absent")),
+        )
+        .order_by("-absent_count")
+    )
+    for m in by_module:
+        m["rate"] = round((m["absent_count"] / m["total"] * 100) if m["total"] > 0 else 0, 1)
+        m["module_name"] = m.get("session__module__name") or ""
+
+    by_filiere = list(
+        qs.values("student__classe__filiere_id", "student__classe__filiere__name")
+        .annotate(
+            total=Count("id"),
+            absent_count=Count("id", filter=Q(attendance_status="absent")),
+        )
+        .order_by("-absent_count")
+    )
+    for f in by_filiere:
+        f["rate"] = round((f["absent_count"] / f["total"] * 100) if f["total"] > 0 else 0, 1)
+        f["filiere_name"] = f.get("student__classe__filiere__name") or ""
+
+    by_day = list(
+        qs.annotate(date=TruncDate("validation_time"))
+        .values("date")
+        .annotate(
+            present=Count("id", filter=Q(attendance_status="confirmed")),
+            absent=Count("id", filter=Q(attendance_status="absent")),
+            total=Count("id"),
+        )
+        .order_by("date")
+    )
+    for d in by_day:
+        d["date"] = d["date"].isoformat() if hasattr(d["date"], "isoformat") else str(d["date"])
+        d["rate"] = round((d["absent"] / d["total"] * 100) if d["total"] > 0 else 0, 1)
+
+    by_week = list(
+        qs.annotate(week=TruncWeek("validation_time"))
+        .values("week")
+        .annotate(
+            present=Count("id", filter=Q(attendance_status="confirmed")),
+            absent=Count("id", filter=Q(attendance_status="absent")),
+            total=Count("id"),
+        )
+        .order_by("week")
+    )
+    for w in by_week:
+        w["week"] = w["week"].isoformat() if hasattr(w["week"], "isoformat") else str(w["week"])
+        w["rate"] = round((w["absent"] / w["total"] * 100) if w["total"] > 0 else 0, 1)
+
+    recent_absences = list(
+        qs.filter(attendance_status="absent")
+        .select_related("student", "session__teacher", "session__module")
+        .order_by("-validation_time")[:50]
+        .values(
+            "id", "validation_time",
+            "student__first_name", "student__last_name", "student__code_massar",
+            "session__module__name",
+            "session__teacher__first_name", "session__teacher__last_name",
+            "session__date",
+        )
+    )
+    for r in recent_absences:
+        r["student"] = f"{r.pop('student__first_name', '')} {r.pop('student__last_name', '')}"
+        r["module"] = r.pop("session__module__name", "")
+        r["teacher"] = f"{r.pop('session__teacher__first_name', '')} {r.pop('session__teacher__last_name', '')}"
+        r["date"] = r.pop("session__date", "")
+        vt = r.pop("validation_time", None)
+        r["time"] = vt.strftime("%H:%M:%S") if hasattr(vt, "strftime") else str(vt)[:19]
+
+    return Response({
+        "summary": {
+            "total": total,
+            "present": present,
+            "absent": absent,
+            "absence_rate": absence_rate,
+            "total_students": total_students,
+            "total_sessions": total_sessions,
+            "total_teachers": total_teachers,
+            "total_modules": total_modules,
+            "total_filieres": total_filieres,
+            "total_departments": total_departments,
+        },
+        "by_student": by_student,
+        "by_teacher": by_teacher,
+        "by_module": by_module,
+        "by_filiere": by_filiere,
+        "by_day": by_day,
+        "by_week": by_week,
+        "recent_absences": recent_absences,
+    })
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def app_settings(request):

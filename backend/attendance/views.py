@@ -649,7 +649,7 @@ EXPORT_HEADERS = [
     "Enseignant",
     "Date de la séance",
     "Heure du scan",
-    "Statut (Présent / Absent)",
+    "Statut",
 ]
 
 
@@ -726,10 +726,10 @@ def _export_csv(rows, stats):
     writer.writerow(EXPORT_HEADERS)
     for row in rows:
         writer.writerow([str(row.get(h) or "") for h in [
-            "code_etudiant", "nom", "prenom", "email",
-            "niveau", "filiere", "semestre", "module",
-            "enseignant", "date_seance", "heure_debut", "heure_fin",
-            "heure_pointage", "statut", "validation_qr", "salle_amphi",
+            "code_etudiant", "nom", "prenom",
+            "filiere", "classe", "semestre", "module",
+            "enseignant", "date_seance", "heure_scan",
+            "statut",
         ]])
     writer.writerow([])
     writer.writerow(["STATISTIQUES"])
@@ -778,14 +778,14 @@ def _export_pdf(rows, stats):
     for row in rows:
         table_data.append([
             str(row.get(h) or "") for h in [
-                "code_etudiant", "nom", "prenom", "email",
-                "niveau", "filiere", "semestre", "module",
-                "enseignant", "date_seance", "heure_debut", "heure_fin",
-                "heure_pointage", "statut", "validation_qr", "salle_amphi",
+                "code_etudiant", "nom", "prenom",
+                "filiere", "classe", "semestre", "module",
+                "enseignant", "date_seance", "heure_scan",
+                "statut",
             ]
         ])
 
-    col_widths = [28 * mm, 28 * mm, 28 * mm, 38 * mm, 22 * mm, 30 * mm, 18 * mm, 30 * mm, 30 * mm, 24 * mm, 18 * mm, 18 * mm, 28 * mm, 18 * mm, 18 * mm, 28 * mm]
+    col_widths = [28 * mm, 28 * mm, 28 * mm, 30 * mm, 28 * mm, 22 * mm, 30 * mm, 30 * mm, 24 * mm, 18 * mm, 28 * mm]
 
     t = Table(table_data, colWidths=col_widths, repeatRows=1)
     t.setStyle(TableStyle([

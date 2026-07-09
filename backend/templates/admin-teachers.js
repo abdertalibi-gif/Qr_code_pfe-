@@ -1,13 +1,17 @@
 /* ── Admin Teachers Page ── */
 let allTeachers = [];
-let allDepartments = [];
-let allFilieres = [];
-let allClasses = [];
+let teacherDepartments = [];
+let teacherFilieres = [];
+let teacherClasses = [];
 let editingTeacherId = null;
 
 async function initPage() {
-  await Promise.all([loadTeachers(), loadDepartments(), loadFilieres(), loadClasses()]);
+  await Promise.all([loadTeachers(), teacherLoadDepartments(), teacherLoadFilieres(), teacherLoadClasses()]);
   setupEventListeners();
+}
+
+async function initTeachersTab() {
+  await initPage();
 }
 
 async function loadTeachers() {
@@ -21,25 +25,25 @@ async function loadTeachers() {
   }
 }
 
-async function loadDepartments() {
+async function teacherLoadDepartments() {
   try {
     const data = await API.apiFetch('/departments/');
-    allDepartments = Array.isArray(data) ? data : [];
-  } catch (e) { allDepartments = []; }
+    teacherDepartments = Array.isArray(data) ? data : [];
+  } catch (e) { teacherDepartments = []; }
 }
 
-async function loadFilieres() {
+async function teacherLoadFilieres() {
   try {
     const data = await API.apiFetch('/curriculum/filieres/');
-    allFilieres = Array.isArray(data) ? data : [];
-  } catch (e) { allFilieres = []; }
+    teacherFilieres = Array.isArray(data) ? data : [];
+  } catch (e) { teacherFilieres = []; }
 }
 
-async function loadClasses() {
+async function teacherLoadClasses() {
   try {
     const data = await API.apiFetch('/classes/');
-    allClasses = Array.isArray(data) ? data : (data.results || []);
-  } catch (e) { allClasses = []; }
+    teacherClasses = Array.isArray(data) ? data : (data.results || []);
+  } catch (e) { teacherClasses = []; }
 }
 
 function renderTeachers() {
@@ -73,16 +77,16 @@ function populateTeacherSelects(prefix) {
   const deptSel = document.getElementById(prefix + 'Department');
   if (deptSel) {
     deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      allDepartments.map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
+      teacherDepartments.map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
   }
   const filSel = document.getElementById(prefix + 'Filiere');
   if (filSel) {
     filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+      teacherFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
   }
   const classSel = document.getElementById(prefix + 'Classes');
   if (classSel) {
-    classSel.innerHTML = allClasses.map(c =>
+    classSel.innerHTML = teacherClasses.map(c =>
       '<option value="' + c.id + '">' + esc(c.filiere_name || '—') + ' — ' + esc(c.semestre_name || '') + ' (' + esc(c.academic_year) + ')</option>'
     ).join('');
   }
