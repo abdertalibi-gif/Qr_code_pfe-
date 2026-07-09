@@ -159,7 +159,7 @@
     </div>
   </div>
 
-<!-- USERS PANEL -->
+  <!-- USERS PANEL -->
   <div class="tab-panel active" id="tab-users">
     <div class="section-head">
       <h2>Tous les utilisateurs</h2>
@@ -168,17 +168,16 @@
         <button class="btn admin-only" id="btnOpenAddUser">+ Nouvel utilisateur</button>
       </div>
     </div>
-    </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th class="admin-only">#</th>
+            <th>#</th>
             <th>Nom</th>
             <th>E-mail</th>
             <th>Rôle</th>
             <th>Statut</th>
-            <th class="admin-only">Actions</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="usersBody">
@@ -1584,15 +1583,15 @@
     }
     tbody.innerHTML = filtered.map((u, i) => `
       <tr>
-        <td class="admin-only"><span style="color:var(--muted)">${i + 1}</span></td>
+        <td><span style="color:var(--muted)">${i + 1}</span></td>
         <td><strong>${esc(u.first_name)} ${esc(u.last_name)}</strong></td>
         <td style="color:var(--muted)">${esc(u.email)}</td>
         <td><span class="badge badge-${u.role}">${roleLabel[u.role] || u.role}</span></td>
         <td><span class="badge ${u.is_active ? 'badge-present' : 'badge-absent'}">${u.is_active ? 'Actif' : 'Inactif'}</span></td>
-        <td class="actions-cell admin-only">
-          <button class="btn sm outline admin-only" onclick="openEditUser(${u.id})">Modifier</button>
-          <button class="btn sm outline admin-only" onclick="toggleUserActive(${u.id})">${u.is_active ? 'Désactiver' : 'Activer'}</button>
-          <button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteUser(${u.id})">Supprimer</button>
+        <td class="actions-cell">
+          <button class="btn sm outline" onclick="openEditUser(${u.id})">Modifier</button>
+          <button class="btn sm outline" onclick="toggleUserActive(${u.id})">${u.is_active ? 'Désactiver' : 'Activer'}</button>
+          <button class="btn sm outline" style="color:var(--red)" onclick="deleteUser(${u.id})">Supprimer</button>
         </td>
       </tr>
     `).join('');
