@@ -193,8 +193,8 @@
       <h2>Tous les enseignants</h2>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
-        <button class="btn" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
-        <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+        <button class="btn admin-only" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
+        <button class="btn outline admin-only" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
       </div>
     </div>
 
@@ -227,22 +227,22 @@
       <div class="section-head">
         <h3>Import enseignants par Excel</h3>
         <div class="section-actions">
-          <button class="btn outline" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
+          <button class="btn outline admin-only" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
         </div>
       </div>
 
-      <p class="field-hint" style="margin:0 0 .75rem">
+      <p class="field-hint admin-only" style="margin:0 0 .75rem">
         Le fichier Excel doit contenir les colonnes :<br>
         <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Filière, Grade, Spécialité</strong>
         (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
       </p>
 
-      <div class="import-upload-row" style="gap:.75rem">
+      <div class="import-upload-row admin-only" style="gap:.75rem">
         <div class="field import-file-field">
           <input type="file" id="impTeacherFile" accept=".xlsx" />
         </div>
-        <button class="btn" id="btnRunTeacherImport">Importer les enseignants</button>
-        <span class="spinner" id="impTeacherSpinner" style="display:none"></span>
+        <button class="btn admin-only" id="btnRunTeacherImport">Importer les enseignants</button>
+        <span class="spinner admin-only" id="impTeacherSpinner" style="display:none"></span>
       </div>
       <div id="teacherImportReport" class="import-report hidden"></div>
     </div>
@@ -250,7 +250,7 @@
 
   <!-- STUDENTS PANEL -->
   <div class="tab-panel" id="tab-students">
-    <div class="import-panel">
+    <div class="import-panel admin-only">
       <div class="section-head">
         <h2>Import étudiants par module</h2>
         <div class="section-actions">
@@ -293,7 +293,7 @@
       <div id="importReport" class="import-report hidden"></div>
     </div>
 
-    <div class="import-panel" style="margin-top:1rem">
+    <div class="import-panel admin-only" style="margin-top:1rem">
       <div class="section-head">
         <h3 style="font-size:.95rem">Import Excel complet</h3>
         <button class="btn outline sm" id="btnDownloadCompleteImportTemplate">⬇ Modèle complet</button>
@@ -357,7 +357,7 @@
       <h2>Toutes les classes</h2>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchClasses" placeholder="Rechercher niveau, filière, année…" />
-        <button class="btn" id="btnOpenAddClasse">+ Nouvelle classe</button>
+        <button class="btn admin-only" id="btnOpenAddClasse">+ Nouvelle classe</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -409,7 +409,7 @@
       <div class="section-actions">
         <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
         <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
-        <button class="btn" id="btnOpenAddSession">+ Nouvelle séance</button>
+        <button class="btn admin-only" id="btnOpenAddSession">+ Nouvelle séance</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -611,46 +611,48 @@
       </div>
 
       <!-- Hierarchical filters -->
-      <div class="filter-bar" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:end">
-        <div class="field" style="flex:1;min-width:150px">
+      <div class="absence-filters">
+        <div class="field">
           <label>Département</label>
           <select id="absDept" class="form-control" onchange="absOnDeptChange()"><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:150px">
+        <div class="field">
           <label>Filière</label>
           <select id="absFiliere" class="form-control" onchange="absOnFiliereChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:130px">
+        <div class="field">
           <label>Semestre</label>
           <select id="absSemestre" class="form-control" disabled><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:150px">
+        <div class="field">
           <label>Module</label>
           <select id="absModule" class="form-control" onchange="absOnModuleChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:140px">
+        <div class="field">
           <label>Classe</label>
           <select id="absClasse" class="form-control" disabled><option value="">Toutes</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:140px">
+        <div class="field">
           <label>Enseignant</label>
           <select id="absTeacher" class="form-control"><option value="">Tous</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:150px">
+        <div class="field">
           <label>Étudiant</label>
           <input type="text" id="absStudentSearch" class="form-control" placeholder="Nom, Massar, Apogée..." />
         </div>
-        <div class="field" style="flex:1;min-width:120px">
+        <div class="field">
           <label>Du</label>
           <input type="date" id="absDateFrom" class="form-control" />
         </div>
-        <div class="field" style="flex:1;min-width:120px">
+        <div class="field">
           <label>Au</label>
           <input type="date" id="absDateTo" class="form-control" />
         </div>
-        <button class="btn btn-primary" onclick="applyAbsenceFilters()" style="height:38px">🔍 Appliquer</button>
-        <button class="btn btn-secondary" onclick="resetAbsenceFilters()" style="height:38px">↺ Réinitialiser</button>
-        <button class="btn btn-success" id="btnExportProf" onclick="exportProfessionalAbsences()" style="height:38px" disabled>📥 Générer Excel</button>
+      </div>
+      <div class="absence-actions">
+        <button class="btn btn-primary" onclick="applyAbsenceFilters()">🔍 Appliquer</button>
+        <button class="btn btn-secondary" onclick="resetAbsenceFilters()">↺ Réinitialiser</button>
+        <button class="btn btn-success" id="btnExportProf" onclick="exportProfessionalAbsences()" disabled>📥 Générer Excel</button>
       </div>
 
       <!-- Data sub-tabs -->
@@ -917,18 +919,18 @@
         <label>Mot de passe</label>
         <input type="password" id="uPassword" placeholder="••••••••" />
       </div>
-      <div class="field" id="uClassesWrap">
-        <label>Classes assignées (enseignant)</label>
+      <div class="field role-field" id="uClassesWrap" data-roles="teacher,department_head,program_manager">
+        <label>Classes assignées</label>
         <select id="uClasses" multiple size="4"></select>
         <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
           Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
         </p>
       </div>
-      <div class="field" data-roles="teacher,department_head" style="display:none">
+      <div class="field role-field" data-roles="teacher,department_head" style="display:none">
         <label>Département</label>
         <select id="uDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field" data-roles="teacher,program_manager" style="display:none">
+      <div class="field role-field" data-roles="teacher,program_manager" style="display:none">
         <label>Filière</label>
         <select id="uFiliere"><option value="">— Sélectionner —</option></select>
       </div>
@@ -937,7 +939,13 @@
           <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
         </label>
       </div>
-      <div class="field" data-roles="student" style="display:none">
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label class="checkbox-label"><input type="checkbox" id="uIsDeptHead" /> Chef de département</label>
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label class="checkbox-label"><input type="checkbox" id="uIsProgManager" /> Responsable de filière</label>
+      </div>
+      <div class="field role-field" data-roles="student" style="display:none">
         <div class="field-row">
           <div class="field">
             <label>Code Massar</label>
@@ -1052,22 +1060,22 @@
           <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
-      <div class="field" id="euDeptWrap" style="display:none">
+      <div class="field role-field-edit" data-roles="teacher,department_head" style="display:none">
         <label>Département</label>
         <select id="euDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field" id="euFiliereWrap" style="display:none">
+      <div class="field role-field-edit" data-roles="teacher,program_manager" style="display:none">
         <label>Filière</label>
         <select id="euFiliere"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field" id="euIsDeptHeadWrap" style="display:none">
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
         <label class="checkbox-label"><input type="checkbox" id="euIsDeptHead" /> Chef de département</label>
       </div>
-      <div class="field" id="euIsProgMgrWrap" style="display:none">
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
         <label class="checkbox-label"><input type="checkbox" id="euIsProgManager" /> Responsable de filière</label>
       </div>
-      <div class="field" id="euClassesWrap">
-        <label>Classes assignées (enseignant)</label>
+      <div class="field role-field-edit" id="euClassesWrap" data-roles="teacher,department_head,program_manager">
+        <label>Classes assignées</label>
         <select id="euClasses" multiple size="4"></select>
       </div>
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
@@ -1462,27 +1470,29 @@
   async function loadAll() {
     var promises = [loadDepartments(), loadDashboardCounts(), loadSessions()];
     if (isAdminOnly()) {
-      promises.push(loadUsers(), loadClasses(), loadStudents(), loadCurriculum());
+      promises.push(loadUsers());
+    } else {
+      promises.push(loadClasses(), loadStudents(), loadCurriculum());
+      promises.push(loadDepartmentTeachers());
     }
     await Promise.all(promises);
-    await loadAttendance();
+    if (isAdminOnly()) {
+      await loadAttendance();
+      setupDepartmentUI();
+      loadLiveOccupation();
+    }
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     if (typeof initTeachersTab === 'function') await initTeachersTab();
-    setupDepartmentUI();
     setupRoomsEventListeners();
     if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
-    loadLiveOccupation();
     setupAbsenceSubTabNavigation();
     populateAbsenceFilters();
-    if (isAdminOnly()) loadAbsenceStats();
-    /* Load filieres for dashboard user edit modal cascade */
-    if (isAdminOnly()) {
-      try {
-        const data = await API.apiFetch('/curriculum/filieres/');
-        allFilieres = Array.isArray(data) ? data : [];
-      } catch (e) { allFilieres = []; }
-    }
+    if (!isAdminOnly()) loadAbsenceStats();
+    try {
+      const data = await API.apiFetch('/curriculum/filieres/');
+      allFilieres = Array.isArray(data) ? data : [];
+    } catch (e) { allFilieres = []; }
   }
 
   async function loadDashboardCounts() {
@@ -1525,6 +1535,15 @@
     }
   }
 
+  async function loadDepartmentTeachers() {
+    try {
+      const data = await API.apiFetch('/users/?role=teacher');
+      allUsers = Array.isArray(data) ? data : (data.results || []);
+    } catch (e) {
+      allUsers = [];
+    }
+  }
+
   const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
   const roleBadgeClass = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };
 
@@ -1539,7 +1558,7 @@
     const allTabs = ['attendance', 'users', 'teacher-import', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'rooms', 'absence-stats'];
     const allowedTabs = isAdmin
       ? allTabs
-      : ['departments', 'attendance', 'sessions', 'curriculum'];  // department_head/program_manager
+      : ['sessions', 'curriculum', 'teacher-import', 'classes', 'students', 'absence-stats'];
     document.querySelectorAll('.tab-btn').forEach(btn => {
       const tab = btn.dataset.tab;
       btn.style.display = allowedTabs.includes(tab) ? '' : 'none';
@@ -1587,43 +1606,19 @@
     document.getElementById('euEmail').value = u.email;
     document.getElementById('euRole').value = u.role;
     document.getElementById('euPassword').value = '';
-    populateTeacherClassSelect('euClasses');
+    populateRoleSelects('eu');
+    showFieldsForRole(u.role, 'eu');
     const sel = document.getElementById('euClasses');
     const assigned = u.assigned_class_ids || [];
     Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)) || assigned.includes(o.value); });
-    document.getElementById('euClassesWrap').style.display = u.role === 'teacher' ? 'block' : 'none';
-    /* Department / filiere / responsibility fields */
-    const deptWrap = document.getElementById('euDeptWrap');
-    const filWrap = document.getElementById('euFiliereWrap');
-    const isDeptWrap = document.getElementById('euIsDeptHeadWrap');
-    const isProgWrap = document.getElementById('euIsProgMgrWrap');
-    if (u.role === 'teacher') {
-      if (deptWrap) { deptWrap.style.display = 'block'; populateDeptSelect('euDepartment'); }
-      if (filWrap) { filWrap.style.display = 'block'; populateFiliereSelect('euFiliere'); }
-      if (isDeptWrap) isDeptWrap.style.display = 'block';
-      if (isProgWrap) isProgWrap.style.display = 'block';
-      const isDeptHead = document.getElementById('euIsDeptHead');
-      if (isDeptHead) {
-        isDeptHead.checked = !!(u.managed_department);
-        if (u.managed_department) {
-          const ds = document.getElementById('euDepartment');
-          if (ds) ds.value = u.managed_department.id;
-        }
-      }
-      const isProgMgr = document.getElementById('euIsProgManager');
-      if (isProgMgr) {
-        isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
-        if (u.managed_filieres && u.managed_filieres.length) {
-          const fs = document.getElementById('euFiliere');
-          if (fs) fs.value = u.managed_filieres[0].id;
-        }
-      }
-    } else {
-      if (deptWrap) deptWrap.style.display = 'none';
-      if (filWrap) filWrap.style.display = 'none';
-      if (isDeptWrap) isDeptWrap.style.display = 'none';
-      if (isProgWrap) isProgWrap.style.display = 'none';
-    }
+    const deptSel = document.getElementById('euDepartment');
+    if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
+    const filSel = document.getElementById('euFiliere');
+    if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
+    const isDeptHead = document.getElementById('euIsDeptHead');
+    if (isDeptHead) isDeptHead.checked = !!(u.managed_department);
+    const isProgMgr = document.getElementById('euIsProgManager');
+    if (isProgMgr) isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
     openModal('modalEditUser');
   }
 
@@ -2091,8 +2086,8 @@
         <td>${esc(locationLabel(c))}</td>
         <td>${c.student_count ?? '—'}</td>
         <td>
-          <button class="btn sm outline" onclick="openEditClasse(${c.id})">Modifier</button>
-          <button class="btn sm outline" style="color:var(--red)" onclick="deleteClasse(${c.id})">Supprimer</button>
+          <button class="btn sm outline admin-only" onclick="openEditClasse(${c.id})">Modifier</button>
+          <button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteClasse(${c.id})">Supprimer</button>
         </td>
       </tr>
     `).join('');
@@ -2172,7 +2167,7 @@
         <td>${esc(s.teacher_name || teacherName(s.teacher))}</td>
         <td>${API.formatDate(s.date)}</td>
         <td>${formatSessionWindow(s)}</td>
-        <td><button class="btn sm outline" style="color:var(--red)" onclick="deleteSession(${s.id})">Supprimer</button></td>
+        <td><button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteSession(${s.id})">Supprimer</button></td>
       </tr>
     `).join('');
   }
@@ -2550,18 +2545,123 @@
     });
   });
 
+  /* ── Role-based field visibility helpers ── */
+  function showFieldsForRole(role, prefix) {
+    const suffix = prefix === 'u' ? '' : '-edit';
+    document.querySelectorAll('.role-field' + suffix).forEach(function (el) {
+      const roles = (el.dataset.roles || '').split(',');
+      el.style.display = roles.includes(role) ? 'block' : 'none';
+    });
+  }
+
+  function populateRoleSelects(prefix) {
+    const deptSel = document.getElementById(prefix + 'Department');
+    if (deptSel) {
+      deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allDepartments.map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
+    }
+    const filSel = document.getElementById(prefix + 'Filiere');
+    if (filSel) {
+      filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+    }
+    const classSel = document.getElementById(prefix + 'Classes');
+    if (classSel) {
+      classSel.innerHTML = allClasses.map(c =>
+        '<option value="' + c.id + '">' + esc(c.filiere_name || '—') + ' — ' + esc(c.semestre_name || '') + ' (' + esc(c.academic_year) + ')</option>'
+      ).join('');
+    }
+    const studentClasseSel = document.getElementById(prefix + 'StudentClasse');
+    if (studentClasseSel) {
+      studentClasseSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allClasses.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+    }
+    const studentFiliereSel = document.getElementById(prefix + 'StudentFiliere');
+    if (studentFiliereSel) {
+      studentFiliereSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+    }
+  }
+
+  function buildPayload(prefix) {
+    const body = {
+      first_name: document.getElementById(prefix + 'FirstName').value.trim(),
+      last_name:  document.getElementById(prefix + 'LastName').value.trim(),
+      email:      document.getElementById(prefix + 'Email').value.trim(),
+      role:       document.getElementById(prefix + 'Role').value,
+    };
+    const passwordEl = document.getElementById(prefix + 'Password');
+    if (passwordEl && passwordEl.value) body.password = passwordEl.value;
+
+    const role = body.role;
+    if (role === 'teacher' || role === 'department_head' || role === 'program_manager') {
+      const classSel = document.getElementById(prefix + 'Classes');
+      if (classSel) {
+        body.assigned_class_ids = Array.from(classSel.selectedOptions).map(o => Number(o.value));
+      }
+    }
+    if (role === 'department_head') {
+      const deptEl = document.getElementById(prefix + 'Department');
+      body.department_id = deptEl ? Number(deptEl.value) || null : null;
+    }
+    if (role === 'program_manager') {
+      const filEl = document.getElementById(prefix + 'Filiere');
+      body.filiere_id = filEl ? Number(filEl.value) || null : null;
+    }
+    if (role === 'teacher') {
+      const cb = document.getElementById(prefix + 'IsAlsoTeacher');
+      if (cb) body.is_also_teacher = cb.checked;
+      const isDeptHead = document.getElementById(prefix + 'IsDeptHead');
+      if (isDeptHead && isDeptHead.checked) {
+        body.is_department_head = true;
+        const deptEl = document.getElementById(prefix + 'Department');
+        body.department_id = deptEl ? Number(deptEl.value) || null : null;
+      }
+      const isProgMgr = document.getElementById(prefix + 'IsProgManager');
+      if (isProgMgr && isProgMgr.checked) {
+        body.is_program_manager = true;
+        const filEl = document.getElementById(prefix + 'Filiere');
+        body.filiere_id = filEl ? Number(filEl.value) || null : null;
+      }
+    }
+    if (role === 'student') {
+      const cm = document.getElementById(prefix + 'CodeMassar');
+      if (cm) body.code_massar = cm.value.trim();
+      const ca = document.getElementById(prefix + 'CodeApogee');
+      if (ca) body.code_apogee = ca.value.trim();
+    }
+    return body;
+  }
+
+  async function populateRoleFilieresByDept(prefix, deptId) {
+    const filSel = document.getElementById(prefix + 'Filiere');
+    if (!filSel) return;
+    if (!deptId) {
+      filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+      return;
+    }
+    try {
+      const data = await API.apiFetch('/curriculum/filieres/?department_id=' + deptId);
+      const items = Array.isArray(data) ? data : [];
+      filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        items.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+    } catch (e) {
+      filSel.innerHTML = '<option value="">— Sélectionner —</option>';
+    }
+  }
+
   /* ── Add User ── */
   document.getElementById('btnOpenAddUser').addEventListener('click', () => {
-    populateTeacherClassSelect('uClasses');
-    document.getElementById('uClassesWrap').style.display =
-      document.getElementById('uRole').value === 'teacher' ? 'block' : 'none';
+    populateRoleSelects('u');
+    const defaultRole = document.getElementById('uRole').value;
+    showFieldsForRole(defaultRole, 'u');
     openModal('modalAddUser');
   });
 
   document.getElementById('uRole')?.addEventListener('change', (e) => {
     const role = e.target.value;
     if (role === 'student') {
-      // Transfer common fields to the Add Student modal and open it
       ['sFirstName','sLastName','sEmail','sPassword'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('sFirstName').value = document.getElementById('uFirstName').value;
       document.getElementById('sLastName').value  = document.getElementById('uLastName').value;
@@ -2577,24 +2677,43 @@
       loadAddStudentNiveaux();
       closeModal('modalAddUser');
       openModal('modalAddStudent');
+      return;
+    }
+    showFieldsForRole(role, 'u');
+    /* Cascade: department -> filiere */
+    if (role === 'program_manager') {
+      const deptVal = document.getElementById('uDepartment')?.value;
+      if (deptVal) populateRoleFilieresByDept('u', deptVal);
+    }
+  });
+  /* Cascade: department -> filiere for add user */
+  document.getElementById('uDepartment')?.addEventListener('change', function () {
+    const role = document.getElementById('uRole').value;
+    const isProg = document.getElementById('uIsProgManager');
+    if (role === 'program_manager' || (role === 'teacher' && isProg && isProg.checked)) {
+      populateRoleFilieresByDept('u', this.value);
+    }
+  });
+  document.getElementById('uIsProgManager')?.addEventListener('change', function () {
+    const role = document.getElementById('uRole').value;
+    if (this.checked) {
+      const deptVal = document.getElementById('uDepartment')?.value;
+      if (role === 'program_manager' || role === 'teacher') {
+        populateRoleFilieresByDept('u', deptVal || '');
+      }
     } else {
-      document.getElementById('uClassesWrap').style.display = role === 'teacher' ? 'block' : 'none';
+      populateRoleFilieresByDept('u');
+    }
+  });
+  document.getElementById('uIsDeptHead')?.addEventListener('change', function () {
+    if (this.checked) {
+      document.getElementById('uDepartment').value = '';
+      populateRoleSelects('u');
     }
   });
 
   document.getElementById('btnSubmitUser').addEventListener('click', async () => {
-    const body = {
-      first_name: document.getElementById('uFirstName').value.trim(),
-      last_name:  document.getElementById('uLastName').value.trim(),
-      email:      document.getElementById('uEmail').value.trim(),
-      role:       document.getElementById('uRole').value,
-      password:   document.getElementById('uPassword').value,
-    };
-    if (body.role === 'teacher') {
-      body.assigned_class_ids = Array.from(
-        document.getElementById('uClasses').selectedOptions
-      ).map(o => Number(o.value));
-    }
+    const body = buildPayload('u');
 
     if (!body.first_name || !body.last_name || !body.email || !body.password) {
       showToast('Veuillez remplir tous les champs.', 'error'); return;
@@ -2603,11 +2722,11 @@
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
       closeModal('modalAddUser');
-      showToast('User created successfully!', 'success');
+      showToast('Utilisateur créé avec succès !', 'success');
       ['uFirstName','uLastName','uEmail','uPassword'].forEach(id => document.getElementById(id).value = '');
       await loadUsers();
     } catch (e) {
-      showToast(`Error: ${e.message}`, 'error');
+      showToast(`Erreur: ${e.message}`, 'error');
     }
   });
 
@@ -2640,58 +2759,44 @@
   });
 
   document.getElementById('euRole')?.addEventListener('change', (e) => {
-    const show = e.target.value === 'teacher';
-    document.getElementById('euClassesWrap').style.display = show ? 'block' : 'none';
-    document.getElementById('euDeptWrap').style.display = show ? 'block' : 'none';
-    document.getElementById('euFiliereWrap').style.display = show ? 'block' : 'none';
-    document.getElementById('euIsDeptHeadWrap').style.display = show ? 'block' : 'none';
-    document.getElementById('euIsProgMgrWrap').style.display = show ? 'block' : 'none';
+    const role = e.target.value;
+    showFieldsForRole(role, 'eu');
+    /* Cascade: department -> filiere */
+    if (role === 'program_manager') {
+      const deptVal = document.getElementById('euDepartment')?.value;
+      if (deptVal) populateRoleFilieresByDept('eu', deptVal);
+    }
   });
   /* Cascade: department → filiere for edit user modal */
   document.getElementById('euDepartment')?.addEventListener('change', function () {
+    const role = document.getElementById('euRole').value;
     const isProg = document.getElementById('euIsProgManager');
-    if (isProg && isProg.checked) {
-      populateFiliereSelect('euFiliere', this.value);
+    if (role === 'program_manager' || (role === 'teacher' && isProg && isProg.checked)) {
+      populateRoleFilieresByDept('eu', this.value);
     }
   });
   document.getElementById('euIsProgManager')?.addEventListener('change', function () {
+    const role = document.getElementById('euRole').value;
     if (this.checked) {
       const deptVal = document.getElementById('euDepartment')?.value;
-      populateFiliereSelect('euFiliere', deptVal || '');
+      if (role === 'program_manager' || role === 'teacher') {
+        populateRoleFilieresByDept('eu', deptVal || '');
+      }
     } else {
-      populateFiliereSelect('euFiliere');
+      populateRoleFilieresByDept('eu');
     }
   });
   document.getElementById('euIsDeptHead')?.addEventListener('change', function () {
     if (this.checked) {
       document.getElementById('euDepartment').value = '';
-      populateDeptSelect('euDepartment');
+      populateRoleSelects('eu');
     }
   });
 
   document.getElementById('btnSubmitEditUser').addEventListener('click', async () => {
     const id = document.getElementById('euId').value;
-    const body = {
-      first_name: document.getElementById('euFirstName').value.trim(),
-      last_name: document.getElementById('euLastName').value.trim(),
-      email: document.getElementById('euEmail').value.trim(),
-      role: document.getElementById('euRole').value,
-    };
-    const pwd = document.getElementById('euPassword').value;
-    if (pwd) body.password = pwd;
-    if (body.role === 'teacher') {
-      body.assigned_class_ids = Array.from(document.getElementById('euClasses').selectedOptions).map(o => Number(o.value));
-      const isDeptHead = document.getElementById('euIsDeptHead');
-      if (isDeptHead && isDeptHead.checked) {
-        body.is_department_head = true;
-        body.department_id = Number(document.getElementById('euDepartment').value) || null;
-      }
-      const isProgMgr = document.getElementById('euIsProgManager');
-      if (isProgMgr && isProgMgr.checked) {
-        body.is_program_manager = true;
-        body.filiere_id = Number(document.getElementById('euFiliere').value) || null;
-      }
-    }
+    const body = buildPayload('eu');
+
     try {
       await API.apiFetch(`/users/${id}/`, { method: 'PATCH', body: JSON.stringify(body) });
       closeModal('modalEditUser');
@@ -3064,7 +3169,8 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
           if (Array.isArray(modules)) {
             modules.forEach(m => {
               const opt = document.createElement('option');
-              opt.value = m.name;        // backend filters by module name
+              opt.value = m.name;
+              opt.dataset.id = m.id;
               opt.textContent = m.name;
               modSel.appendChild(opt);
             });
@@ -3135,9 +3241,12 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     sel.innerHTML = '<option value="">— Chargement... —</option>';
     sel.disabled = true;
 
-    const semestre = document.getElementById('expSemestre').value;
-    const filiere = document.getElementById('expFiliere').value;
-    const module = document.getElementById('expModule').value;
+    const semOpt = document.getElementById('expSemestre').selectedOptions[0];
+    const filOpt = document.getElementById('expFiliere').selectedOptions[0];
+    const modOpt = document.getElementById('expModule').selectedOptions[0];
+    const semestre = semOpt ? semOpt.dataset.id : '';
+    const filiere = filOpt ? filOpt.dataset.id : '';
+    const module = modOpt ? modOpt.dataset.id : '';
     const classe = document.getElementById('expClasse').value;
 
     const params = new URLSearchParams();

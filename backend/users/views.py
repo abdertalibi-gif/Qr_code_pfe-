@@ -17,6 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Amphitheater, Block, Classe, Department, Room, Student, User
 from .permissions import (
     IsAdmin,
+    IsAdminOrDepartmentHeadOrFiliereManager,
     IsAdminOrTeacher,
     apply_role_filtering,
     get_user_department,
@@ -145,7 +146,7 @@ class ClasseViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):
-            return [IsAuthenticated(), IsAdminOrTeacher()]
+            return [IsAuthenticated(), IsAdminOrDepartmentHeadOrFiliereManager()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -255,7 +256,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             "import_complete_template",
         ):
             return [IsAuthenticated(), IsAdmin()]
-        return [IsAuthenticated(), IsAdminOrTeacher()]
+        return [IsAuthenticated(), IsAdminOrDepartmentHeadOrFiliereManager()]
 
     @action(detail=False, methods=["get"], url_path="by-module")
     def by_module(self, request):
@@ -684,7 +685,8 @@ def department_detail(request, pk):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def admin_statistics(request):
-    """Return attendance statistics for the admin statistics page."""
+    """Return attendance statistics for the admin statistics page.
+    Non-admin roles only see stats scoped to their department / filieres."""
     from attendance.models import Attendance
     from courses.models import Session
     from django.db.models import Count
@@ -695,26 +697,39 @@ def admin_statistics(request):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=period_days)
 
-    total_present = Attendance.objects.filter(
-        attendance_status="confirmed",
+    attend_qs = Attendance.objects.filter(
         validation_time__date__gte=start_date.date(),
         validation_time__date__lte=end_date.date(),
-    ).count()
-    total_attendance = Attendance.objects.filter(
-        validation_time__date__gte=start_date.date(),
-        validation_time__date__lte=end_date.date(),
-    ).count()
+    )
+    session_qs = Session.objects.all()
+    student_qs = User.objects.filter(role="student")
+
+    if request.user.role == "department_head":
+        attend_qs = apply_role_filtering(attend_qs, "attendance", request)
+        dept = get_user_department(request.user)
+        if dept:
+            session_qs = session_qs.filter(classe__department=dept)
+            student_qs = User.objects.filter(
+                role="student", student_profile__classe__department=dept
+            )
+    elif request.user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(request.user)
+        if filiere_ids:
+            attend_qs = attend_qs.filter(student__classe__filiere_id__in=filiere_ids)
+            session_qs = session_qs.filter(classe__filiere_id__in=filiere_ids)
+            student_qs = User.objects.filter(
+                role="student", student_profile__classe__filiere_id__in=filiere_ids
+            )
+
+    total_present = attend_qs.filter(attendance_status="confirmed").count()
+    total_attendance = attend_qs.count()
     attendance_rate = round((total_present / total_attendance * 100) if total_attendance > 0 else 0, 1)
 
-    active_classes = Session.objects.filter(
-        is_active=True,
-    ).values("classe_id").distinct().count()
-
-    total_students = User.objects.filter(role="student").count()
+    active_classes = session_qs.filter(is_active=True).values("classe_id").distinct().count()
+    total_students = student_qs.count()
 
     daily = (
-        Attendance.objects
-        .filter(validation_time__date__gte=start_date.date(), validation_time__date__lte=end_date.date())
+        attend_qs
         .extra({"date": "date(validation_time)"})
         .values("date")
         .annotate(
@@ -746,7 +761,8 @@ def admin_statistics(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def absence_statistics(request):
-    """Return comprehensive absence statistics for the Statistiques des absences tab."""
+    """Return comprehensive absence statistics for the Statistiques des absences tab.
+    Non-admin roles see only data scoped to their department / filieres."""
     from attendance.models import Attendance
     from users.models import Student
     from courses.models import Session
@@ -793,6 +809,20 @@ def absence_statistics(request):
         qs = qs.filter(student__classe__semestre_id=semestre_id)
     if classe_id:
         qs = qs.filter(student__classe_id=classe_id)
+
+    # Role-based automatic scoping (overrides query params for non-admin)
+    if request.user.role == "department_head":
+        dept = get_user_department(request.user)
+        if dept:
+            qs = qs.filter(student__classe__department_id=dept.id)
+        else:
+            qs = qs.none()
+    elif request.user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(request.user)
+        if filiere_ids:
+            qs = qs.filter(student__classe__filiere_id__in=filiere_ids)
+        else:
+            qs = qs.none()
 
     total = qs.count()
     present = qs.filter(attendance_status="confirmed").count()
@@ -974,32 +1004,98 @@ def system_info(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_counts(request):
-    """Return all entity counts for the admin dashboard."""
+    """Return all entity counts for the admin dashboard.
+    Non-admin roles only see data scoped to their department / filieres."""
     from users.models import Classe, Block, Room, Amphitheater, Department
     from curriculum.models import Filiere, Module
     from courses.models import Session
     from attendance.models import Attendance
 
+    user = request.user
+
+    if user.role == "admin":
+        return Response({
+            "users": User.objects.count(),
+            "admins": User.objects.filter(role="admin").count(),
+            "teachers": User.objects.filter(role="teacher").count(),
+            "assistants": User.objects.filter(is_also_teacher=True).count(),
+            "students": User.objects.filter(role="student").count(),
+            "department_heads": User.objects.filter(role="department_head").count(),
+            "program_managers": User.objects.filter(role="program_manager").count(),
+            "classes": Classe.objects.count(),
+            "filieres": Filiere.objects.count(),
+            "modules": Module.objects.count(),
+            "sessions": Session.objects.count(),
+            "active_sessions": Session.objects.filter(is_active=True).count(),
+            "closed_sessions": Session.objects.filter(is_closed=True).count(),
+            "departments": Department.objects.count(),
+            "blocks": Block.objects.count(),
+            "rooms": Room.objects.count(),
+            "amphitheaters": Amphitheater.objects.count(),
+            "attendances": Attendance.objects.count(),
+            "present": Attendance.objects.filter(attendance_status="confirmed").count(),
+            "absent": Attendance.objects.filter(attendance_status="absent").count(),
+            "reports": Session.objects.exclude(report_file="").count(),
+        })
+
+    classes_qs = apply_role_filtering(Classe.objects.all(), "classe", request)
+    filieres_qs = apply_role_filtering(Filiere.objects.all(), "filiere", request)
+    modules_qs = apply_role_filtering(Module.objects.all(), "module", request)
+    sessions_qs = apply_role_filtering(Session.objects.all(), "session", request)
+    attendances_qs = apply_role_filtering(Attendance.objects.all(), "attendance", request)
+
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        if dept is None:
+            users_qs = User.objects.none()
+            dept_count = 0
+        else:
+            users_qs = User.objects.filter(
+                Q(id=user.id)
+                | Q(role__in=("teacher",), assigned_classes__department=dept)
+                | Q(role="teacher", sessions__classe__department=dept)
+                | Q(role="student", student_profile__classe__department=dept)
+                | Q(role="program_manager", managed_filieres__department=dept)
+            ).distinct()
+            dept_count = 1
+    elif user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(user)
+        if not filiere_ids:
+            users_qs = User.objects.none()
+            dept_count = 0
+        else:
+            users_qs = User.objects.filter(
+                Q(id=user.id)
+                | Q(role__in=("teacher",), assigned_classes__filiere_id__in=filiere_ids)
+                | Q(role="teacher", sessions__classe__filiere_id__in=filiere_ids)
+                | Q(role="student", student_profile__classe__filiere_id__in=filiere_ids)
+                | Q(role="department_head", headed_department__filieres__id__in=filiere_ids)
+            ).distinct()
+            dept_count = Department.objects.filter(filieres__id__in=filiere_ids).distinct().count()
+    else:
+        users_qs = User.objects.filter(id=user.id)
+        dept_count = Department.objects.count()
+
     return Response({
-        "users": User.objects.count(),
-        "admins": User.objects.filter(role="admin").count(),
-        "teachers": User.objects.filter(role="teacher").count(),
-        "assistants": User.objects.filter(is_also_teacher=True).count(),
-        "students": User.objects.filter(role="student").count(),
-        "department_heads": User.objects.filter(role="department_head").count(),
-        "program_managers": User.objects.filter(role="program_manager").count(),
-        "classes": Classe.objects.count(),
-        "filieres": Filiere.objects.count(),
-        "modules": Module.objects.count(),
-        "sessions": Session.objects.count(),
-        "active_sessions": Session.objects.filter(is_active=True).count(),
-        "closed_sessions": Session.objects.filter(is_closed=True).count(),
-        "departments": Department.objects.count(),
+        "users": users_qs.count(),
+        "admins": users_qs.filter(role="admin").count(),
+        "teachers": users_qs.filter(role="teacher").count(),
+        "assistants": users_qs.filter(is_also_teacher=True).count(),
+        "students": users_qs.filter(role="student").count(),
+        "department_heads": users_qs.filter(role="department_head").count(),
+        "program_managers": users_qs.filter(role="program_manager").count(),
+        "classes": classes_qs.count(),
+        "filieres": filieres_qs.count(),
+        "modules": modules_qs.count(),
+        "sessions": sessions_qs.count(),
+        "active_sessions": sessions_qs.filter(is_active=True).count(),
+        "closed_sessions": sessions_qs.filter(is_closed=True).count(),
+        "departments": dept_count,
         "blocks": Block.objects.count(),
         "rooms": Room.objects.count(),
         "amphitheaters": Amphitheater.objects.count(),
-        "attendances": Attendance.objects.count(),
-        "present": Attendance.objects.filter(attendance_status="confirmed").count(),
-        "absent": Attendance.objects.filter(attendance_status="absent").count(),
-        "reports": Session.objects.exclude(report_file="").count(),
+        "attendances": attendances_qs.count(),
+        "present": attendances_qs.filter(attendance_status="confirmed").count(),
+        "absent": attendances_qs.filter(attendance_status="absent").count(),
+        "reports": sessions_qs.exclude(report_file="").count(),
     })

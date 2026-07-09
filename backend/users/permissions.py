@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework.permissions import BasePermission
 
 from .models import Department
@@ -17,7 +18,7 @@ class IsAdminOrTeacher(BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.role in ("admin", "teacher")
+            and request.user.role in ("admin", "teacher", "department_head")
         )
 
 
@@ -96,6 +97,11 @@ def apply_role_filtering(queryset, model_type, request):
         if dept is None:
             return queryset.none()
 
+        if model_type == "teacher_list":
+            return queryset.filter(
+                Q(assigned_classes__department=dept) | Q(sessions__classe__department=dept)
+            ).distinct()
+
         filters = {
             "classe": {"department": dept},
             "student": {"classe__department": dept},
@@ -109,7 +115,6 @@ def apply_role_filtering(queryset, model_type, request):
             "suspicious": {"session__classe__department": dept},
             "filiere": {"department": dept},
             "module": {"filiere__department": dept},
-            "teacher_list": {"headed_department": dept},
             "department": {"id": dept.id},
         }
         f = filters.get(model_type)

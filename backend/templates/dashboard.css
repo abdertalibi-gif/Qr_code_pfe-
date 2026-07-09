@@ -981,6 +981,25 @@ select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, .12);
 }
+.absence-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.absence-filters .field {
+  margin-bottom: 0;
+}
+.absence-actions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.absence-actions .btn {
+  height: 38px;
+  white-space: nowrap;
+}
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

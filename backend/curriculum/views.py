@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from rest_framework import status
 
-from users.permissions import IsAdmin, IsAdminOrTeacher, apply_role_filtering, get_user_filiere_ids
+from users.permissions import IsAdmin, IsAdminOrTeacher, apply_role_filtering, get_user_department, get_user_filiere_ids
 
 from .models import Filiere, Module, NIVEAU_CHOICES, Semestre
 from .serializers import FiliereSerializer, ModuleSerializer, SemestreSerializer
@@ -770,6 +770,15 @@ def filiere_detail(request, pk):
         return Response({"detail": "Filière introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "GET":
+        # Role-based scope check
+        if request.user.role == "department_head":
+            dept = get_user_department(request.user)
+            if not dept or filiere.department_id != dept.id:
+                return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(request.user)
+            if filiere.id not in filiere_ids:
+                return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
         serializer = FiliereSerializer(filiere)
         return Response(serializer.data)
 
@@ -859,6 +868,15 @@ def subject_detail(request, pk):
         return Response({"detail": "Matière introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "GET":
+        # Role-based scope check
+        if request.user.role == "department_head":
+            dept = get_user_department(request.user)
+            if not dept or subject.filiere.department_id != dept.id:
+                return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(request.user)
+            if subject.filiere_id not in filiere_ids:
+                return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
         serializer = ModuleSerializer(subject)
         return Response(serializer.data)
 
