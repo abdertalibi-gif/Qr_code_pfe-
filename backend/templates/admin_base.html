@@ -125,13 +125,20 @@
     }
     // Show/hide nav links based on role
     const isAdmin = user.role === 'admin';
+    const isDeptHead = user.role === 'department_head';
     document.querySelectorAll('.nav-link[data-page]').forEach(link => {
       const page = link.dataset.page;
       const allowedPages = isAdmin
         ? ['attendance-live', 'users', 'teachers', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'filieres', 'rooms', 'reports', 'statistics', 'settings']
-        : ['attendance-live', 'sessions', 'curriculum', 'departments', 'filieres', 'rooms', 'reports', 'statistics'];
+        : isDeptHead
+          ? ['attendance-live', 'teachers', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'filieres', 'rooms', 'reports', 'statistics', 'settings']
+          : ['attendance-live', 'sessions', 'curriculum', 'departments', 'filieres', 'rooms', 'reports', 'statistics'];
       link.style.display = allowedPages.includes(page) ? '' : 'none';
     });
+    // Hide admin-only buttons/columns for non-admin roles
+    if (!isAdmin) {
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
   }
 </script>
 </body>
