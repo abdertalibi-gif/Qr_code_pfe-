@@ -665,17 +665,20 @@ def curriculum_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdminOrTeacher])
 def semestre_list(request):
-    cache_key = _cache_key("semestres")
+    department_id = request.query_params.get("department_id", "")
+    cache_key = _cache_key("semestres", department_id)
     cached = _cached_response(cache_key)
     if cached:
         return cached
+    
     sems = (
         Semestre.objects
         .filter(filieres__niveau__gt="")
-        .distinct()
-        .order_by("name")
-        .values("id", "name")
     )
+    if department_id:
+        sems = sems.filter(filieres__department_id=department_id)
+    sems = sems.distinct().order_by("name").values("id", "name")
+    
     data = list(sems)
     cache.set(cache_key, data, CACHE_TTL)
     return Response(data)
