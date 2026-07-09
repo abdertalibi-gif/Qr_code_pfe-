@@ -296,7 +296,10 @@ async function teacherLoadFilieresByDept(prefix, deptId) {
 async function downloadTeacherTemplate() {
   showToast('Téléchargement du modèle...', 'info');
   try {
-    const resp = await fetch('/api/v1/teachers/import-excel/template/', { headers: API._headers() });
+    const token = API.getToken();
+    const resp = await fetch('/api/v1/teachers/import-excel/template/', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
     if (!resp.ok) throw new Error('Erreur téléchargement');
     const blob = await resp.blob();
     const url = window.URL.createObjectURL(blob);
