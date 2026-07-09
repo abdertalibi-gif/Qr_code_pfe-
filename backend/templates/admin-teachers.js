@@ -58,13 +58,13 @@ function renderTeachers() {
   }
   const isRestricted = currentUserRole === 'department_head' || currentUserRole === 'program_manager';
   tbody.innerHTML = filtered.map((t, i) => '<tr>' +
-    '<td class="admin-only"><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+    '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
     '<td><strong>' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</strong></td>' +
     '<td>' + esc(t.email) + '</td>' +
     '<td>' + esc(t.phone || '—') + '</td>' +
     '<td>' + esc(t.cin || '—') + '</td>' +
     '<td>' + esc((t.department_name || t.department) || '—') + '</td>' +
-    '<td>' + esc(t.filiere_name || '—') + '</td>' +
+    '<td>' + '—' + '</td>' +
     '<td>' + esc(t.grade || '—') + '</td>' +
     '<td>' + esc(t.speciality || '—') + '</td>' +
     '<td>' + (t.class_count ?? (t.assigned_class_ids ? t.assigned_class_ids.length : '—')) + '</td>' +
