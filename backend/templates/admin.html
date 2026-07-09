@@ -254,8 +254,8 @@
       <div class="section-head">
         <h2>Import étudiants par module</h2>
         <div class="section-actions">
-          <button class="btn outline" id="btnDownloadImportTemplate">⬇ Modèle Excel</button>
-          <button class="btn" id="btnOpenAddStudent">+ Ajouter manuellement</button>
+          <button class="btn outline admin-only" id="btnDownloadImportTemplate">⬇ Modèle Excel</button>
+          <button class="btn admin-only" id="btnOpenAddStudent">+ Ajouter manuellement</button>
         </div>
       </div>
 
@@ -282,12 +282,12 @@
         </div>
       </div>
 
-      <div class="import-upload-row">
-        <div class="field import-file-field">
+      <div class="import-upload-row admin-only">
+        <div class="field import-file-field admin-only">
           <label>Fichier Excel (.xlsx) ou CSV</label>
           <input type="file" id="impFile" accept=".xlsx,.csv" />
         </div>
-        <button class="btn" id="btnRunImport" disabled>Importer les étudiants</button>
+        <button class="btn admin-only" id="btnRunImport" disabled>Importer les étudiants</button>
       </div>
 
       <div id="importReport" class="import-report hidden"></div>
@@ -296,19 +296,19 @@
     <div class="import-panel admin-only" style="margin-top:1rem">
       <div class="section-head">
         <h3 style="font-size:.95rem">Import Excel complet</h3>
-        <button class="btn outline sm" id="btnDownloadCompleteImportTemplate">⬇ Modèle complet</button>
+        <button class="btn outline sm admin-only" id="btnDownloadCompleteImportTemplate">⬇ Modèle complet</button>
       </div>
-      <p class="field-hint" style="margin:0 0 .75rem">
+      <p class="field-hint admin-only" style="margin:0 0 .75rem">
         Le fichier doit contenir les colonnes :
         <strong>Nom, Prénom, Code Massar, Email, Mot de passe, Niveau, Filière, Semestre, Module</strong>.
         Le module est automatiquement identifié.
       </p>
-      <div class="import-upload-row" style="gap:.75rem">
-        <div class="field import-file-field">
+      <div class="import-upload-row admin-only" style="gap:.75rem">
+        <div class="field import-file-field admin-only">
           <input type="file" id="impCompleteFile" accept=".xlsx" />
         </div>
-        <button class="btn" id="btnRunCompleteImport">Importer (format complet)</button>
-        <span class="spinner" id="impCompleteSpinner" style="display:none"></span>
+        <button class="btn admin-only" id="btnRunCompleteImport">Importer (format complet)</button>
+        <span class="spinner admin-only" id="impCompleteSpinner" style="display:none"></span>
       </div>
       <div id="importCompleteReport" class="import-report hidden"></div>
     </div>
@@ -449,8 +449,8 @@
               <th>Nom</th>
               <th>Chef de département</th>
               <th>Filières</th>
-              <th>Responsables de filière</th>
-              <th>Actions</th>
+              <th class="admin-only">Responsables de filière</th>
+              <th class="admin-only">Actions</th>
             </tr>
           </thead>
           <tbody id="departmentsBody">
@@ -487,7 +487,7 @@
           <h2>Liste des blocs</h2>
           <div class="section-actions">
             <input type="search" class="search-input" id="searchBlocks" placeholder="Rechercher un bloc…" />
-            <button class="btn" id="btnOpenAddBlock">+ Nouveau bloc</button>
+            <button class="btn admin-only" id="btnOpenAddBlock">+ Nouveau bloc</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -513,7 +513,7 @@
           <h2>Liste des salles</h2>
           <div class="section-actions">
             <input type="search" class="search-input" id="searchSalles" placeholder="Rechercher une salle…" />
-            <button class="btn" id="btnOpenAddRoom">+ Nouvelle salle</button>
+            <button class="btn admin-only" id="btnOpenAddRoom">+ Nouvelle salle</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -542,7 +542,7 @@
           <h2>Liste des amphithéâtres</h2>
           <div class="section-actions">
             <input type="search" class="search-input" id="searchAmphis" placeholder="Rechercher un amphithéâtre…" />
-            <button class="btn" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
+            <button class="btn admin-only" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -3526,7 +3526,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun département trouvé.</td></tr>';
       return;
     }
-    tbody.innerHTML = list.map(function (d) {
+tbody.innerHTML = list.map(function (d) {
       var headName = d.head_name || '—';
       var filiereCount = d.filiere_count || 0;
       return '<tr>' +
@@ -3534,9 +3534,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         '<td><strong>' + esc(d.name) + '</strong></td>' +
         '<td>' + esc(headName) + '</td>' +
         '<td>' + filiereCount + '</td>' +
-        '<td><button class="btn-sm outline" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
-        '<td class="actions-cell">' +
-          '<button class="btn-sm" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
+        '<td class="admin-only"><button class="btn-sm outline admin-only" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
+        '<td class="actions-cell admin-only">' +
+          '<button class="btn-sm admin-only" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
           '<button class="btn-sm outline admin-only" onclick="deleteDepartment(' + d.id + ')">🗑️</button>' +
         '</td>' +
       '</tr>';
@@ -3817,10 +3817,10 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
         '<td><strong>' + esc(b.name) + '</strong></td>' +
         '<td>' + (rooms.length ? rooms.length + ' salle(s)' : '—') + '</td>' +
-        '<td class="actions-cell">' +
-          '<button class="btn sm outline" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
-          '<button class="btn sm outline" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
-          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Désactiver</button>' +
+        '<td class="actions-cell admin-only">' +
+          '<button class="btn sm outline admin-only" onclick="openEditBlock(' + b.id + ')">Modifier</button>' +
+          '<button class="btn sm outline admin-only" onclick="openAddRoom(' + b.id + ')">+ Salle</button>' +
+          '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteBlock(' + b.id + ')">Désactiver</button>' +
         '</td>' +
       '</tr>';
       rooms.forEach(function (r) {
@@ -3828,9 +3828,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
           '<td></td>' +
           '<td style="padding-left:2rem"><span style="color:var(--muted)">↳</span> ' + esc(r.name) + '</td>' +
           '<td style="font-size:.85rem;color:var(--muted)">' + esc(b.name) + '</td>' +
-          '<td class="actions-cell">' +
-            '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + b.id + ')">Modifier</button>' +
-            '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
+          '<td class="actions-cell admin-only">' +
+            '<button class="btn sm outline admin-only" onclick="openEditRoom(' + r.id + ', ' + b.id + ')">Modifier</button>' +
+            '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
           '</td>' +
         '</tr>';
       });
@@ -3873,9 +3873,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         '<td>' + badge + '</td>' +
         '<td style="font-size:.85rem">' + teacher + '</td>' +
         '<td style="font-size:.85rem">' + session + '</td>' +
-        '<td class="actions-cell">' +
-          '<button class="btn sm outline" onclick="openEditRoom(' + r.id + ', ' + r.block_id + ')">Modifier</button>' +
-          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
+        '<td class="actions-cell admin-only">' +
+          '<button class="btn sm outline admin-only" onclick="openEditRoom(' + r.id + ', ' + r.block_id + ')">Modifier</button>' +
+          '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteRoom(' + r.id + ')">Désactiver</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -3909,9 +3909,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         '<td>' + badge + '</td>' +
         '<td style="font-size:.85rem">' + teacher + '</td>' +
         '<td style="font-size:.85rem">' + session + '</td>' +
-        '<td class="actions-cell">' +
-          '<button class="btn sm outline" onclick="openEditAmphi(' + a.id + ')">Modifier</button>' +
-          '<button class="btn sm outline" style="color:var(--red)" onclick="deleteAmphi(' + a.id + ')">Désactiver</button>' +
+        '<td class="actions-cell admin-only">' +
+          '<button class="btn sm outline admin-only" onclick="openEditAmphi(' + a.id + ')">Modifier</button>' +
+          '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteAmphi(' + a.id + ')">Désactiver</button>' +
         '</td>' +
       '</tr>';
     }).join('');
