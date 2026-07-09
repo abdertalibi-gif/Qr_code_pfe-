@@ -4,7 +4,7 @@ Bulk teacher import from Excel (.xlsx).
 Expected columns:
   first_name, last_name, email, phone, cin, department, filiere, grade, speciality
 Optional:
-  username, password
+  password
 """
 from __future__ import annotations
 
@@ -37,7 +37,6 @@ HEADER_ALIASES = {
     "filiere": {"filiere", "filière", "field"},
     "grade": {"grade", "rank"},
     "speciality": {"speciality", "specialty", "specialite", "spécialité", "field of study"},
-    "username": {"username", "user name", "login"},
     "password": {"password", "mot de passe", "pass"},
 }
 
@@ -54,7 +53,6 @@ class TeacherImportRow:
     filiere: str
     grade: str
     speciality: str
-    username: str
     password: str
 
 
@@ -169,17 +167,6 @@ def _generate_password(length: int = 12) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def _generate_username(first_name: str, last_name: str) -> str:
-    base = f"{first_name.lower()}.{last_name.lower()}"
-    base = re.sub(r"[^a-z0-9.]", "", base)
-    username = base
-    counter = 1
-    while User.objects.filter(username=username).exists():
-        username = f"{base}{counter}"
-        counter += 1
-    return username
-
-
 def import_teachers(uploaded_file) -> dict[str, Any]:
     content = uploaded_file.read()
     if not content:
@@ -216,7 +203,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
         filiere_name = _cell(row, mapping.get("filiere"))
         grade = _cell(row, mapping.get("grade"))
         speciality = _cell(row, mapping.get("speciality"))
-        username = _cell(row, mapping.get("username"))
         password = _cell(row, mapping.get("password"))
 
         row_errors: list[str] = []
@@ -266,7 +252,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
             filiere=filiere_name,
             grade=grade,
             speciality=speciality,
-            username=username,
             password=password or _generate_password(),
         ))
 
@@ -347,9 +332,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                         "updated_fields": update_fields,
                     })
                 else:
-                    if not r.username:
-                        r.username = _generate_username(r.first_name, r.last_name)
-
                     new_user = User.objects.create_user(
                         email=r.email,
                         password=r.password,
@@ -407,7 +389,7 @@ def build_teacher_import_template_xlsx() -> bytes:
     headers = [
         "Prénom", "Nom", "Email", "Téléphone", "CIN",
         "Département", "Filière", "Grade", "Spécialité",
-        "Nom d'utilisateur (optionnel)", "Mot de passe (optionnel)"
+        "Mot de passe (optionnel)"
     ]
 
     # Header row
@@ -423,13 +405,13 @@ def build_teacher_import_template_xlsx() -> bytes:
     example = [
         "Jean", "Dupont", "jean.dupont@umi.ac.ma", "0612345678", "EE123456",
         "Informatique", "Génie Informatique", "Professeur", "Intelligence Artificielle",
-        "jean.dupont", "Pass@12345"
+        "Pass@12345"
     ]
     for col, val in enumerate(example, 1):
         ws.cell(row=2, column=col, value=val)
 
     # Set column widths
-    widths = [15, 15, 30, 15, 15, 20, 25, 15, 25, 20, 20]
+    widths = [15, 15, 30, 15, 15, 20, 25, 15, 25, 20]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
 
@@ -450,7 +432,6 @@ def build_teacher_import_template_xlsx() -> bytes:
         "  - Spécialité",
         "",
         "Colonnes optionnelles :",
-        "  - Nom d'utilisateur (généré automatiquement si vide)",
         "  - Mot de passe (généré automatiquement si vide)",
         "",
         "Règles :",
