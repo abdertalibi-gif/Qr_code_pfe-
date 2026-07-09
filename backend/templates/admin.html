@@ -610,49 +610,47 @@
         <div class="stat-card"><div class="stat-icon pink">📚</div><div><div class="label">Modules</div><div class="value" id="absStatModules">—</div></div></div>
       </div>
 
-      <!-- Filters -->
-      <div class="filter-bar" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:end">
-        <div class="field" style="flex:1;min-width:140px">
-          <label>Du</label>
-          <input type="date" id="absDateFrom" class="form-control" />
+      <!-- Hierarchical filters -->
+      <div class="filter-bar" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:end">
+        <div class="field" style="flex:1;min-width:150px">
+          <label>Département</label>
+          <select id="absDept" class="form-control" onchange="absOnDeptChange()"><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:140px">
-          <label>Au</label>
-          <input type="date" id="absDateTo" class="form-control" />
-        </div>
-        <div class="field" style="flex:1;min-width:160px">
+        <div class="field" style="flex:1;min-width:150px">
           <label>Filière</label>
-          <select id="absFiliere" class="form-control"><option value="">Toutes</option></select>
+          <select id="absFiliere" class="form-control" onchange="absOnFiliereChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:160px">
+        <div class="field" style="flex:1;min-width:130px">
+          <label>Semestre</label>
+          <select id="absSemestre" class="form-control" disabled><option value="">-- Sélectionner --</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:150px">
           <label>Module</label>
-          <select id="absModule" class="form-control"><option value="">Tous</option></select>
+          <select id="absModule" class="form-control" onchange="absOnModuleChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:160px">
+        <div class="field" style="flex:1;min-width:140px">
+          <label>Classe</label>
+          <select id="absClasse" class="form-control" disabled><option value="">Toutes</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:140px">
           <label>Enseignant</label>
           <select id="absTeacher" class="form-control"><option value="">Tous</option></select>
         </div>
-        <div class="field" style="flex:1;min-width:160px">
-          <label>Département</label>
-          <select id="absDepartment" class="form-control"><option value="">Tous</option></select>
+        <div class="field" style="flex:1;min-width:150px">
+          <label>Étudiant</label>
+          <input type="text" id="absStudentSearch" class="form-control" placeholder="Nom, Massar, Apogée..." />
+        </div>
+        <div class="field" style="flex:1;min-width:120px">
+          <label>Du</label>
+          <input type="date" id="absDateFrom" class="form-control" />
+        </div>
+        <div class="field" style="flex:1;min-width:120px">
+          <label>Au</label>
+          <input type="date" id="absDateTo" class="form-control" />
         </div>
         <button class="btn btn-primary" onclick="applyAbsenceFilters()" style="height:38px">🔍 Appliquer</button>
         <button class="btn btn-secondary" onclick="resetAbsenceFilters()" style="height:38px">↺ Réinitialiser</button>
-      </div>
-
-      <!-- Chart section -->
-      <div style="background:var(--card-bg);border-radius:10px;padding:1rem;margin-bottom:1rem">
-        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap">
-          <button class="btn btn-sm chart-type-btn active" data-chart="histogram" onclick="switchAbsenceChart('histogram')">📊 Histogramme</button>
-          <button class="btn btn-sm chart-type-btn" data-chart="pie" onclick="switchAbsenceChart('pie')">🥧 Camembert</button>
-          <button class="btn btn-sm chart-type-btn" data-chart="line" onclick="switchAbsenceChart('line')">📈 Courbe</button>
-          <button class="btn btn-sm chart-type-btn" data-chart="bar" onclick="switchAbsenceChart('bar')">📊 Barres</button>
-          <div style="margin-left:auto;display:flex;gap:0.5rem">
-            <button class="btn btn-sm btn-success" onclick="exportAbsenceExcel()">📥 Excel</button>
-            <button class="btn btn-sm btn-danger" onclick="exportAbsencePDF()">📥 PDF</button>
-          </div>
-        </div>
-        <canvas id="absenceChart" height="300"></canvas>
+        <button class="btn btn-success" id="btnExportProf" onclick="exportProfessionalAbsences()" style="height:38px" disabled>📥 Générer Excel</button>
       </div>
 
       <!-- Data sub-tabs -->
@@ -1049,6 +1047,20 @@
           <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
+      <div class="field" id="euDeptWrap" style="display:none">
+        <label>Département</label>
+        <select id="euDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field" id="euFiliereWrap" style="display:none">
+        <label>Filière</label>
+        <select id="euFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field" id="euIsDeptHeadWrap" style="display:none">
+        <label class="checkbox-label"><input type="checkbox" id="euIsDeptHead" /> Chef de département</label>
+      </div>
+      <div class="field" id="euIsProgMgrWrap" style="display:none">
+        <label class="checkbox-label"><input type="checkbox" id="euIsProgManager" /> Responsable de filière</label>
+      </div>
       <div class="field" id="euClassesWrap">
         <label>Classes assignées (enseignant)</label>
         <select id="euClasses" multiple size="4"></select>
@@ -1230,6 +1242,12 @@
         <div class="field"><label>Spécialité</label><input type="text" id="tSpeciality" placeholder="Informatique" /></div>
       </div>
       <div class="field"><label>Mot de passe</label><input type="password" id="tPassword" placeholder="••••••••" /></div>
+      <div class="field">
+        <label class="checkbox-label"><input type="checkbox" id="tIsDeptHead" /> Chef de département</label>
+      </div>
+      <div class="field">
+        <label class="checkbox-label"><input type="checkbox" id="tIsProgManager" /> Responsable de filière</label>
+      </div>
       <div class="field" id="tClassesWrap">
         <label>Classes assignées</label>
         <select id="tClasses" multiple size="4"></select>
@@ -1265,6 +1283,12 @@
       <div class="field-row">
         <div class="field"><label>Grade</label><input type="text" id="etGrade" /></div>
         <div class="field"><label>Spécialité</label><input type="text" id="etSpeciality" /></div>
+      </div>
+      <div class="field">
+        <label class="checkbox-label"><input type="checkbox" id="etIsDeptHead" /> Chef de département</label>
+      </div>
+      <div class="field">
+        <label class="checkbox-label"><input type="checkbox" id="etIsProgManager" /> Responsable de filière</label>
       </div>
       <div class="field" id="etClassesWrap">
         <label>Classes assignées</label>
@@ -1308,6 +1332,7 @@
   let allStudents = [];
   let allClasses  = [];
   let allDepartments = [];
+  let allFilieres = [];
   let allSessions = [];
   let allAttendance = [];
   let curriculumData = [];
@@ -1422,20 +1447,32 @@
     el.addEventListener('input', renderFn);
   }
 
+  function isAdminOnly() { return currentUser.role === 'admin'; }
+
   async function loadAll() {
-    await Promise.all([loadUsers(), loadClasses(), loadStudents(), loadSessions(), loadCurriculum(), loadDepartments(), loadDashboardCounts()]);
+    var promises = [loadDepartments(), loadDashboardCounts(), loadSessions()];
+    if (isAdminOnly()) {
+      promises.push(loadUsers(), loadClasses(), loadStudents(), loadCurriculum());
+    }
+    await Promise.all(promises);
     await loadAttendance();
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     if (typeof initTeachersTab === 'function') await initTeachersTab();
     setupDepartmentUI();
     setupRoomsEventListeners();
-    loadBlocks();
-    loadAmphitheaters();
+    if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
     loadLiveOccupation();
     setupAbsenceSubTabNavigation();
     populateAbsenceFilters();
-    loadAbsenceStats();
+    if (isAdminOnly()) loadAbsenceStats();
+    /* Load filieres for dashboard user edit modal cascade */
+    if (isAdminOnly()) {
+      try {
+        const data = await API.apiFetch('/curriculum/filieres/');
+        allFilieres = Array.isArray(data) ? data : [];
+      } catch (e) { allFilieres = []; }
+    }
   }
 
   async function loadDashboardCounts() {
@@ -1545,6 +1582,38 @@
     const assigned = u.assigned_class_ids || [];
     Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)) || assigned.includes(o.value); });
     document.getElementById('euClassesWrap').style.display = u.role === 'teacher' ? 'block' : 'none';
+    /* Department / filiere / responsibility fields */
+    const deptWrap = document.getElementById('euDeptWrap');
+    const filWrap = document.getElementById('euFiliereWrap');
+    const isDeptWrap = document.getElementById('euIsDeptHeadWrap');
+    const isProgWrap = document.getElementById('euIsProgMgrWrap');
+    if (u.role === 'teacher') {
+      if (deptWrap) { deptWrap.style.display = 'block'; populateDeptSelect('euDepartment'); }
+      if (filWrap) { filWrap.style.display = 'block'; populateFiliereSelect('euFiliere'); }
+      if (isDeptWrap) isDeptWrap.style.display = 'block';
+      if (isProgWrap) isProgWrap.style.display = 'block';
+      const isDeptHead = document.getElementById('euIsDeptHead');
+      if (isDeptHead) {
+        isDeptHead.checked = !!(u.managed_department);
+        if (u.managed_department) {
+          const ds = document.getElementById('euDepartment');
+          if (ds) ds.value = u.managed_department.id;
+        }
+      }
+      const isProgMgr = document.getElementById('euIsProgManager');
+      if (isProgMgr) {
+        isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
+        if (u.managed_filieres && u.managed_filieres.length) {
+          const fs = document.getElementById('euFiliere');
+          if (fs) fs.value = u.managed_filieres[0].id;
+        }
+      }
+    } else {
+      if (deptWrap) deptWrap.style.display = 'none';
+      if (filWrap) filWrap.style.display = 'none';
+      if (isDeptWrap) isDeptWrap.style.display = 'none';
+      if (isProgWrap) isProgWrap.style.display = 'none';
+    }
     openModal('modalEditUser');
   }
 
@@ -2019,6 +2088,28 @@
     `).join('');
   }
 
+  function populateDeptSelect(selId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      (allDepartments || []).map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
+  }
+  function populateFiliereSelect(selId, deptId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    if (deptId) {
+      API.apiFetch('/curriculum/filieres/?department_id=' + deptId).then(data => {
+        const items = Array.isArray(data) ? data : [];
+        sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+          items.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+      }).catch(() => {
+        sel.innerHTML = '<option value="">Erreur</option>';
+      });
+    } else {
+      sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+    }
+  }
   function populateTeacherClassSelect(selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return;
@@ -2539,7 +2630,33 @@
   });
 
   document.getElementById('euRole')?.addEventListener('change', (e) => {
-    document.getElementById('euClassesWrap').style.display = e.target.value === 'teacher' ? 'block' : 'none';
+    const show = e.target.value === 'teacher';
+    document.getElementById('euClassesWrap').style.display = show ? 'block' : 'none';
+    document.getElementById('euDeptWrap').style.display = show ? 'block' : 'none';
+    document.getElementById('euFiliereWrap').style.display = show ? 'block' : 'none';
+    document.getElementById('euIsDeptHeadWrap').style.display = show ? 'block' : 'none';
+    document.getElementById('euIsProgMgrWrap').style.display = show ? 'block' : 'none';
+  });
+  /* Cascade: department → filiere for edit user modal */
+  document.getElementById('euDepartment')?.addEventListener('change', function () {
+    const isProg = document.getElementById('euIsProgManager');
+    if (isProg && isProg.checked) {
+      populateFiliereSelect('euFiliere', this.value);
+    }
+  });
+  document.getElementById('euIsProgManager')?.addEventListener('change', function () {
+    if (this.checked) {
+      const deptVal = document.getElementById('euDepartment')?.value;
+      populateFiliereSelect('euFiliere', deptVal || '');
+    } else {
+      populateFiliereSelect('euFiliere');
+    }
+  });
+  document.getElementById('euIsDeptHead')?.addEventListener('change', function () {
+    if (this.checked) {
+      document.getElementById('euDepartment').value = '';
+      populateDeptSelect('euDepartment');
+    }
   });
 
   document.getElementById('btnSubmitEditUser').addEventListener('click', async () => {
@@ -2554,6 +2671,16 @@
     if (pwd) body.password = pwd;
     if (body.role === 'teacher') {
       body.assigned_class_ids = Array.from(document.getElementById('euClasses').selectedOptions).map(o => Number(o.value));
+      const isDeptHead = document.getElementById('euIsDeptHead');
+      if (isDeptHead && isDeptHead.checked) {
+        body.is_department_head = true;
+        body.department_id = Number(document.getElementById('euDepartment').value) || null;
+      }
+      const isProgMgr = document.getElementById('euIsProgManager');
+      if (isProgMgr && isProgMgr.checked) {
+        body.is_program_manager = true;
+        body.filiere_id = Number(document.getElementById('euFiliere').value) || null;
+      }
     }
     try {
       await API.apiFetch(`/users/${id}/`, { method: 'PATCH', body: JSON.stringify(body) });
@@ -3388,8 +3515,11 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   /* ── Filiere Managers ── */
   var _currentDeptIdForManagers = null;
   var _filiereManagerChanges = [];
+  var _managersLoading = false;
 
   async function manageFiliereManagers(deptId) {
+    if (_managersLoading) return;
+    _managersLoading = true;
     console.log("Opening manage department ID:", deptId);
     _currentDeptIdForManagers = deptId;
     _filiereManagerChanges = [];
@@ -3416,6 +3546,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière dans ce département.</td></tr>';
         document.getElementById('btnSaveFiliereManagers').disabled = true;
         document.getElementById('modalFiliereManagers').classList.add('show');
+        _managersLoading = false;
         return;
       }
 
@@ -3444,7 +3575,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
 
       document.getElementById('btnSaveFiliereManagers').disabled = false;
       document.getElementById('modalFiliereManagers').classList.add('show');
+      _managersLoading = false;
     } catch (e) {
+      _managersLoading = false;
       showToast('Erreur: ' + esc(e.message), 'error');
     }
   }
@@ -3830,27 +3963,140 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
 
   /* ── Absence Statistics ── */
   let absenceData = null;
-  let absenceChart = null;
-  let currentChartType = 'histogram';
+  /* ── Hierarchical absence filters ── */
+  var _absLoadingDept = false;
+
+  function populateAbsenceFilters() {
+    // Load departments (first level)
+    var deptSel = document.getElementById('absDept');
+    if (!deptSel) return;
+    deptSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    API.apiFetch('/departments/').then(function(depts) {
+      depts.forEach(function(d) {
+        var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name || d.label; deptSel.appendChild(opt);
+      });
+    }).catch(function() {});
+    // Load teachers (independent, always available)
+    var tSel = document.getElementById('absTeacher');
+    if (tSel) {
+      tSel.innerHTML = '<option value="">Tous</option>';
+      API.apiFetch('/teachers/').then(function(teachers) {
+        teachers.forEach(function(t) {
+          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.last_name + ' ' + t.first_name; tSel.appendChild(opt);
+        });
+      }).catch(function() {});
+    }
+  }
+
+  function absOnDeptChange() {
+    if (_absLoadingDept) return;
+    var deptId = document.getElementById('absDept').value;
+    var fSel = document.getElementById('absFiliere');
+    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    fSel.disabled = true;
+    document.getElementById('absSemestre').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absSemestre').disabled = true;
+    document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absModule').disabled = true;
+    document.getElementById('absClasse').innerHTML = '<option value="">Toutes</option>';
+    document.getElementById('absClasse').disabled = true;
+    if (!deptId) return;
+    _absLoadingDept = true;
+    fSel.disabled = false;
+    API.apiFetch('/curriculum/filieres/?department_id=' + deptId).then(function(filieres) {
+      filieres.forEach(function(f) {
+        var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name;
+        opt.dataset.semestreId = f.semestre_id || '';
+        opt.dataset.semestreName = f.semestre_name || '';
+        fSel.appendChild(opt);
+      });
+      if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
+    }).catch(function() { fSel.disabled = true; }).finally(function() { _absLoadingDept = false; });
+  }
+
+  function absOnFiliereChange() {
+    var fSel = document.getElementById('absFiliere');
+    var selected = fSel.options[fSel.selectedIndex];
+    var filiereId = fSel.value;
+    var semSel = document.getElementById('absSemestre');
+    var mSel = document.getElementById('absModule');
+    var cSel = document.getElementById('absClasse');
+
+    semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    mSel.disabled = true;
+    cSel.innerHTML = '<option value="">Toutes</option>';
+    cSel.disabled = true;
+
+    if (!filiereId) { semSel.disabled = true; mSel.disabled = true; cSel.disabled = true; return; }
+
+    // Auto-fill semestre from filiere data
+    var semId = selected ? selected.dataset.semestreId : '';
+    var semName = selected ? selected.dataset.semestreName : '';
+    if (semId) {
+      semSel.innerHTML = '<option value="' + semId + '">' + (semName || 'Semestre ' + semId) + '</option>';
+      semSel.value = semId;
+      semSel.disabled = false;
+    } else {
+      semSel.innerHTML = '<option value="">—</option>';
+      semSel.disabled = true;
+    }
+
+    // Load modules for filiere
+    mSel.disabled = false;
+    mSel.innerHTML = '<option value="">Chargement...</option>';
+    API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId).then(function(modules) {
+      mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+      modules.forEach(function(m) {
+        var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
+      });
+      if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
+    }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; });
+  }
+
+  function absOnModuleChange() {
+    var modId = document.getElementById('absModule').value;
+    var cSel = document.getElementById('absClasse');
+    cSel.innerHTML = '<option value="">Toutes</option>';
+    cSel.disabled = true;
+    if (!modId) return;
+    cSel.disabled = false;
+    cSel.innerHTML = '<option value="">Chargement...</option>';
+    var filiereId = document.getElementById('absFiliere').value;
+    // Classes can be filtered by module_id and/or filiere_id
+    var url = '/classes/?module_id=' + modId;
+    if (filiereId) url += '&filiere_id=' + filiereId;
+    API.apiFetch(url).then(function(classes) {
+      cSel.innerHTML = '<option value="">Toutes</option>';
+      classes.forEach(function(c) {
+        var opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name || c.code;
+        if (c.code) opt.textContent = c.name + ' (' + c.code + ')';
+        cSel.appendChild(opt);
+      });
+    }).catch(function() { cSel.disabled = true; cSel.innerHTML = '<option value="">Erreur</option>'; });
+  }
+
+  function absGetFilterParams() {
+    var p = {};
+    var v;
+    v = document.getElementById('absDept') ? document.getElementById('absDept').value : ''; if (v) p.department_id = v;
+    v = document.getElementById('absFiliere') ? document.getElementById('absFiliere').value : ''; if (v) p.filiere_id = v;
+    v = document.getElementById('absSemestre') ? document.getElementById('absSemestre').value : ''; if (v) p.semestre_id = v;
+    v = document.getElementById('absModule') ? document.getElementById('absModule').value : ''; if (v) p.module_id = v;
+    v = document.getElementById('absClasse') ? document.getElementById('absClasse').value : ''; if (v) p.classe_id = v;
+    v = document.getElementById('absTeacher') ? document.getElementById('absTeacher').value : ''; if (v) p.teacher_id = v;
+    v = document.getElementById('absDateFrom') ? document.getElementById('absDateFrom').value : ''; if (v) p.date_from = v;
+    v = document.getElementById('absDateTo') ? document.getElementById('absDateTo').value : ''; if (v) p.date_to = v;
+    return p;
+  }
 
   async function loadAbsenceStats() {
-    const el = document.getElementById('tab-absence-stats');
+    var el = document.getElementById('tab-absence-stats');
     if (!el) return;
-    const dateFrom = document.getElementById('absDateFrom')?.value || '';
-    const dateTo = document.getElementById('absDateTo')?.value || '';
-    const filiereId = document.getElementById('absFiliere')?.value || '';
-    const moduleId = document.getElementById('absModule')?.value || '';
-    const teacherId = document.getElementById('absTeacher')?.value || '';
-    const departmentId = document.getElementById('absDepartment')?.value || '';
-    const params = new URLSearchParams();
-    if (dateFrom) params.set('date_from', dateFrom);
-    if (dateTo) params.set('date_to', dateTo);
-    if (filiereId) params.set('filiere_id', filiereId);
-    if (moduleId) params.set('module_id', moduleId);
-    if (teacherId) params.set('teacher_id', teacherId);
-    if (departmentId) params.set('department_id', departmentId);
+    var p = absGetFilterParams();
+    var qs = Object.keys(p).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(p[k]); }).join('&');
     try {
-      absenceData = await API.apiFetch('/absence-stats/?' + params.toString());
+      absenceData = await API.apiFetch('/absence-stats/?' + qs);
       renderAbsenceStats(absenceData);
     } catch (e) {
       showToast('Erreur chargement statistiques: ' + e.message, 'error');
@@ -3858,8 +4104,8 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   }
 
   function renderAbsenceStats(d) {
-    const s = d.summary;
-    const set = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    var s = d.summary;
+    var set = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; };
     set('absStatTotal', s.total);
     set('absStatPresent', s.present);
     set('absStatAbsent', s.absent);
@@ -3875,8 +4121,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     renderAbsenceTable('absFiliereBody', d.by_filiere, ['filiere_name', 'total', 'absent_count', 'rate'], ['Filière', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absPeriodBody', d.by_day, ['date', 'present', 'absent', 'total', 'rate'], ['Date', 'Présents', 'Absents', 'Total', 'Taux']);
     renderAbsenceTable('absRecentBody', d.recent_absences, ['student', 'student__code_massar', 'module', 'teacher', 'date', 'time'], ['Étudiant', 'Code Massar', 'Module', 'Enseignant', 'Date', 'Heure']);
-    renderAbsenceChart(d);
-    const cnt = document.getElementById('cntAbsenceStats');
+    var cnt = document.getElementById('cntAbsenceStats');
     if (cnt) cnt.textContent = s.total;
   }
 
@@ -3901,115 +4146,100 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     }).join('');
   }
 
-  function renderAbsenceChart(d) {
-    var canvas = document.getElementById('absenceChart');
-    if (!canvas) return;
-    if (absenceChart) { absenceChart.destroy(); absenceChart = null; }
-    var ctx = canvas.getContext('2d');
-    var labels, datasets, chartType;
-    switch (currentChartType) {
-      case 'histogram':
-        chartType = 'bar';
-        labels = d.by_day.slice(0, 30).map(function(x) { var d = x.date; return d ? d.slice(0, 10) : ''; });
-        datasets = [
-          { label: 'Présents', data: d.by_day.slice(0, 30).map(function(x) { return x.present; }), backgroundColor: 'rgba(34,197,94,0.7)', borderColor: 'rgb(34,197,94)', borderWidth: 1 },
-          { label: 'Absents', data: d.by_day.slice(0, 30).map(function(x) { return x.absent; }), backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgb(239,68,68)', borderWidth: 1 },
-        ];
-        break;
-      case 'pie':
-        chartType = 'pie';
-        var totalP = d.summary.present, totalA = d.summary.absent;
-        labels = ['Présents', 'Absents'];
-        datasets = [{
-          data: [totalP, totalA],
-          backgroundColor: ['rgba(34,197,94,0.8)', 'rgba(239,68,68,0.8)'],
-          borderColor: ['rgb(34,197,94)', 'rgb(239,68,68)'],
-          borderWidth: 2,
-        }];
-        break;
-      case 'line':
-        chartType = 'line';
-        labels = d.by_day.slice(0, 30).map(function(x) { var d = x.date; return d ? d.slice(0, 10) : ''; });
-        datasets = [
-          { label: 'Taux d\'absence', data: d.by_day.slice(0, 30).map(function(x) { return x.rate; }), borderColor: 'rgb(239,68,68)', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 3 },
-        ];
-        break;
-      case 'bar':
-      default:
-        chartType = 'bar';
-        var topMods = d.by_module.slice(0, 10);
-        labels = topMods.map(function(x) { var n = x.module__name || x.module_name; return n ? n.slice(0, 20) : '—'; });
-        datasets = [
-          { label: 'Absences', data: topMods.map(function(x) { return x.absent_count || 0; }), backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgb(239,68,68)', borderWidth: 1 },
-        ];
-        break;
-    }
-    absenceChart = new Chart(ctx, {
-      type: chartType,
-      data: { labels: labels, datasets: datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
-        },
-        scales: chartType === 'pie' ? undefined : {
-          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-          x: { grid: { display: false } },
-        },
-      },
-    });
-  }
-
-  function switchAbsenceChart(type) {
-    currentChartType = type;
-    document.querySelectorAll('.chart-type-btn').forEach(function(b) { b.classList.remove('active'); });
-    var btn = document.querySelector('.chart-type-btn[data-chart="' + type + '"]');
-    if (btn) btn.classList.add('active');
-    if (absenceData) renderAbsenceChart(absenceData);
-  }
-
   function applyAbsenceFilters() {
     loadAbsenceStats();
   }
 
   function resetAbsenceFilters() {
-    var df = document.getElementById('absDateFrom'); if (df) df.value = '';
-    var dt = document.getElementById('absDateTo'); if (dt) dt.value = '';
-    var af = document.getElementById('absFiliere'); if (af) af.value = '';
-    var am = document.getElementById('absModule'); if (am) am.value = '';
-    var at = document.getElementById('absTeacher'); if (at) at.value = '';
-    var ad = document.getElementById('absDepartment'); if (ad) ad.value = '';
+    var ids = ['absDept','absFiliere','absSemestre','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.tagName === 'SELECT') { el.value = ''; }
+      else { el.value = ''; }
+    });
+    // Reset cascade state
+    document.getElementById('absFiliere').disabled = true;
+    document.getElementById('absFiliere').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absSemestre').disabled = true;
+    document.getElementById('absSemestre').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absModule').disabled = true;
+    document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absClasse').disabled = true;
+    document.getElementById('absClasse').innerHTML = '<option value="">Toutes</option>';
     loadAbsenceStats();
   }
 
-  function exportAbsenceExcel() {
-    if (!absenceData) { showToast('Chargez d\'abord les données.', 'error'); return; }
-    var rows = [['Code Massar', 'Nom', 'Prénom', 'Module', 'Enseignant', 'Date', 'Heure']];
-    (absenceData.recent_absences || []).forEach(function(r) {
-      rows.push([r.code_massar || '', (r.student || '').split(' ')[0] || '', (r.student || '').split(' ').slice(1).join(' ') || '', r.module || '', r.teacher || '', r.date || '', r.time || '']);
-    });
-    var csv = rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
-    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    var link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'absences.csv'; link.click();
-    URL.revokeObjectURL(link.href);
+  function absCheckExportEnabled() {
+    var dept = document.getElementById('absDept').value;
+    var fil = document.getElementById('absFiliere').value;
+    var sem = document.getElementById('absSemestre').value;
+    var mod = document.getElementById('absModule').value;
+    var btn = document.getElementById('btnExportProf');
+    if (btn) {
+      btn.disabled = !(dept && fil && sem && mod);
+    }
   }
 
-  function exportAbsencePDF() {
-    if (!absenceData) { showToast('Chargez d\'abord les données.', 'error'); return; }
-    var w = window.open('', '_blank');
-    if (!w) { showToast('Autorisez les popups pour exporter.', 'error'); return; }
-    var s = absenceData.summary;
-    var rowsHtml = (absenceData.recent_absences || []).slice(0, 20).map(function(r) {
-      return '<tr><td>' + (r.student || '') + '</td><td>' + (r.code_massar || '') + '</td><td>' + (r.module || '') + '</td><td>' + (r.date || '') + '</td><td>' + (r.time || '') + '</td></tr>';
-    }).join('');
-    w.document.write('<html><head><meta charset="utf-8"><title>Statistiques des absences</title><style>body{font-family:sans-serif;padding:20px}h2{color:#1e293b}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left}th{background:#1e293b;color:#fff}.stats{display:flex;gap:1rem;flex-wrap:wrap;margin:10px 0}.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;text-align:center}.stat .val{font-size:1.4rem;font-weight:700;color:#0f172a}.stat .lbl{font-size:.8rem;color:#64748b}</style></head><body>');
-    w.document.write('<h2>Statistiques des absences</h2>');
-    w.document.write('<div class="stats"><div class="stat"><div class="val">' + s.total + '</div><div class="lbl">Total</div></div><div class="stat"><div class="val">' + s.present + '</div><div class="lbl">Présents</div></div><div class="stat"><div class="val" style="color:#dc2626">' + s.absent + '</div><div class="lbl">Absents</div></div><div class="stat"><div class="val" style="color:#dc2626">' + s.absence_rate + '%</div><div class="lbl">Taux absence</div></div></div>');
-    w.document.write('<h3>Récentes absences (20 dernières)</h3><table><thead><tr><th>Étudiant</th><th>Code Massar</th><th>Module</th><th>Date</th><th>Heure</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>');
-    w.document.write('<p style="margin-top:20px;font-size:.8rem;color:#94a3b8">Généré le ' + new Date().toLocaleString() + '</p>');
-    w.document.write('</body></html>');
-    w.document.close();
-    w.print();
+  // Monitor filter selects to enable/disable export button
+  document.addEventListener('change', function(e) {
+    if (e.target.id && ['absDept','absFiliere','absSemestre','absModule'].indexOf(e.target.id) >= 0) {
+      absCheckExportEnabled();
+    }
+  });
+
+  function exportProfessionalAbsences() {
+    var btn = document.getElementById('btnExportProf');
+    if (!btn || btn.disabled) return;
+    var p = absGetFilterParams();
+    // Map frontend param names to ExportWizardView param names
+    var qs = [];
+    qs.push('export_mode=professional');
+    qs.push('export_type=all');
+    if (p.date_from) { qs.push('start_date=' + encodeURIComponent(p.date_from)); }
+    if (p.date_to) { qs.push('end_date=' + encodeURIComponent(p.date_to)); }
+    if (p.department_id) { qs.push('department_id=' + p.department_id); }
+    if (p.filiere_id) { qs.push('filiere_id=' + p.filiere_id); }
+    if (p.semestre_id) { qs.push('semestre_id=' + p.semestre_id); }
+    if (p.module_id) { qs.push('module_id=' + p.module_id); }
+    if (p.classe_id) { qs.push('classe_id=' + p.classe_id); }
+    if (p.teacher_id) { qs.push('enseignant_id=' + p.teacher_id); }
+
+    // Also pass department/filiere name for header
+    var deptSel = document.getElementById('absDept');
+    var filSel = document.getElementById('absFiliere');
+    if (deptSel && deptSel.options[deptSel.selectedIndex]) {
+      qs.push('department_name=' + encodeURIComponent(deptSel.options[deptSel.selectedIndex].textContent));
+    }
+    if (filSel && filSel.options[filSel.selectedIndex]) {
+      qs.push('filiere_name=' + encodeURIComponent(filSel.options[filSel.selectedIndex].textContent));
+    }
+
+    var token = localStorage.getItem('access_token') || '';
+    var url = '/api/v1/attendance/export-wizard/?' + qs.join('&');
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.responseType = 'blob';
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        var blob = xhr.response;
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'rapport_absences.xlsx';
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } else {
+        var reader = new FileReader();
+        reader.onload = function() {
+          try { var err = JSON.parse(reader.result); showToast(err.error || 'Erreur export', 'error'); }
+          catch(e) { showToast('Erreur export', 'error'); }
+        };
+        reader.readAsText(xhr.response);
+      }
+    };
+    xhr.onerror = function() { showToast('Erreur réseau lors de l\'export.', 'error'); };
+    xhr.send();
   }
 
   function setupAbsenceSubTabNavigation() {
@@ -4022,41 +4252,6 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         var panel = document.getElementById(this.dataset.subtab);
         if (panel) panel.classList.add('active');
       });
-    });
-  }
-
-  function populateAbsenceFilters() {
-    Promise.all([
-      API.apiFetch('/curriculum/filieres/').catch(function() { return []; }),
-      API.apiFetch('/curriculum/modules/').catch(function() { return []; }),
-      API.apiFetch('/teachers/').catch(function() { return []; }),
-      API.apiFetch('/departments/').catch(function() { return []; }),
-    ]).then(function(results) {
-      var filieres = results[0] || [], modules = results[1] || [], teachers = results[2] || [], departments = results[3] || [];
-      var fSel = document.getElementById('absFiliere');
-      if (fSel) {
-        filieres.forEach(function(f) {
-          var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
-        });
-      }
-      var mSel = document.getElementById('absModule');
-      if (mSel) {
-        modules.forEach(function(m) {
-          var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
-        });
-      }
-      var tSel = document.getElementById('absTeacher');
-      if (tSel) {
-        teachers.forEach(function(t) {
-          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
-        });
-      }
-      var dSel = document.getElementById('absDepartment');
-      if (dSel) {
-        departments.forEach(function(d) {
-          var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name; dSel.appendChild(opt);
-        });
-      }
     });
   }
 

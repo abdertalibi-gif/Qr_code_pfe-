@@ -73,7 +73,7 @@ class LoginView(APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = (
         User.objects.select_related("student_profile__classe")
-        .prefetch_related("assigned_classes")
+        .prefetch_related("assigned_classes", "headed_department", "managed_filieres")
         .order_by("-created_at")
     )
     permission_classes = [IsAuthenticated, IsAdmin]
@@ -617,7 +617,7 @@ def amphitheater_detail(request, pk):
 @permission_classes([IsAuthenticated])
 def department_list(request):
     if request.method == "GET":
-        depts = Department.objects.select_related("head").all().order_by("name")
+        depts = Department.objects.select_related("head").prefetch_related("filieres").all().order_by("name")
         user = request.user
         if user.role == "department_head":
             depts = apply_role_filtering(depts, "department", request)
@@ -760,6 +760,8 @@ def absence_statistics(request):
     module_id = request.query_params.get("module_id", "")
     teacher_id = request.query_params.get("teacher_id", "")
     department_id = request.query_params.get("department_id", "")
+    semestre_id = request.query_params.get("semestre_id", "")
+    classe_id = request.query_params.get("classe_id", "")
 
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
@@ -787,6 +789,10 @@ def absence_statistics(request):
         qs = qs.filter(session__teacher_id=teacher_id)
     if department_id:
         qs = qs.filter(student__classe__department_id=department_id)
+    if semestre_id:
+        qs = qs.filter(student__classe__semestre_id=semestre_id)
+    if classe_id:
+        qs = qs.filter(student__classe_id=classe_id)
 
     total = qs.count()
     present = qs.filter(attendance_status="confirmed").count()

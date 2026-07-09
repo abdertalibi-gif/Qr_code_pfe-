@@ -46,6 +46,7 @@ class FiliereSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    semestre_name = serializers.SerializerMethodField()
     department_id = serializers.PrimaryKeyRelatedField(
         source="department",
         queryset=Department.objects.all(),
@@ -65,7 +66,7 @@ class FiliereSerializer(serializers.ModelSerializer):
         model = Filiere
         fields = [
             "id", "name", "niveau",
-            "semestre_id",
+            "semestre_id", "semestre_name",
             "department_id", "department_name",
             "manager_id", "manager_name",
             "modules",
@@ -78,6 +79,11 @@ class FiliereSerializer(serializers.ModelSerializer):
         if obj.manager:
             return f"{obj.manager.first_name} {obj.manager.last_name}"
         return None
+
+    def get_semestre_name(self, obj):
+        if obj.semestre:
+            return obj.semestre.name
+        return ""
 
 
 class SemestreSerializer(serializers.ModelSerializer):

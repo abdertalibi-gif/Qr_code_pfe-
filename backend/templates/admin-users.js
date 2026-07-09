@@ -144,6 +144,16 @@ async function openEditUser(id) {
   const cb = document.getElementById('euIsAlsoTeacher');
   if (cb) cb.checked = !!u.is_also_teacher;
 
+  const isDeptHead = document.getElementById('euIsDeptHead');
+  if (isDeptHead) {
+    isDeptHead.checked = !!(u.managed_department);
+    if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
+  }
+  const isProgMgr = document.getElementById('euIsProgManager');
+  if (isProgMgr) {
+    isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
+  }
+
   openModal('modalEditUser');
 }
 
@@ -192,6 +202,18 @@ function buildPayload(prefix) {
   if (role === 'teacher') {
     const cb = document.getElementById(prefix + 'IsAlsoTeacher');
     if (cb) body.is_also_teacher = cb.checked;
+    const isDeptHead = document.getElementById(prefix + 'IsDeptHead');
+    if (isDeptHead && isDeptHead.checked) {
+      body.is_department_head = true;
+      const deptEl = document.getElementById(prefix + 'Department');
+      body.department_id = deptEl ? Number(deptEl.value) || null : null;
+    }
+    const isProgMgr = document.getElementById(prefix + 'IsProgManager');
+    if (isProgMgr && isProgMgr.checked) {
+      body.is_program_manager = true;
+      const filEl = document.getElementById(prefix + 'Filiere');
+      body.filiere_id = filEl ? Number(filEl.value) || null : null;
+    }
   }
   if (role === 'student') {
     const cm = document.getElementById(prefix + 'CodeMassar');
@@ -200,6 +222,44 @@ function buildPayload(prefix) {
     if (ca) body.code_apogee = ca.value.trim();
   }
   return body;
+}
+
+async function populateRoleFilieresByDept(prefix, deptId) {
+  const filSel = document.getElementById(prefix + 'Filiere');
+  if (!filSel) return;
+  if (!deptId) {
+    filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+    return;
+  }
+  try {
+    const data = await API.apiFetch('/curriculum/filieres/?department_id=' + deptId);
+    const items = Array.isArray(data) ? data : [];
+    filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      items.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
+  } catch (e) {
+    filSel.innerHTML = '<option value="">Erreur de chargement</option>';
+  }
+}
+
+function setupCascadeForPrefix(prefix) {
+  const deptSel = document.getElementById(prefix + 'Department');
+  const isProgCheck = document.getElementById(prefix + 'IsProgManager');
+  if (deptSel && isProgCheck) {
+    deptSel.addEventListener('change', function () {
+      if (isProgCheck.checked) {
+        populateRoleFilieresByDept(prefix, this.value);
+      }
+    });
+    isProgCheck.addEventListener('change', function () {
+      const deptVal = document.getElementById(prefix + 'Department')?.value;
+      if (this.checked) {
+        populateRoleFilieresByDept(prefix, deptVal || '');
+      } else {
+        populateRoleSelects(prefix);
+      }
+    });
+  }
 }
 
 function setupEventListeners() {
@@ -219,6 +279,9 @@ function setupEventListeners() {
   document.getElementById('btnOpenAddUser')?.addEventListener('click', async function () {
     populateRoleSelects('u');
     showFieldsForRole(document.getElementById('uRole').value, 'u');
+    document.getElementById('uIsDeptHead').checked = false;
+    document.getElementById('uIsProgManager').checked = false;
+    setupCascadeForPrefix('u');
     openModal('modalAddUser');
   });
 
@@ -233,6 +296,12 @@ function setupEventListeners() {
     }
     if (body.role === 'program_manager' && !body.filiere_id) {
       showToast('La filière est obligatoire pour le responsable de filière.', 'error'); return;
+    }
+    if (body.role === 'teacher' && body.is_department_head && !body.department_id) {
+      showToast('Le département est obligatoire pour un enseignant chef de département.', 'error'); return;
+    }
+    if (body.role === 'teacher' && body.is_program_manager && !body.filiere_id) {
+      showToast('La filière est obligatoire pour un enseignant responsable de filière.', 'error'); return;
     }
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
@@ -260,4 +329,7 @@ function setupEventListeners() {
       await loadUsers();
     } catch (e) { showToast(e.message, 'error'); }
   });
+
+  setupCascadeForPrefix('u');
+  setupCascadeForPrefix('eu');
 }

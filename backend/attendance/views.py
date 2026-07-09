@@ -577,6 +577,23 @@ def _get_export_queryset(request):
     if enseignant_id and request.user.role == "admin":
         qs = qs.filter(session__teacher_id=enseignant_id)
 
+    # ID-based hierarchical filters
+    filiere_id = request.query_params.get("filiere_id")
+    if filiere_id:
+        qs = qs.filter(student__classe__filiere_id=filiere_id)
+
+    semestre_id = request.query_params.get("semestre_id")
+    if semestre_id:
+        qs = qs.filter(student__classe__semestre_id=semestre_id)
+
+    module_id = request.query_params.get("module_id")
+    if module_id:
+        qs = qs.filter(session__module_id=module_id)
+
+    department_id = request.query_params.get("department_id")
+    if department_id:
+        qs = qs.filter(student__classe__department_id=department_id)
+
     return qs
 
 
@@ -887,10 +904,15 @@ class ExportWizardView(APIView):
             "export_mode": request.query_params.get("export_mode", "by_student").strip().lower(),
             "enseignant_id": request.query_params.get("enseignant_id", "").strip(),
             "etudiant_id": request.query_params.get("etudiant_id", "").strip(),
+            "department_id": request.query_params.get("department_id", "").strip(),
+            "filiere_id": request.query_params.get("filiere_id", "").strip(),
+            "semestre_id": request.query_params.get("semestre_id", "").strip(),
+            "module_id": request.query_params.get("module_id", "").strip(),
         }
 
         etudiant_id = filters.get("etudiant_id")
         has_dates = bool(filters["start_date"] and filters["end_date"])
+        is_professional = filters["export_mode"] == "professional"
 
         if etudiant_id:
             try:
@@ -900,7 +922,7 @@ class ExportWizardView(APIView):
                     {"error": "L'identifiant étudiant est invalide."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-        elif not has_dates:
+        elif not has_dates and not is_professional:
             return Response(
                 {"error": "Les dates de début et de fin sont obligatoires sauf si un étudiant spécifique est sélectionné."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -909,6 +931,7 @@ class ExportWizardView(APIView):
         if filters["export_mode"] not in (
             "by_student", "by_module", "by_session",
             "resume_absences", "resume_presences",
+            "professional",
         ):
             return Response(
                 {"error": "Mode d'export invalide."},
@@ -931,6 +954,14 @@ class ExportWizardView(APIView):
             filters.pop("classe_id", None)
         if not filters["enseignant_id"]:
             filters.pop("enseignant_id", None)
+        if not filters["department_id"]:
+            filters.pop("department_id", None)
+        if not filters["filiere_id"]:
+            filters.pop("filiere_id", None)
+        if not filters["semestre_id"]:
+            filters.pop("semestre_id", None)
+        if not filters["module_id"]:
+            filters.pop("module_id", None)
 
         if request.user.role == "teacher":
             filters.pop("enseignant_id", None)

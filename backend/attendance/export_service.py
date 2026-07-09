@@ -105,6 +105,23 @@ class ExportWizardService:
         if module:
             qs = qs.filter(session__subject__icontains=module)
 
+        # ID-based hierarchical filters for professional export
+        department_id = filters.get("department_id")
+        if department_id:
+            qs = qs.filter(student__classe__department_id=department_id)
+
+        filiere_id = filters.get("filiere_id")
+        if filiere_id:
+            qs = qs.filter(student__classe__filiere_id=filiere_id)
+
+        semestre_id = filters.get("semestre_id")
+        if semestre_id:
+            qs = qs.filter(student__classe__semestre_id=semestre_id)
+
+        module_id = filters.get("module_id")
+        if module_id:
+            qs = qs.filter(session__module_id=module_id)
+
         classe_id = filters.get("classe_id")
         if classe_id:
             qs = qs.filter(session__classe_id=classe_id)
@@ -345,13 +362,254 @@ class ExportWizardService:
         return buffer.read()
 
     @staticmethod
+    def _build_professional_rows(qs):
+        """Build per-student summary with department, module, teacher info."""
+        from collections import defaultdict
+        students_data = defaultdict(lambda: {
+            "total": 0, "presents": 0, "absents": 0,
+        })
+
+        for att in qs.iterator(chunk_size=500):
+            student = att.student
+            sid = student.id
+            d = students_data[sid]
+            d["student"] = student
+            d["total"] += 1
+            if att.attendance_status == Attendance.STATUS_CONFIRMED:
+                d["presents"] += 1
+            elif att.attendance_status == Attendance.STATUS_ABSENT:
+                d["absents"] += 1
+            d["session"] = att.session
+
+        rows = []
+        for sid, data in students_data.items():
+            student = data["student"]
+            classe = student.classe
+            session = data.get("session")
+            total = data["total"]
+            presents = data["presents"]
+            absents = data["absents"]
+            taux_presence = round((presents / total * 100), 1) if total else 0
+            taux_absence = round((absents / total * 100), 1) if total else 0
+
+            # Get department: prefer classe.department, fallback to filiere.department
+            department_name = ""
+            if classe and classe.department:
+                department_name = classe.department.name
+            elif classe and classe.filiere and classe.filiere.department:
+                department_name = classe.filiere.department.name
+
+            module_name = session.subject if session else ""
+            teacher_name = session.teacher.full_name if session and session.teacher else ""
+
+            rows.append({
+                "code_massar": student.code_massar or "",
+                "code_apogee": student.code_apogee or "",
+                "nom": student.last_name,
+                "prenom": student.first_name,
+                "department": department_name,
+                "filiere": classe.filiere.name if classe and classe.filiere else "",
+                "semestre": classe.semestre.name if classe and classe.semestre else "",
+                "module": module_name,
+                "classe": str(classe) if classe else "",
+                "enseignant": teacher_name,
+                "presents": presents,
+                "absents": absents,
+                "taux_presence": f"{taux_presence}%",
+                "taux_absence": f"{taux_absence}%",
+            })
+
+        rows.sort(key=lambda r: r["absents"], reverse=True)
+        return rows
+
+    @staticmethod
+    def _generate_professional_xlsx(rows, filters=None):
+        """Generate a professional XLSX with header, stats, and formatted table."""
+        from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
+        from openpyxl.utils import get_column_letter
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Rapport d'absences"
+
+        # Colors
+        DARK_BLUE = "1F4E79"
+        LIGHT_BLUE = "D6E4F0"
+        WHITE = "FFFFFF"
+        LIGHT_GRAY = "F2F2F2"
+        GREEN = "C6EFCE"
+        RED = "FFC7CE"
+
+        header_fill = PatternFill(start_color=DARK_BLUE, end_color=DARK_BLUE, fill_type="solid")
+        header_font = Font(bold=True, color=WHITE, size=10)
+        title_font = Font(bold=True, size=14, color=DARK_BLUE)
+        subtitle_font = Font(bold=True, size=11, color=DARK_BLUE)
+        stat_label_font = Font(bold=True, size=10, color=DARK_BLUE)
+        stat_value_font = Font(size=10)
+        thin_border = Border(
+            left=Side(style="thin", color="999999"),
+            right=Side(style="thin", color="999999"),
+            top=Side(style="thin", color="999999"),
+            bottom=Side(style="thin", color="999999"),
+        )
+
+        # === HEADER SECTION ===
+        # Row 1: Title (merged across all columns)
+        ws.merge_cells("A1:N1")
+        title_cell = ws["A1"]
+        title_cell.value = "Rapport des absences"
+        title_cell.font = title_font
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[1].height = 30
+
+        # Row 2: University / Faculty info
+        ws.merge_cells("A2:N2")
+        sub_cell = ws["A2"]
+        dept_name = ""
+        filiere_name = ""
+        if filters:
+            dept_name = filters.get("department_name", "")
+            filiere_name = filters.get("filiere_name", "")
+        parts = ["Université", "Faculté des Sciences"]
+        if dept_name:
+            parts.append(f"Département: {dept_name}")
+        if filiere_name:
+            parts.append(f"Filière: {filiere_name}")
+        sub_cell.value = " | ".join(parts)
+        sub_cell.font = Font(size=10, italic=True, color="555555")
+        sub_cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[2].height = 22
+
+        # Row 3: Empty spacer
+        ws.row_dimensions[3].height = 6
+
+        # === STATS SECTION (rows 4-7) ===
+        stats_start = 4
+        total_students = len(rows)
+        total_presents = sum(r["presents"] for r in rows)
+        total_absents = sum(r["absents"] for r in rows)
+        total_presence_rate = round((total_presents / (total_presents + total_absents) * 100), 1) if (total_presents + total_absents) else 0
+        total_absence_rate = round((total_absents / (total_presents + total_absents) * 100), 1) if (total_presents + total_absents) else 0
+
+        stats_data = [
+            ("Total étudiants", str(total_students)),
+            ("Total présences", str(total_presents)),
+            ("Total absences", str(total_absents)),
+            ("Taux de présence", f"{total_presence_rate}%"),
+            ("Taux d'absence", f"{total_absence_rate}%"),
+        ]
+
+        # Write stats in two rows: labels in row 4, values in row 5
+        col = 1
+        for label, value in stats_data:
+            cell_label = ws.cell(row=stats_start, column=col, value=label)
+            cell_label.font = stat_label_font
+            cell_label.alignment = Alignment(horizontal="center", vertical="center")
+            cell_label.fill = PatternFill(start_color=LIGHT_BLUE, end_color=LIGHT_BLUE, fill_type="solid")
+            cell_label.border = thin_border
+
+            cell_value = ws.cell(row=stats_start + 1, column=col, value=value)
+            cell_value.font = stat_value_font
+            cell_value.alignment = Alignment(horizontal="center", vertical="center")
+            cell_value.border = thin_border
+            col += 1
+
+        # Merge stat headers
+        ws.merge_cells(start_row=stats_start, start_column=1, end_row=stats_start, end_column=5)
+        ws.merge_cells(start_row=stats_start + 1, start_column=1, end_row=stats_start + 1, end_column=5)
+
+        # Row 6: Empty spacer
+        ws.row_dimensions[stats_start + 2].height = 6
+
+        # === DATA TABLE ===
+        data_start = stats_start + 3
+        PROFESSIONAL_HEADERS = [
+            "Code Massar", "Code Apogée", "Nom", "Prénom",
+            "Département", "Filière", "Semestre", "Module",
+            "Classe", "Enseignant",
+            "Présences", "Absences", "Taux présence", "Taux absence",
+        ]
+        NUM_COLS = len(PROFESSIONAL_HEADERS)
+        HEADER_ROW = data_start
+
+        for ci, header in enumerate(PROFESSIONAL_HEADERS, 1):
+            cell = ws.cell(row=HEADER_ROW, column=ci, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = thin_border
+        ws.row_dimensions[HEADER_ROW].height = 22
+
+        # Data rows
+        for ri, row in enumerate(rows):
+            excel_row = HEADER_ROW + 1 + ri
+            values = [
+                row.get("code_massar", ""),
+                row.get("code_apogee", ""),
+                row.get("nom", ""),
+                row.get("prenom", ""),
+                row.get("department", ""),
+                row.get("filiere", ""),
+                row.get("semestre", ""),
+                row.get("module", ""),
+                row.get("classe", ""),
+                row.get("enseignant", ""),
+                row.get("presents", 0),
+                row.get("absents", 0),
+                row.get("taux_presence", ""),
+                row.get("taux_absence", ""),
+            ]
+            is_absent = row.get("absents", 0) > row.get("presents", 0)
+
+            for ci, val in enumerate(values, 1):
+                cell = ws.cell(row=excel_row, column=ci, value=val)
+                cell.font = Font(size=9)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = thin_border
+                # Alternating row colors
+                if ri % 2 == 1:
+                    cell.fill = PatternFill(start_color=LIGHT_GRAY, end_color=LIGHT_GRAY, fill_type="solid")
+
+            # Highlight absent students row
+            if is_absent:
+                for ci in range(1, NUM_COLS + 1):
+                    cell = ws.cell(row=excel_row, column=ci)
+                    cell.fill = PatternFill(start_color=RED, end_color=RED, fill_type="solid")
+
+        # Auto-width
+        for ci in range(1, NUM_COLS + 1):
+            max_len = len(PROFESSIONAL_HEADERS[ci - 1])
+            for ri in range(HEADER_ROW + 1, HEADER_ROW + 1 + len(rows)):
+                cell_val = ws.cell(row=ri, column=ci).value
+                if cell_val:
+                    max_len = max(max_len, len(str(cell_val)))
+            ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 3, 35)
+
+        # Freeze pane at header row
+        ws.freeze_panes = ws.cell(row=HEADER_ROW + 1, column=1)
+
+        # Auto-filter
+        last_data_row = HEADER_ROW + len(rows)
+        if rows:
+            ws.auto_filter.ref = f"A{HEADER_ROW}:{get_column_letter(NUM_COLS)}{last_data_row}"
+
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer.read()
+
+    @staticmethod
     def generate_xlsx(request, filters):
         export_mode = filters.get("export_mode", ExportWizardService.EXPORT_MODE_BY_STUDENT)
         etudiant_id = filters.get("etudiant_id")
 
         qs = ExportWizardService.build_filtered_queryset(request, filters)
 
-        if export_mode in (
+        if export_mode == "professional":
+            rows = ExportWizardService._build_professional_rows(qs)
+            content = ExportWizardService._generate_professional_xlsx(rows, filters)
+            filename = "rapport_absences.xlsx"
+        elif export_mode in (
             ExportWizardService.EXPORT_MODE_RESUME_ABSENCES,
             ExportWizardService.EXPORT_MODE_RESUME_PRESENCES,
         ):
