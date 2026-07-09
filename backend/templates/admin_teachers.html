@@ -13,17 +13,17 @@
   <h2>Tous les enseignants</h2>
   <div class="section-actions">
     <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
-    <button class="btn" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
-    <button class="btn outline" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
+    <button class="btn admin-only" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
+    <button class="btn outline admin-only" id="btnDownloadTeacherImportTemplate">⬇ Modèle Excel</button>
   </div>
 </div>
 
 <!-- Teacher Import Panel -->
-<div class="import-panel" style="margin-bottom:1.5rem">
+<div class="import-panel admin-only" style="margin-bottom:1.5rem">
   <div class="section-head">
     <h3>Import enseignants par Excel</h3>
     <div class="section-actions">
-      <button class="btn outline" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
+      <button class="btn outline admin-only" id="btnDownloadTeacherImportTemplate2">⬇ Modèle Excel</button>
     </div>
   </div>
 
@@ -33,12 +33,12 @@
     (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
   </p>
 
-  <div class="import-upload-row" style="gap:.75rem">
+  <div class="import-upload-row admin-only" style="gap:.75rem">
     <div class="field import-file-field">
       <input type="file" id="impTeacherFile" accept=".xlsx" />
     </div>
-    <button class="btn" id="btnRunTeacherImport">Importer les enseignants</button>
-    <span class="spinner" id="impTeacherSpinner" style="display:none"></span>
+    <button class="btn admin-only" id="btnRunTeacherImport">Importer les enseignants</button>
+    <span class="spinner admin-only" id="impTeacherSpinner" style="display:none"></span>
   </div>
   <div id="teacherImportReport" class="import-report hidden"></div>
 </div>
@@ -47,7 +47,7 @@
   <table>
     <thead>
       <tr>
-        <th>#</th>
+        <th class="admin-only">#</th>
         <th>Nom</th>
         <th>E-mail</th>
         <th>Téléphone</th>
@@ -58,7 +58,7 @@
         <th>Spécialité</th>
         <th>Classes assignées</th>
         <th>Statut</th>
-        <th>Actions</th>
+        <th class="admin-only">Actions</th>
       </tr>
     </thead>
     <tbody id="teachersBody">
