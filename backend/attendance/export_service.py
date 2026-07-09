@@ -644,7 +644,7 @@ class ExportWizardService:
         if export_mode == "professional":
             if filters is None:
                 filters = {}
-            filters["generated_by"] = request.user.get_full_name() or request.user.email
+            filters["generated_by"] = request.user.full_name or request.user.email
             rows = ExportWizardService._build_professional_rows(qs)
             content = ExportWizardService._generate_professional_xlsx(rows, filters)
             filename = "rapport_absences.xlsx"

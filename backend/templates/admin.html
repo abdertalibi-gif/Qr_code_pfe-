@@ -4208,7 +4208,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingFiliere = false; });
   }
 
-  function absOnModuleChange() {
+function absOnModuleChange() {
     var modId = document.getElementById('absModule').value;
     var cSel = document.getElementById('absClasse');
     cSel.innerHTML = '<option value="">Toutes</option>';
@@ -4220,8 +4220,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     // Classes can be filtered by module_id and/or filiere_id
     var url = '/classes/?module_id=' + modId;
     if (filiereId) url += '&filiere_id=' + filiereId;
-    API.apiFetch(url).then(function(classes) {
+    API.apiFetch(url).then(function(data) {
       cSel.innerHTML = '<option value="">Toutes</option>';
+      var classes = Array.isArray(data) ? data : (data.results || []);
       classes.forEach(function(c) {
         var opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name || c.code;
         if (c.code) opt.textContent = c.name + ' (' + c.code + ')';
