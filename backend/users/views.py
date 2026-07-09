@@ -246,6 +246,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         module_id = self.request.query_params.get("module_id")
         if module_id:
             qs = qs.filter(modules__id=module_id)
+        niveau = self.request.query_params.get("niveau")
+        if niveau:
+            qs = qs.filter(classe__niveau=niveau)
         return qs
 
     def get_permissions(self):
@@ -1095,10 +1098,12 @@ def dashboard_counts(request):
         else:
             users_qs = User.objects.filter(
                 Q(id=user.id)
-                | Q(role__in=("teacher",), assigned_classes__department=dept)
+                | Q(role="teacher", assigned_classes__department=dept)
                 | Q(role="teacher", sessions__classe__department=dept)
+                | Q(role__in=("department_head", "program_manager"), headed_department=dept)
                 | Q(role="student", student_profile__classe__department=dept)
-                | Q(role="program_manager", managed_filieres__department=dept)
+                | Q(role="student", student_profile__classe__filiere__department=dept)
+                | Q(role="teacher", assigned_classes__department=dept, is_also_teacher=True)
             ).distinct()
             dept_count = 1
     elif user.role == "program_manager":

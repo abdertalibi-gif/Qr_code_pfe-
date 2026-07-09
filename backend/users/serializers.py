@@ -535,6 +535,9 @@ class ClasseSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     classe_name = serializers.SerializerMethodField()
     classe_field = serializers.SerializerMethodField()
+    filiere_name = serializers.SerializerMethodField()
+    semestre_name = serializers.SerializerMethodField()
+    niveau = serializers.SerializerMethodField()
     module_ids = serializers.PrimaryKeyRelatedField(
         source="modules",
         many=True,
@@ -563,6 +566,9 @@ class StudentSerializer(serializers.ModelSerializer):
             "classe",
             "classe_name",
             "classe_field",
+            "filiere_name",
+            "semestre_name",
+            "niveau",
             "module_ids",
             "created_at",
         ]
@@ -572,6 +578,12 @@ class StudentSerializer(serializers.ModelSerializer):
     def get_classe_field(self, obj):
         f = obj.classe.filiere
         return f.name if f else "—"
+    def get_filiere_name(self, obj):
+        return obj.classe.filiere.name if obj.classe and obj.classe.filiere else "—"
+    def get_semestre_name(self, obj):
+        return obj.classe.semestre.name if obj.classe and obj.classe.semestre else "—"
+    def get_niveau(self, obj):
+        return obj.classe.niveau if obj.classe else "—"
     def validate_code_massar(self, value):
         qs = Student.objects.filter(code_massar=value)
         if self.instance and hasattr(self.instance, "pk") and self.instance.pk:

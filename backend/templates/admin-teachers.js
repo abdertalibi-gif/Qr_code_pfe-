@@ -6,6 +6,157 @@ let teacherClasses = [];
 let editingTeacherId = null;
 let currentUserRole = 'admin';
 
+/* ── Import Report Display ── */
+function displayTeacherImportReport(result, containerId) {
+  const reportDiv = document.getElementById(containerId);
+  if (!reportDiv) return;
+
+  reportDiv.innerHTML = '';
+  reportDiv.classList.remove('hidden');
+
+  // Display import summary cards at the top
+  const summaryContainer = document.createElement('div');
+  summaryContainer.className = 'import-summary-cards';
+  summaryContainer.innerHTML = `
+    <div class="summary-card success">
+      <div class="card-icon">✅</div>
+      <div class="card-content">
+        <div class="card-label">Nouveaux inscrits</div>
+        <div class="card-value">${result.created_teachers || result.created?.length || 0}</div>
+      </div>
+    </div>
+    <div class="summary-card warning">
+      <div class="card-icon">🔄</div>
+      <div class="card-content">
+        <div class="card-label">Déjà existants</div>
+        <div class="card-value">${result.updated_teachers || result.updated?.length || 0}</div>
+      </div>
+    </div>
+    <div class="summary-card error">
+      <div class="card-icon">❌</div>
+      <div class="card-content">
+        <div class="card-label">Erreurs</div>
+        <div class="card-value">${result.errors?.length || 0}</div>
+      </div>
+    </div>
+  `;
+  reportDiv.appendChild(summaryContainer);
+
+  // Display detailed error table if there are errors
+  if (result.errors && result.errors.length > 0) {
+    const errorTableContainer = document.createElement('div');
+    errorTableContainer.className = 'error-table-container';
+    errorTableContainer.innerHTML = `
+      <div class="error-table-header">
+        <h4>Détail des Erreurs</h4>
+      </div>
+      <div class="error-table-wrapper">
+        <table class="error-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Ligne</th>
+              <th style="width: 120px;">Type</th>
+              <th style="width: 120px;">Champ</th>
+              <th>Message</th>
+              <th style="width: 120px;">Valeur</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${result.errors.map(error => {
+              const rowNumber = error.line || '—';
+              const type = error.code ? error.code : (error.type || 'Erreur');
+              const field = error.field || error.code || '—';
+              const message = error.messages && error.messages.join ? error.messages.join(', ') : (Array.isArray(error.messages) ? error.messages.join(', ') : (error.messages || '—'));
+              const value = error.value || '—';
+              const typeBadgeClass = type === 'Erreur' ? 'error' : type === 'Avertissement' ? 'warning' : type === 'Succès' ? 'success' : '';
+              const typeDisplay = type === 'Erreur' ? '🔴 Erreur' : type === 'Avertissement' ? '🟠 Avertissement' : type === 'Succès' ? '🟢 Succès' : type;
+              return `
+                <tr>
+                  <td>${rowNumber}</td>
+                  <td><span class="error-badge ${type === 'Erreur' ? 'error' : type === 'Avertissement' ? 'warning' : type === 'Succès' ? 'success' : ''}">${typeDisplay}</span></td>
+                  <td>${field}</td>
+                  <td class="error-message-cell">${esc(message)}</td>
+                  <td>${esc(value)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    reportDiv.appendChild(errorTableContainer);
+      <div class="error-table-header">
+        <h4>Détail des Erreurs</h4>
+      </div>
+      <div class="error-table-wrapper">
+        <table class="error-table">
+          <thead>
+            <tr>
+              <th>Ligne</th>
+              <th>Type</th>
+              <th>Champ</th>
+              <th>Message</th>
+              <th>Valeur</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${result.errors.map(error => {
+              const rowNumber = error.line || '—';
+              const type = error.code ? error.code : (error.type || 'Erreur');
+              const field = error.field || error.code || '—';
+              const message = error.messages && error.messages.join ? error.messages.join(', ') : (Array.isArray(error.messages) ? error.messages.join(', ') : (error.messages || '—'));
+              const value = error.value || '—';
+              const typeDisplay = type === 'Erreur' ? '🔴 Erreur' : type === 'Avertissement' ? '🟠 Avertissement' : type === 'Succès' ? '🟢 Succès' : type;
+              return `
+                <tr>
+                  <td>${rowNumber}</td>
+                  <td><span class="error-badge ${type === 'Erreur' ? 'error' : type === 'Avertissement' ? 'warning' : type === 'Succès' ? 'success' : ''}">${typeDisplay}</span></td>
+                  <td>${field}</td>
+                  <td>${esc(message)}</td>
+                  <td>${esc(value)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    reportDiv.appendChild(errorTableContainer);
+  }
+
+  // Show raw JSON in collapsed section for debugging
+  const rawJsonSection = document.createElement('div');
+  rawJsonSection.className = 'raw-json-section';
+  rawJsonSection.innerHTML = `
+    <div class="raw-json-toggle" onclick="this.nextSibling.style.display = this.nextSibling.style.display === 'none' ? 'block' : 'none';">
+      <span>Débogage: Afficher/Cacher les données brutes</span>
+    </div>
+    <div class="raw-json-content" style="display: none;">
+      <pre>${esc(JSON.stringify(result, null, 2))}</pre>
+    </div>
+  `;
+  reportDiv.appendChild(rawJsonSection);
+}
+
+// Helper function to escape HTML strings
+def esc(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Helper function to match search query
+def matchesQuery(q, ...fields) {
+  if (!q) return true;
+  const lower = q.toLowerCase();
+  return fields.some(f => f && f.toString().toLowerCase().includes(lower));
+}
+
+// Helper function to get search query value
+def searchQuery(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
 async function initPage() {
   await Promise.all([loadTeachers(), teacherLoadDepartments(), teacherLoadFilieres(), teacherLoadClasses()]);
   setupEventListeners();
@@ -304,7 +455,7 @@ async function downloadTeacherTemplate() {
     const blob = await resp.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'modele_import_enseignants.xlsx'; a.click();
+    a.href = url; a.download = 'teacher_import_template.xlsx'; a.click();
     window.URL.revokeObjectURL(url);
   } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
 }
@@ -326,8 +477,7 @@ async function runTeacherImport() {
     const result = await resp.json();
     document.getElementById('impTeacherSpinner').style.display = 'none';
     if (!resp.ok) { showToast('Erreur: ' + (result.detail || 'Échec import'), 'error'); return; }
-    reportDiv.innerHTML = '<pre>' + esc(JSON.stringify(result, null, 2)) + '</pre>';
-    reportDiv.classList.remove('hidden');
+    displayTeacherImportReport(result, 'teacherImportReport');
     showToast('Import terminé !', 'success');
     await loadTeachers();
   } catch (e) {

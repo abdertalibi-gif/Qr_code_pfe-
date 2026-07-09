@@ -313,6 +313,55 @@
       <div id="importCompleteReport" class="import-report hidden"></div>
     </div>
 
+    <!-- Student List View with Filters -->
+    <div class="section-head" style="margin-top:1.5rem">
+      <h2>Liste des étudiants</h2>
+      <div class="section-actions">
+        <div class="filters" style="gap:.5rem;flex-wrap:wrap;">
+          <div class="field" style="min-width:180px;">
+            <label>Filière</label>
+            <select id="filterStudentFiliere"><option value="">— Toutes —</option></select>
+          </div>
+          <div class="field" style="min-width:150px;">
+            <label>Semestre</label>
+            <select id="filterStudentSemestre"><option value="">— Tous —</option></select>
+          </div>
+          <div class="field" style="min-width:150px;">
+            <label>Niveau</label>
+            <select id="filterStudentNiveau"><option value="">— Tous —</option></select>
+          </div>
+          <input type="search" class="search-input" id="searchStudents" placeholder="Rechercher code, nom, email…" style="min-width:220px;" />
+        </div>
+      </div>
+    </div>
+
+    <div id="studentsHint" class="module-hint">Sélectionnez une filière ou un semestre pour afficher les étudiants.</div>
+
+    <div class="table-wrap" id="studentsWrap" style="display:none">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Code</th>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Téléphone</th>
+            <th>Filière</th>
+            <th>Semestre</th>
+            <th>Niveau</th>
+            <th>Classe</th>
+          </tr>
+        </thead>
+        <tbody id="studentsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar hidden" id="studentsPagination">
+      <button class="btn sm outline" id="btnStudentsPrev">← Précédent</button>
+      <span id="studentsPageInfo">Page 1 / 1</span>
+      <button class="btn sm outline" id="btnStudentsNext">Suivant →</button>
+    </div>
+
     <div class="section-head" style="margin-top:1.5rem">
       <h2 id="moduleStudentsTitle">Étudiants du module</h2>
       <div class="section-actions">
@@ -2044,6 +2093,132 @@
   });
   document.getElementById('btnModuleNext')?.addEventListener('click', () => {
     if (moduleStudentsPage < moduleStudentsTotalPages) loadModuleStudents(moduleStudentsPage + 1);
+  });
+
+  /* ── Student List with Filters (for Department Head) ── */
+  let studentListPage = 1;
+  let studentListTotalPages = 1;
+
+  async function loadStudentListFilieres() {
+    const dept = document.getElementById('filterStudentFiliere');
+    if (!dept) return;
+    try {
+      const data = await API.apiFetch('/curriculum/filieres/');
+      const filieres = Array.isArray(data) ? data : (data.results || []);
+      dept.innerHTML = '<option value="">— Toutes —</option>';
+      filieres.forEach(f => {
+        dept.innerHTML += `<option value="${f.id}">${esc(f.name)}</option>`;
+      });
+    } catch (e) { console.warn('Could not load filieres for student list:', e); }
+  }
+
+  async function loadStudentListSemestres() {
+    const sem = document.getElementById('filterStudentSemestre');
+    if (!sem) return;
+    try {
+      const data = await API.apiFetch('/curriculum/semestres/');
+      const semestres = Array.isArray(data) ? data : (data.results || []);
+      sem.innerHTML = '<option value="">— Tous —</option>';
+      semestres.forEach(s => {
+        sem.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`;
+      });
+    } catch (e) { console.warn('Could not load semestres for student list:', e); }
+  }
+
+  async function loadStudentListNiveaux() {
+    const niv = document.getElementById('filterStudentNiveau');
+    if (!niv) return;
+    try {
+      const data = await API.apiFetch('/curriculum/niveaux/');
+      const niveaux = Array.isArray(data) ? data : (data.results || []);
+      niv.innerHTML = '<option value="">— Tous —</option>';
+      niveaux.forEach(n => {
+        niv.innerHTML += `<option value="${n.id}">${esc(n.label)}</option>`;
+      });
+    } catch (e) { console.warn('Could not load niveaux for student list:', e); }
+  }
+
+  async function loadStudentList(page = 1) {
+    const filiereId = document.getElementById('filterStudentFiliere')?.value || '';
+    const semestreId = document.getElementById('filterStudentSemestre')?.value || '';
+    const niveauId = document.getElementById('filterStudentNiveau')?.value || '';
+    const search = searchQuery('searchStudents');
+
+    const params = new URLSearchParams({ page: String(page) });
+    if (filiereId) params.set('filiere_id', filiereId);
+    if (semestreId) params.set('semestre_id', semestreId);
+    if (niveauId) params.set('niveau', niveauId);
+    if (search) params.set('search', search);
+
+    studentListPage = page;
+    const hint = document.getElementById('studentsHint');
+    const wrap = document.getElementById('studentsWrap');
+    const pagination = document.getElementById('studentsPagination');
+
+    if (!filiereId && !semestreId && !niveauId) {
+      hint.style.display = 'block';
+      wrap.style.display = 'none';
+      pagination.classList.add('hidden');
+      return;
+    }
+
+    hint.style.display = 'none';
+    wrap.style.display = 'block';
+
+    try {
+      const data = await API.apiFetch(`/students/?${params}`);
+      const students = data.results || [];
+      const count = data.count || 0;
+      studentListTotalPages = Math.max(1, Math.ceil(count / 20));
+      renderStudentList(students);
+      pagination.classList.toggle('hidden', studentListTotalPages <= 1);
+      document.getElementById('studentsPageInfo').textContent = `Page ${studentListPage} / ${studentListTotalPages} (${count} étudiant(s))`;
+      document.getElementById('btnStudentsPrev').disabled = !data.previous;
+      document.getElementById('btnStudentsNext').disabled = !data.next;
+    } catch (e) {
+      document.getElementById('studentsBody').innerHTML = `<tr class="empty-row"><td colspan="9">Erreur: ${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderStudentList(students) {
+    const tbody = document.getElementById('studentsBody');
+    if (!students.length) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">Aucun étudiant trouvé.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = students.map((s, i) => `
+      <tr>
+        <td><span style="color:var(--muted)">${((studentListPage - 1) * 20) + i + 1}</span></td>
+        <td style="font-family:monospace;color:var(--accent)">${esc(s.code_massar)}</td>
+        <td><strong>${esc(s.first_name)} ${esc(s.last_name)}</strong></td>
+        <td>${esc(s.email || '—')}</td>
+        <td>${esc(s.phone || '—')}</td>
+        <td>${esc(s.filiere_name || '—')}</td>
+        <td>${esc(s.semestre_name || '—')}</td>
+        <td>${esc(s.niveau_label || '—')}</td>
+        <td>${esc(s.classe_name || '—')}</td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('filterStudentFiliere')?.addEventListener('change', () => loadStudentList(1));
+  document.getElementById('filterStudentSemestre')?.addEventListener('change', () => loadStudentList(1));
+  document.getElementById('filterStudentNiveau')?.addEventListener('change', () => loadStudentList(1));
+  bindSearchInput('searchStudents', () => loadStudentList(1));
+
+  document.getElementById('btnStudentsPrev')?.addEventListener('click', () => {
+    if (studentListPage > 1) loadStudentList(studentListPage - 1);
+  });
+  document.getElementById('btnStudentsNext')?.addEventListener('click', () => {
+    if (studentListPage < studentListTotalPages) loadStudentList(studentListPage + 1);
+  });
+
+  // Initialize student list filters when students tab is activated
+  document.querySelector('.tab-btn[data-tab="students"]')?.addEventListener('click', async () => {
+    await loadStudentListFilieres();
+    await loadStudentListSemestres();
+    await loadStudentListNiveaux();
   });
 
   async function loadClasses() {
