@@ -617,12 +617,12 @@
           <select id="absDept" class="form-control" onchange="absOnDeptChange()"><option value="">-- Sélectionner --</option></select>
         </div>
         <div class="field">
-          <label>Filière</label>
-          <select id="absFiliere" class="form-control" onchange="absOnFiliereChange()" disabled><option value="">-- Sélectionner --</option></select>
+          <label>Semestre</label>
+          <select id="absSemestre" class="form-control" onchange="absOnSemestreChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
         <div class="field">
-          <label>Semestre</label>
-          <select id="absSemestre" class="form-control" disabled><option value="">-- Sélectionner --</option></select>
+          <label>Filière</label>
+          <select id="absFiliere" class="form-control" onchange="absOnFiliereChange()" disabled><option value="">-- Sélectionner --</option></select>
         </div>
         <div class="field">
           <label>Module</label>
@@ -4095,6 +4095,8 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   let absenceData = null;
   /* ── Hierarchical absence filters ── */
   var _absLoadingDept = false;
+  var _absLoadingSemestre = false;
+  var _absLoadingFiliere = false;
 
   function populateAbsenceFilters() {
     // Load departments (first level)
@@ -4121,67 +4123,89 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   function absOnDeptChange() {
     if (_absLoadingDept) return;
     var deptId = document.getElementById('absDept').value;
-    var fSel = document.getElementById('absFiliere');
-    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    fSel.disabled = true;
-    document.getElementById('absSemestre').innerHTML = '<option value="">-- Sélectionner --</option>';
-    document.getElementById('absSemestre').disabled = true;
-    document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
-    document.getElementById('absModule').disabled = true;
-    document.getElementById('absClasse').innerHTML = '<option value="">Toutes</option>';
-    document.getElementById('absClasse').disabled = true;
-    if (!deptId) return;
-    _absLoadingDept = true;
-    fSel.disabled = false;
-    API.apiFetch('/curriculum/filieres/?department_id=' + deptId).then(function(filieres) {
-      filieres.forEach(function(f) {
-        var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name;
-        opt.dataset.semestreId = f.semestre_id || '';
-        opt.dataset.semestreName = f.semestre_name || '';
-        fSel.appendChild(opt);
-      });
-      if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
-    }).catch(function() { fSel.disabled = true; }).finally(function() { _absLoadingDept = false; });
-  }
-
-  function absOnFiliereChange() {
-    var fSel = document.getElementById('absFiliere');
-    var selected = fSel.options[fSel.selectedIndex];
-    var filiereId = fSel.value;
     var semSel = document.getElementById('absSemestre');
+    var fSel = document.getElementById('absFiliere');
     var mSel = document.getElementById('absModule');
     var cSel = document.getElementById('absClasse');
 
+    // Reset all downstream
     semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    semSel.disabled = true;
+    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    fSel.disabled = true;
     mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
     mSel.disabled = true;
     cSel.innerHTML = '<option value="">Toutes</option>';
     cSel.disabled = true;
 
-    if (!filiereId) { semSel.disabled = true; mSel.disabled = true; cSel.disabled = true; return; }
+    if (!deptId) return;
+    _absLoadingDept = true;
+    semSel.disabled = false;
+    semSel.innerHTML = '<option value="">Chargement...</option>';
+    // Load semestres for this department (via filieres endpoint with department filter)
+    API.apiFetch('/curriculum/semestres/?department_id=' + deptId).then(function(semestres) {
+      semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+      semestres.forEach(function(s) {
+        var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name || 'Semestre ' + s.name; semSel.appendChild(opt);
+      });
+      if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+    }).catch(function() { semSel.disabled = true; semSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingDept = false; });
+  }
 
-    // Auto-fill semestre from filiere data
-    var semId = selected ? selected.dataset.semestreId : '';
-    var semName = selected ? selected.dataset.semestreName : '';
-    if (semId) {
-      semSel.innerHTML = '<option value="' + semId + '">' + (semName || 'Semestre ' + semId) + '</option>';
-      semSel.value = semId;
-      semSel.disabled = false;
-    } else {
-      semSel.innerHTML = '<option value="">—</option>';
-      semSel.disabled = true;
-    }
+  function absOnSemestreChange() {
+    if (_absLoadingSemestre) return;
+    var deptId = document.getElementById('absDept').value;
+    var semId = document.getElementById('absSemestre').value;
+    var fSel = document.getElementById('absFiliere');
+    var mSel = document.getElementById('absModule');
+    var cSel = document.getElementById('absClasse');
 
-    // Load modules for filiere
+    // Reset downstream
+    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    fSel.disabled = true;
+    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    mSel.disabled = true;
+    cSel.innerHTML = '<option value="">Toutes</option>';
+    cSel.disabled = true;
+
+    if (!deptId || !semId) return;
+    _absLoadingSemestre = true;
+    fSel.disabled = false;
+    fSel.innerHTML = '<option value="">Chargement...</option>';
+    // Load filières for department + semestre
+    API.apiFetch('/curriculum/filieres/?department_id=' + deptId + '&semestre_id=' + semId).then(function(filieres) {
+      fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+      filieres.forEach(function(f) {
+        var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
+      });
+      if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
+    }).catch(function() { fSel.disabled = true; fSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingSemestre = false; });
+  }
+
+  function absOnFiliereChange() {
+    if (_absLoadingFiliere) return;
+    var filiereId = document.getElementById('absFiliere').value;
+    var mSel = document.getElementById('absModule');
+    var cSel = document.getElementById('absClasse');
+
+    // Reset downstream
+    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    mSel.disabled = true;
+    cSel.innerHTML = '<option value="">Toutes</option>';
+    cSel.disabled = true;
+
+    if (!filiereId) return;
+    _absLoadingFiliere = true;
     mSel.disabled = false;
     mSel.innerHTML = '<option value="">Chargement...</option>';
+    // Load modules for filiere
     API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId).then(function(modules) {
       mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
       modules.forEach(function(m) {
         var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
       });
       if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
-    }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; });
+    }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingFiliere = false; });
   }
 
   function absOnModuleChange() {
@@ -4281,18 +4305,18 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
   }
 
   function resetAbsenceFilters() {
-    var ids = ['absDept','absFiliere','absSemestre','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
+    var ids = ['absDept','absSemestre','absFiliere','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
     ids.forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
       if (el.tagName === 'SELECT') { el.value = ''; }
       else { el.value = ''; }
     });
-    // Reset cascade state
-    document.getElementById('absFiliere').disabled = true;
-    document.getElementById('absFiliere').innerHTML = '<option value="">-- Sélectionner --</option>';
+    // Reset cascade state (in order: Semestre → Filière → Module → Classe)
     document.getElementById('absSemestre').disabled = true;
     document.getElementById('absSemestre').innerHTML = '<option value="">-- Sélectionner --</option>';
+    document.getElementById('absFiliere').disabled = true;
+    document.getElementById('absFiliere').innerHTML = '<option value="">-- Sélectionner --</option>';
     document.getElementById('absModule').disabled = true;
     document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
     document.getElementById('absClasse').disabled = true;

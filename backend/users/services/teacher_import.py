@@ -393,3 +393,78 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                 report.skipped += 1
 
     return report.as_dict()
+
+
+def build_teacher_import_template_xlsx() -> bytes:
+    """Generate an Excel template for teacher import."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Modèle Import Enseignants"
+
+    headers = [
+        "Prénom", "Nom", "Email", "Téléphone", "CIN",
+        "Département", "Filière", "Grade", "Spécialité",
+        "Nom d'utilisateur (optionnel)", "Mot de passe (optionnel)"
+    ]
+
+    # Header row
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Example row
+    example = [
+        "Jean", "Dupont", "jean.dupont@umi.ac.ma", "0612345678", "EE123456",
+        "Informatique", "Génie Informatique", "Professeur", "Intelligence Artificielle",
+        "jean.dupont", "Pass@12345"
+    ]
+    for col, val in enumerate(example, 1):
+        ws.cell(row=2, column=col, value=val)
+
+    # Set column widths
+    widths = [15, 15, 30, 15, 15, 20, 25, 15, 25, 20, 20]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+
+    # Instructions sheet
+    ws2 = wb.create_sheet("Instructions")
+    instructions = [
+        "INSTRUCTIONS POUR L'IMPORT D'ENSEIGNANTS",
+        "",
+        "Colonnes obligatoires :",
+        "  - Prénom",
+        "  - Nom",
+        "  - Email (format @umi.ac.ma)",
+        "  - Téléphone",
+        "  - CIN",
+        "  - Département (nom exact)",
+        "  - Filière (nom exact dans le département)",
+        "  - Grade",
+        "  - Spécialité",
+        "",
+        "Colonnes optionnelles :",
+        "  - Nom d'utilisateur (généré automatiquement si vide)",
+        "  - Mot de passe (généré automatiquement si vide)",
+        "",
+        "Règles :",
+        "  - Le département et la filière doivent exister dans la base",
+        "  - L'email doit être unique et au format @umi.ac.ma",
+        "  - Le CIN doit être unique",
+        "  - Un enseignant existant (même email) sera mis à jour",
+        "",
+        "Format : Excel .xlsx uniquement"
+    ]
+    for row, line in enumerate(instructions, 1):
+        ws2.cell(row=row, column=1, value=line)
+
+    import io
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()

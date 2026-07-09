@@ -39,7 +39,7 @@ from .services.student_import import (
     import_students_complete,
     import_students_for_module,
 )
-from .services.teacher_import import import_teachers
+from .services.teacher_import import import_teachers, build_teacher_import_template_xlsx
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +447,20 @@ def teacher_import_excel(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(report, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def teacher_import_template(request):
+    """Download Excel template for teacher bulk import."""
+    from django.http import HttpResponse
+    content = build_teacher_import_template_xlsx()
+    response = HttpResponse(
+        content,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="teacher_import_template.xlsx"'
+    return response
 
 
 @api_view(["GET"])

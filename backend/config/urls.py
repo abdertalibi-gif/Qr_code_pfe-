@@ -33,6 +33,7 @@ from users.views import (
     room_list,
     teacher_list,
     teacher_import_excel,
+    teacher_import_template,
     dashboard_counts,
     system_info,
 )
@@ -157,6 +158,7 @@ api_v1_urlpatterns = [
     path("amphitheaters/<int:pk>/", amphitheater_detail, name="amphitheater-detail"),
     path("teachers/", teacher_list, name="teacher-list"),
     path("teachers/import-excel/", teacher_import_excel, name="teacher-import-excel"),
+    path("teachers/import-excel/template/", teacher_import_template, name="teacher-import-template"),
     path("departments/", department_list, name="department-list"),
     path("departments/<int:pk>/", department_detail, name="department-detail"),
     path("", include("curriculum.urls")),
