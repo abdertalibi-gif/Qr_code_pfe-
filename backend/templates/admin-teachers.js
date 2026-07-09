@@ -55,7 +55,7 @@ function renderTeachers() {
     return;
   }
   tbody.innerHTML = filtered.map((t, i) => '<tr>' +
-    '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+    '<td class="admin-only"><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
     '<td><strong>' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</strong></td>' +
     '<td>' + esc(t.email) + '</td>' +
     '<td>' + esc(t.phone || '—') + '</td>' +
@@ -66,7 +66,7 @@ function renderTeachers() {
     '<td>' + esc(t.speciality || '—') + '</td>' +
     '<td>' + (t.class_count ?? (t.assigned_class_ids ? t.assigned_class_ids.length : '—')) + '</td>' +
     '<td><span class="badge ' + (t.is_active === false ? 'badge-absent' : 'badge-present') + '">' + (t.is_active === false ? 'Inactif' : 'Actif') + '</span></td>' +
-    '<td class="actions-cell">' +
+    '<td class="actions-cell admin-only">' +
       '<button class="btn sm outline admin-only" onclick="openEditTeacher(' + t.id + ')">Modifier</button>' +
       '<button class="btn sm outline admin-only" onclick="toggleTeacherActive(' + t.id + ')">' + (t.is_active === false ? 'Activer' : 'Désactiver') + '</button>' +
     '</td>' +
