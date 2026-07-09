@@ -326,58 +326,12 @@ async function runTeacherImport() {
     const result = await resp.json();
     document.getElementById('impTeacherSpinner').style.display = 'none';
     if (!resp.ok) { showToast('Erreur: ' + (result.detail || 'Échec import'), 'error'); return; }
-    renderTeacherImportReport(result);
+    reportDiv.innerHTML = '<pre>' + esc(JSON.stringify(result, null, 2)) + '</pre>';
     reportDiv.classList.remove('hidden');
-    showToast(result.errors?.length ? 'Import terminé avec erreurs' : 'Import terminé !', result.errors?.length ? 'warning' : 'success');
+    showToast('Import terminé !', 'success');
     await loadTeachers();
   } catch (e) {
     document.getElementById('impTeacherSpinner').style.display = 'none';
     showToast('Erreur: ' + e.message, 'error');
   }
-}
-
-function renderTeacherImportReport(r) {
-  const reportDiv = document.getElementById('teacherImportReport');
-  let html = '<div class="import-summary-grid">';
-  html += '<div class="import-stat"><span>' + (r.imported ?? r.created?.length ?? 0) + '</span>Créés</div>';
-  html += '<div class="import-stat"><span>' + (r.updated?.length ?? 0) + '</span>Mis à jour</div>';
-  html += '<div class="import-stat warn"><span>' + (r.skipped ?? 0) + '</span>Ignorés</div>';
-  html += '<div class="import-stat error"><span>' + (r.errors?.length ?? 0) + '</span>Erreurs</div>';
-  html += '</div>';
-
-  if (r.errors?.length) {
-    html += '<h4 style="margin:1rem 0 0.5rem;color:var(--red)">Détail des erreurs :</h4>';
-    html += '<div class="import-report-list error">';
-    r.errors.forEach(function(err) {
-      html += '<div class="import-report-item error">';
-      html += '<strong>Ligne ' + err.line + '</strong> — ' + (err.email || '');
-      if (err.messages?.length) {
-        html += '<ul style="margin:0.25rem 0 0 1.5rem;padding:0">';
-        err.messages.forEach(function(msg) { html += '<li style="color:var(--red)">' + esc(msg) + '</li>'; });
-        html += '</ul>';
-      }
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
-  if (r.created?.length) {
-    html += '<h4 style="margin:1rem 0 0.5rem;color:var(--green)">Créés :</h4>';
-    html += '<div class="import-report-list success">';
-    r.created.forEach(function(t) {
-      html += '<div class="import-report-item success">' + esc(t.first_name) + ' ' + esc(t.last_name) + ' (' + esc(t.email) + ')</div>';
-    });
-    html += '</div>';
-  }
-
-  if (r.updated?.length) {
-    html += '<h4 style="margin:1rem 0 0.5rem;color:var(--blue)">Mis à jour :</h4>';
-    html += '<div class="import-report-list">';
-    r.updated.forEach(function(t) {
-      html += '<div class="import-report-item">' + esc(t.first_name) + ' ' + esc(t.last_name) + ' (' + esc(t.email) + ') — ' + (t.updated_fields?.join(', ') || 'sans changement') + '</div>';
-    });
-    html += '</div>';
-  }
-
-  reportDiv.innerHTML = html;
 }
