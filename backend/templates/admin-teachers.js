@@ -4,13 +4,15 @@ let teacherDepartments = [];
 let teacherFilieres = [];
 let teacherClasses = [];
 let editingTeacherId = null;
+let currentUserRole = 'admin';
 
 async function initPage() {
   await Promise.all([loadTeachers(), teacherLoadDepartments(), teacherLoadFilieres(), teacherLoadClasses()]);
   setupEventListeners();
 }
 
-async function initTeachersTab() {
+async function initTeachersTab(userRole) {
+  currentUserRole = userRole || 'admin';
   await initPage();
 }
 
@@ -54,6 +56,7 @@ function renderTeachers() {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="12">' + (q ? 'Aucun résultat.' : 'Aucun enseignant.') + '</td></tr>';
     return;
   }
+  const isRestricted = currentUserRole === 'department_head' || currentUserRole === 'program_manager';
   tbody.innerHTML = filtered.map((t, i) => '<tr>' +
     '<td class="admin-only"><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
     '<td><strong>' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</strong></td>' +
@@ -66,10 +69,12 @@ function renderTeachers() {
     '<td>' + esc(t.speciality || '—') + '</td>' +
     '<td>' + (t.class_count ?? (t.assigned_class_ids ? t.assigned_class_ids.length : '—')) + '</td>' +
     '<td><span class="badge ' + (t.is_active === false ? 'badge-absent' : 'badge-present') + '">' + (t.is_active === false ? 'Inactif' : 'Actif') + '</span></td>' +
-    '<td class="actions-cell admin-only">' +
-      '<button class="btn sm outline admin-only" onclick="openEditTeacher(' + t.id + ')">Modifier</button>' +
-      '<button class="btn sm outline admin-only" onclick="toggleTeacherActive(' + t.id + ')">' + (t.is_active === false ? 'Activer' : 'Désactiver') + '</button>' +
-    '</td>' +
+    (isRestricted
+      ? '<td class="actions-cell"></td>'
+      : '<td class="actions-cell admin-only">' +
+        '<button class="btn sm outline admin-only" onclick="openEditTeacher(' + t.id + ')">Modifier</button>' +
+        '<button class="btn sm outline admin-only" onclick="toggleTeacherActive(' + t.id + ')">' + (t.is_active === false ? 'Activer' : 'Désactiver') + '</button>' +
+      '</td>') +
   '</tr>').join('');
 }
 

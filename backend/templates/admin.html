@@ -1483,7 +1483,7 @@
     }
     connectAdminLiveWS();
     await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
-    if (typeof initTeachersTab === 'function') await initTeachersTab();
+    if (typeof initTeachersTab === 'function') await initTeachersTab(currentUser?.role || 'admin');
     setupRoomsEventListeners();
     if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
     setupAbsenceSubTabNavigation();
