@@ -103,6 +103,7 @@ def apply_role_filtering(queryset, model_type, request):
                 | Q(sessions__classe__department=dept)
                 | Q(sessions__classe__filiere__department=dept)
                 | Q(taught_modules__filiere__department=dept)
+                | Q(department=dept)
             ).distinct()
 
         if model_type == "classe":
