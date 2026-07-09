@@ -85,43 +85,6 @@ function displayTeacherImportReport(result, containerId) {
       </div>
     `;
     reportDiv.appendChild(errorTableContainer);
-      <div class="error-table-header">
-        <h4>Détail des Erreurs</h4>
-      </div>
-      <div class="error-table-wrapper">
-        <table class="error-table">
-          <thead>
-            <tr>
-              <th>Ligne</th>
-              <th>Type</th>
-              <th>Champ</th>
-              <th>Message</th>
-              <th>Valeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${result.errors.map(error => {
-              const rowNumber = error.line || '—';
-              const type = error.code ? error.code : (error.type || 'Erreur');
-              const field = error.field || error.code || '—';
-              const message = error.messages && error.messages.join ? error.messages.join(', ') : (Array.isArray(error.messages) ? error.messages.join(', ') : (error.messages || '—'));
-              const value = error.value || '—';
-              const typeDisplay = type === 'Erreur' ? '🔴 Erreur' : type === 'Avertissement' ? '🟠 Avertissement' : type === 'Succès' ? '🟢 Succès' : type;
-              return `
-                <tr>
-                  <td>${rowNumber}</td>
-                  <td><span class="error-badge ${type === 'Erreur' ? 'error' : type === 'Avertissement' ? 'warning' : type === 'Succès' ? 'success' : ''}">${typeDisplay}</span></td>
-                  <td>${field}</td>
-                  <td>${esc(message)}</td>
-                  <td>${esc(value)}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-    reportDiv.appendChild(errorTableContainer);
   }
 
   // Show raw JSON in collapsed section for debugging
@@ -139,20 +102,20 @@ function displayTeacherImportReport(result, containerId) {
 }
 
 // Helper function to escape HTML strings
-def esc(str) {
+function esc(str) {
   if (typeof str !== 'string') return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 // Helper function to match search query
-def matchesQuery(q, ...fields) {
+function matchesQuery(q, ...fields) {
   if (!q) return true;
   const lower = q.toLowerCase();
   return fields.some(f => f && f.toString().toLowerCase().includes(lower));
 }
 
 // Helper function to get search query value
-def searchQuery(id) {
+function searchQuery(id) {
   const el = document.getElementById(id);
   return el ? el.value : '';
 }
