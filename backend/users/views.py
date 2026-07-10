@@ -502,13 +502,27 @@ def teacher_import_template(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def teacher_list(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    user = request.user
+    logger.info(f"teacher_list: user={user.email}, role={user.role}")
+
     teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
-    if request.user.role == "department_head":
+    logger.info(f"teacher_list: base teacher count={teachers.count()}")
+
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        logger.info(f"teacher_list: dept_head filtering dept={dept}")
         teachers = apply_role_filtering(teachers, "teacher_list", request)
-    elif request.user.role == "program_manager":
+    elif user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(user)
+        logger.info(f"teacher_list: prog_mgr filtering filiere_ids={filiere_ids}")
         teachers = apply_role_filtering(teachers, "teacher_list", request)
-    elif request.user.role not in ("admin",):
+    elif user.role not in ("admin",):
+        logger.info(f"teacher_list: non-admin/non-head/non-mgr -> empty")
         return Response([])
+
+    logger.info(f"teacher_list: final count={teachers.count()}")
     data = [
         {
             "id": t.id,
