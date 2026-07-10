@@ -39,6 +39,7 @@ Fix template/JS/API mismatches; add missing pages (Absences, Assistants); add mi
 - `backend/users/views.py` — teacher_list, block_list, room_list, amphitheater_list, dashboard_counts; FIXED `admin_statistics` (timestamp→validation_time); ADDED `absence_statistics` view; FIXED teacher_list (retiré filtrage scope, prefetch_related optimisé, retourne 115 enseignants)
 - `backend/curriculum/views.py` — semestre_list, filiere_list, module_list, niveau_list
 - `backend/config/urls.py` — routes for blocks/, rooms/, amphitheaters/, curriculum/ endpoints; ADDED `absence-stats/` route
+- `backend/templates/admin_base.html` — added 3 missing template blocks (`page_title`, `modals`, `extra_js`) for standalone pages
 - `backend/templates/dashboard.css` — added `.stat-icon.teal` CSS class
 - `backend/templates/admin-teachers.js` — renamed conflicting functions/vars with `teacher` prefix; added `initTeachersTab()`
 - `backend/attendance/views.py` — FIXED CSV/PDF exports (`_export_csv`, `_export_pdf` field names & column widths)
@@ -47,8 +48,8 @@ Fix template/JS/API mismatches; add missing pages (Absences, Assistants); add mi
 1. ~~**`/api/v1/statistics/` endpoint BROKEN** — uses `timestamp` instead of `validation_time` → FieldError.~~ **FIXED**
 2. ~~**CSV/PDF exports broken** — `_export_csv()` and `_export_pdf()` reference field names not produced by `_build_export_rows()`.~~ **FIXED**
 3. ~~**No Chart.js or charting library** anywhere in the project.~~ **FIXED** (added CDN)
-4. **Missing teachers import template endpoint** — `GET /teachers/import-excel/template/` returns 404.
-5. **Standalone pages** (`admin_teachers.html`, `admin_absences.html`, etc.) have broken template blocks (`page_title`, `modals`, `extra_js` not defined in `admin_base.html`).
+4. ~~**Missing teachers import template endpoint** — `GET /teachers/import-excel/template/` returns 404.~~ **NOT A BUG** — endpoint fonctionne (HTTP 200, 6269 bytes, testé via serveur réel).
+5. ~~**Standalone pages** (`admin_teachers.html`, `admin_absences.html`, etc.) have broken template blocks (`page_title`, `modals`, `extra_js` not defined in `admin_base.html`).~~ **FIXED** — ajouté les 3 blocs manquants dans `admin_base.html`.
 6. ~~**Teacher dropdowns empty across ALL forms** — `apply_role_filtering` exclut les enseignants sans relations `assigned_classes`/`sessions`/`taught_modules`. 117 teachers, dont seulement 21 avec assigned_classes et 3 matchent les filières du PM.~~ **FIXED** — `teacher_list()` ne filtre plus par scope ; retourne tous les 117 enseignants actifs.
 
 ## Fixed
