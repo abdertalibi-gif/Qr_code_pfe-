@@ -503,6 +503,12 @@ def teacher_import_template(request):
 @permission_classes([IsAuthenticated])
 def teacher_list(request):
     teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
+    if request.user.role == "department_head":
+        teachers = apply_role_filtering(teachers, "teacher_list", request)
+    elif request.user.role == "program_manager":
+        teachers = apply_role_filtering(teachers, "teacher_list", request)
+    elif request.user.role not in ("admin",):
+        return Response([])
     data = [
         {
             "id": t.id,

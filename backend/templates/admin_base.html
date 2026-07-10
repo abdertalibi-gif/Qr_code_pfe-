@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block page_title %}PrésenceQR — Administration{% endblock %}</title>
+  <title>PrésenceQR — Administration</title>
   <link rel="stylesheet" href="/dashboard.css" />
 </head>
 <body class="dashboard-app">
@@ -47,7 +47,6 @@
 <!-- MAIN -->
 <main>
 {% block content %}{% endblock %}
-{% block modals %}{% endblock %}
 </main>
 
 <!-- TOAST -->
@@ -118,7 +117,6 @@
   const roleLabel = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant', department_head: 'Chef de département', program_manager: 'Responsable de filière' };
   const roleBadgeClass = { admin: 'badge-admin', department_head: 'badge-department-head', program_manager: 'badge-program-manager', teacher: 'badge-teacher', student: 'badge-student' };
 
-{% block extra_js %}{% endblock %}
   function updateRoleUI(user) {
     const badge = document.getElementById('navRoleBadge');
     if (badge) {
