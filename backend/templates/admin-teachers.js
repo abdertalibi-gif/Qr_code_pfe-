@@ -1,7 +1,5 @@
 /* ── Admin Teachers Page ── */
 let allTeachers = [];
-let teacherDepartments = [];
-let teacherFilieres = [];
 let teacherClasses = [];
 let editingTeacherId = null;
 let currentUserRole = 'admin';
@@ -121,7 +119,7 @@ function searchQuery(id) {
 }
 
 async function initPage() {
-  await Promise.all([loadTeachers(), teacherLoadDepartments(), teacherLoadFilieres(), teacherLoadClasses()]);
+  await Promise.all([loadTeachers(), teacherLoadClasses()]);
   setupEventListeners();
 }
 
@@ -139,20 +137,6 @@ async function loadTeachers() {
     document.getElementById('teachersBody').innerHTML =
       '<tr class="empty-row"><td colspan="12">Erreur: ' + esc(e.message) + '</td></tr>';
   }
-}
-
-async function teacherLoadDepartments() {
-  try {
-    const data = await API.apiFetch('/departments/');
-    teacherDepartments = Array.isArray(data) ? data : [];
-  } catch (e) { teacherDepartments = []; }
-}
-
-async function teacherLoadFilieres() {
-  try {
-    const data = await API.apiFetch('/curriculum/filieres/');
-    teacherFilieres = Array.isArray(data) ? data : [];
-  } catch (e) { teacherFilieres = []; }
 }
 
 async function teacherLoadClasses() {
@@ -193,16 +177,6 @@ function renderTeachers() {
 }
 
 function populateTeacherSelects(prefix) {
-  const deptSel = document.getElementById(prefix + 'Department');
-  if (deptSel) {
-    deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      teacherDepartments.map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
-  }
-  const filSel = document.getElementById(prefix + 'Filiere');
-  if (filSel) {
-    filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      teacherFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
-  }
   const classSel = document.getElementById(prefix + 'Classes');
   if (classSel) {
     classSel.innerHTML = teacherClasses.map(c =>
@@ -230,19 +204,6 @@ async function openEditTeacher(userId) {
   const assigned = user.assigned_class_ids || [];
   const sel = document.getElementById('etClasses');
   if (sel) Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)); });
-  const isDeptHead = document.getElementById('etIsDeptHead');
-  if (isDeptHead) {
-    isDeptHead.checked = !!(user.managed_department);
-    if (user.managed_department) {
-      const deptSel = document.getElementById('etDepartment');
-      if (deptSel) deptSel.value = user.managed_department.id;
-    }
-  }
-  // Pre-select filiere for program_manager teachers
-  const filSel = document.getElementById('etFiliere');
-  if (user.managed_filieres && user.managed_filieres.length && filSel) {
-    filSel.value = user.managed_filieres[0].id;
-  }
   openModal('modalEditTeacher');
 }
 
@@ -268,7 +229,6 @@ function setupEventListeners() {
     document.getElementById('tGrade').value = '';
     document.getElementById('tSpeciality').value = '';
     document.getElementById('tPassword').value = '';
-    document.getElementById('tIsDeptHead').checked = false;
     openModal('modalAddTeacher');
   });
 
@@ -285,16 +245,8 @@ function setupEventListeners() {
       password: document.getElementById('tPassword').value || 'Pass@12345',
       assigned_class_ids: Array.from(document.getElementById('tClasses')?.selectedOptions || []).map(o => Number(o.value)),
     };
-    const isDeptHead = document.getElementById('tIsDeptHead');
-    if (isDeptHead && isDeptHead.checked) {
-      body.is_department_head = true;
-      body.department_id = Number(document.getElementById('tDepartment').value) || null;
-    }
     if (!body.first_name || !body.last_name || !body.email) {
       showToast('Prénom, nom et email sont requis.', 'error'); return;
-    }
-    if (body.is_department_head && !body.department_id) {
-      showToast('Le département est obligatoire pour un chef de département.', 'error'); return;
     }
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
@@ -317,11 +269,6 @@ function setupEventListeners() {
       speciality: document.getElementById('etSpeciality').value.trim() || '',
       assigned_class_ids: Array.from(document.getElementById('etClasses')?.selectedOptions || []).map(o => Number(o.value)),
     };
-    const isDeptHead = document.getElementById('etIsDeptHead');
-    if (isDeptHead && isDeptHead.checked) {
-      body.is_department_head = true;
-      body.department_id = Number(document.getElementById('etDepartment').value) || null;
-    }
     const pwd = document.getElementById('etPassword').value;
     if (pwd) body.password = pwd;
     if (!body.first_name || !body.last_name || !body.email) {
@@ -339,26 +286,6 @@ function setupEventListeners() {
   document.getElementById('btnDownloadTeacherImportTemplate')?.addEventListener('click', downloadTeacherTemplate);
   document.getElementById('btnDownloadTeacherImportTemplate2')?.addEventListener('click', downloadTeacherTemplate);
   document.getElementById('btnRunTeacherImport')?.addEventListener('click', runTeacherImport);
-
-  /* Cascade filieres by department for teacher create form — removed prog_manager from teacher */
-}
-
-async function teacherLoadFilieresByDept(prefix, deptId) {
-  const filSel = document.getElementById(prefix + 'Filiere');
-  if (!filSel) return;
-  if (!deptId) {
-    filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      teacherFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
-    return;
-  }
-  try {
-    const data = await API.apiFetch('/curriculum/filieres/?department_id=' + deptId);
-    const items = Array.isArray(data) ? data : [];
-    filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      items.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
-  } catch (e) {
-    filSel.innerHTML = '<option value="">Erreur de chargement</option>';
-  }
 }
 
 async function downloadTeacherTemplate() {

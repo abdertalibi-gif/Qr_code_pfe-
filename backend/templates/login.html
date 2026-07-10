@@ -58,6 +58,12 @@
           />
         </div>
 
+        <div style="text-align:right;margin-top:-0.5rem;margin-bottom:1rem">
+          <a href="#" id="forgotPasswordLink" style="font-size:.78rem;color:var(--primary);text-decoration:none">
+            Mot de passe oublié ?
+          </a>
+        </div>
+
         <button type="submit" class="btn" id="loginBtn">
           <span class="btn-label">Se connecter</span>
           <span class="spinner"></span>
@@ -65,6 +71,26 @@
 
         <div class="alert" id="alert"></div>
       </form>
+
+      <!-- Reset request modal (hidden by default) -->
+      <div id="resetModal" style="display:none">
+        <h2 style="margin-top:1.5rem;font-size:1.1rem">Réinitialiser votre mot de passe</h2>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+          Saisissez votre adresse e-mail. Si un compte existe, vous recevrez un lien de réinitialisation.
+        </p>
+        <div class="field">
+          <label for="resetEmail">Adresse e-mail</label>
+          <input type="email" id="resetEmail" placeholder="vous@exemple.ma" autocomplete="email" />
+        </div>
+        <button class="btn" id="resetBtn" style="margin-top:0.5rem">
+          <span class="btn-label">Envoyer le lien</span>
+          <span class="spinner"></span>
+        </button>
+        <p style="margin-top:1rem;font-size:.82rem;text-align:center">
+          <a href="#" id="backToLoginLink" style="color:var(--primary);text-decoration:none">← Retour à la connexion</a>
+        </p>
+        <div class="alert" id="resetAlert"></div>
+      </div>
 
       <p style="margin-top:1.75rem;text-align:center;font-size:.78rem;color:var(--muted)">
         Connexion sécurisée · JWT
@@ -93,16 +119,87 @@
     const form = document.getElementById('loginForm');
     const btn = document.getElementById('loginBtn');
     const alertEl = document.getElementById('alert');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+    const backLink = document.getElementById('backToLoginLink');
+    const resetModal = document.getElementById('resetModal');
+    const resetBtn = document.getElementById('resetBtn');
+    const resetAlert = document.getElementById('resetAlert');
+    const resetEmail = document.getElementById('resetEmail');
 
     function showAlert(msg, type = 'error') {
       alertEl.className = `alert ${type}`;
       alertEl.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
     }
 
+    function showResetAlert(msg, type = 'error') {
+      resetAlert.className = `alert ${type}`;
+      resetAlert.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+    }
+
     function setLoading(loading) {
       btn.disabled = loading;
       btn.classList.toggle('loading', loading);
     }
+
+    function setResetLoading(loading) {
+      resetBtn.disabled = loading;
+      resetBtn.classList.toggle('loading', loading);
+    }
+
+    function showResetModal() {
+      form.style.display = 'none';
+      resetModal.style.display = 'block';
+      resetAlert.className = 'alert';
+      resetEmail.value = '';
+      resetEmail.focus();
+    }
+
+    function showLoginForm() {
+      resetModal.style.display = 'none';
+      form.style.display = 'block';
+      alertEl.className = 'alert';
+    }
+
+    forgotLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      showResetModal();
+    });
+
+    backLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      showLoginForm();
+    });
+
+    resetBtn.addEventListener('click', async function () {
+      const email = resetEmail.value.trim();
+      if (!email) {
+        showResetAlert('Veuillez saisir votre adresse e-mail.');
+        return;
+      }
+      setResetLoading(true);
+      try {
+        const res = await fetch(API_BASE + '/auth/password-reset/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        showResetAlert(
+          'Si cet email existe, un lien de reinitialisation vous a ete envoye.',
+          'success'
+        );
+        resetBtn.style.display = 'none';
+        resetEmail.disabled = true;
+      } catch (err) {
+        showResetAlert('Erreur reseau. Veuillez reessayer.');
+      } finally {
+        setResetLoading(false);
+      }
+    });
+
+    resetEmail.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') resetBtn.click();
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

@@ -130,6 +130,10 @@ async function openEditUser(id) {
   document.getElementById('euEmail').value = u.email;
   document.getElementById('euRole').value = u.role;
   document.getElementById('euPassword').value = '';
+  document.getElementById('euPhone').value = u.phone || '';
+  document.getElementById('euCin').value = u.cin || '';
+  document.getElementById('euGrade').value = u.grade || '';
+  document.getElementById('euSpeciality').value = u.speciality || '';
   showFieldsForRole(u.role, 'eu');
 
   const deptSel = document.getElementById('euDepartment');
@@ -195,6 +199,14 @@ function buildPayload(prefix) {
     body.filiere_id = filEl ? Number(filEl.value) || null : null;
   }
   if (role === 'teacher') {
+    const phoneEl = document.getElementById(prefix + 'Phone');
+    if (phoneEl) body.phone = phoneEl.value.trim();
+    const cinEl = document.getElementById(prefix + 'Cin');
+    if (cinEl) body.cin = cinEl.value.trim() || undefined;
+    const gradeEl = document.getElementById(prefix + 'Grade');
+    if (gradeEl) body.grade = gradeEl.value.trim() || '';
+    const specEl = document.getElementById(prefix + 'Speciality');
+    if (specEl) body.speciality = specEl.value.trim() || '';
     const cb = document.getElementById(prefix + 'IsAlsoTeacher');
     if (cb) body.is_also_teacher = cb.checked;
     const isDeptHead = document.getElementById(prefix + 'IsDeptHead');

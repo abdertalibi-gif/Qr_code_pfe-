@@ -1,8 +1,11 @@
 import logging
 from typing import Type, cast
 
-from django.db.models import Q
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -502,29 +505,36 @@ def teacher_import_template(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def teacher_list(request):
-    import logging
-    logger = logging.getLogger(__name__)
     user = request.user
-    logger.info(f"teacher_list: user={user.email}, role={user.role}")
 
-    teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
-    logger.info(f"teacher_list: base teacher count={teachers.count()}")
+    teachers = User.objects.filter(role="teacher", is_active=True).prefetch_related(
+        Prefetch("assigned_classes", queryset=Classe.objects.select_related("department", "filiere__department"))
+    ).order_by("last_name", "first_name")
 
     if user.role == "department_head":
-        dept = get_user_department(user)
-        logger.info(f"teacher_list: dept_head filtering dept={dept}")
         teachers = apply_role_filtering(teachers, "teacher_list", request)
     elif user.role == "program_manager":
-        filiere_ids = get_user_filiere_ids(user)
-        logger.info(f"teacher_list: prog_mgr filtering filiere_ids={filiere_ids}")
         teachers = apply_role_filtering(teachers, "teacher_list", request)
     elif user.role not in ("admin",):
-        logger.info(f"teacher_list: non-admin/non-head/non-mgr -> empty")
         return Response([])
 
-    logger.info(f"teacher_list: final count={teachers.count()}")
-    data = [
-        {
+    data = []
+    for t in teachers:
+        ac = list(t.assigned_classes.all())
+        filieres = sorted(set(
+            c.filiere.name for c in ac if c.filiere and c.filiere.name
+        ))
+        filiere_name = ", ".join(filieres) if filieres else None
+        departments = sorted(set(
+            c.department.name for c in ac if c.department and c.department.name
+        ))
+        if not departments:
+            departments = sorted(set(
+                c.filiere.department.name for c in ac
+                if c.filiere and c.filiere.department and c.filiere.department.name
+            ))
+        dept_name = departments[0] if departments else None
+        data.append({
             "id": t.id,
             "full_name": t.full_name,
             "email": t.email,
@@ -532,14 +542,12 @@ def teacher_list(request):
             "cin": t.cin,
             "grade": t.grade,
             "speciality": t.speciality,
-            "department_name": t.assigned_classes.first().department.name if t.assigned_classes.first() and t.assigned_classes.first().department else (t.assigned_classes.first().filiere.department.name if t.assigned_classes.first() and t.assigned_classes.first().filiere else None),
-            "filiere_name": t.assigned_classes.first().filiere.name if t.assigned_classes.first() and t.assigned_classes.first().filiere else None,
-            "class_count": t.assigned_classes.count(),
-            "assigned_class_ids": list(t.assigned_classes.values_list("id", flat=True)),
+            "department_name": dept_name,
+            "filiere_name": filiere_name,
+            "class_count": len(ac),
+            "assigned_class_ids": [c.id for c in ac],
             "is_active": t.is_active,
-        }
-        for t in teachers
-    ]
+        })
     return Response(data)
 
 
@@ -1259,3 +1267,95 @@ def dashboard_counts(request):
     from django.core.cache import cache
     cache.set(cache_key, resp_data, 60)
     return Response(resp_data)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Password Reset
+# ═══════════════════════════════════════════════════════════════
+
+class PasswordResetView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        if not email:
+            return Response({"detail": "Email requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        msg = "Si cet email existe, un lien de réinitialisation vous a été envoyé."
+
+        if user and user.is_active:
+            token_generator = PasswordResetTokenGenerator()
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = token_generator.make_token(user)
+            reset_url = f"{request.scheme}://{request.get_host()}/password-reset/{uidb64}/{token}/"
+
+            logger.info(f"Password reset link for {email}: {reset_url}")
+
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                subject = "Reinitialisation de votre mot de passe - PresenceQR"
+                message = (
+                    f"Bonjour {user.first_name},\n\n"
+                    f"Vous avez demande la reinitialisation de votre mot de passe.\n\n"
+                    f"Cliquez sur le lien ci-dessous pour definir un nouveau mot de passe :\n"
+                    f"{reset_url}\n\n"
+                    f"Ce lien est valable 24 heures.\n\n"
+                    f"Si vous n'avez pas demande cette reinitialisation, ignorez cet email.\n\n"
+                    f"---\nPresenceQR"
+                )
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL or "noreply@presenceqr.ma",
+                    [email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                logger.warning(f"Email sending failed for {email}: {e}")
+
+        return Response({"detail": msg})
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get("uidb64", "")
+        token = request.data.get("token", "")
+        new_password = request.data.get("new_password", "")
+
+        if not uidb64 or not token or not new_password:
+            return Response(
+                {"detail": "Champs requis manquants."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {"detail": "Le mot de passe doit contenir au moins 8 caracteres."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response(
+                {"detail": "Lien de reinitialisation invalide."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token_generator = PasswordResetTokenGenerator()
+        if not token_generator.check_token(user, token):
+            return Response(
+                {"detail": "Lien de reinitialisation invalide ou expire."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        logger.info(f"Password reset successful for {user.email}")
+
+        return Response({"detail": "Mot de passe reinitialise avec succes."})

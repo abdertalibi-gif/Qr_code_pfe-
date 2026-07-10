@@ -81,6 +81,24 @@
         <select id="uFiliere"><option value="">— Sélectionner —</option></select>
       </div>
 
+      <!-- Teacher-specific fields -->
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Téléphone</label>
+        <input type="text" id="uPhone" placeholder="+212 6XX XXX XXX" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>CIN</label>
+        <input type="text" id="uCin" placeholder="ex: AB123456" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Grade</label>
+        <input type="text" id="uGrade" placeholder="ex: Professeur" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Spécialité</label>
+        <input type="text" id="uSpeciality" placeholder="ex: Informatique" />
+      </div>
+
       <!-- is_also_teacher (teacher only) -->
       <div class="field role-field" data-roles="teacher" style="display:none">
         <label class="checkbox-label">
@@ -173,6 +191,24 @@
       <div class="field role-field-edit" data-roles="teacher,program_manager" style="display:none">
         <label>Filière</label>
         <select id="euFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Teacher-specific fields -->
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Téléphone</label>
+        <input type="text" id="euPhone" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>CIN</label>
+        <input type="text" id="euCin" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Grade</label>
+        <input type="text" id="euGrade" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Spécialité</label>
+        <input type="text" id="euSpeciality" />
       </div>
 
       <!-- is_also_teacher (teacher only) -->

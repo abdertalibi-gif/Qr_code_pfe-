@@ -18,7 +18,7 @@ class IsAdminOrTeacher(BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.role in ("admin", "teacher", "department_head")
+            and request.user.role in ("admin", "teacher", "department_head", "program_manager")
         )
 
 

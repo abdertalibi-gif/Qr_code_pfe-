@@ -7,9 +7,12 @@ import os
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import include, path, re_path
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 from django.views.generic import RedirectView, TemplateView
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
@@ -82,6 +85,24 @@ def serve_template(filename):
             raise
 
     return view
+
+
+def password_reset_page(request, uidb64, token):
+    """Render the password reset confirmation page with token validation."""
+    valid = False
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        from users.models import User
+        user = User.objects.get(pk=uid)
+        token_generator = PasswordResetTokenGenerator()
+        valid = token_generator.check_token(user, token)
+    except Exception:
+        valid = False
+    return render(request, "password_reset.html", {
+        "uidb64": uidb64,
+        "token": token,
+        "valid": valid,
+    })
 
 
 def serve_admin_page(template_name):
@@ -170,6 +191,7 @@ api_v1_urlpatterns = [
 urlpatterns = [
     path("", RedirectView.as_view(url="/login/", permanent=False)),
     path("login/", serve_template("login.html"), name="login-page"),
+    path("password-reset/<str:uidb64>/<str:token>/", password_reset_page, name="password-reset-page"),
     path("admin-ui/", serve_template("admin.html"), name="admin-page"),
 
     # Admin sub-pages (independent routes)
