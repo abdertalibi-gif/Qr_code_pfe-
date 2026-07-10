@@ -96,10 +96,16 @@ class UserViewSet(viewsets.ModelViewSet):
             if dept:
                 qs = qs.filter(
                     Q(role="department_head", id=self.request.user.id)
-                    | Q(role__in=("teacher", "admin"), assigned_classes__department=dept)
-                    | Q(role="teacher", sessions__classe__department=dept)
-                    | Q(role="teacher", sessions__classe__filiere__department=dept)
-                    | Q(role="teacher", taught_modules__filiere__department=dept)
+                    | Q(role__in=("teacher", "admin"),
+                        assigned_classes__department=dept)
+                    | Q(role__in=("teacher", "admin"),
+                        assigned_classes__filiere__department=dept)
+                    | Q(role__in=("teacher", "admin"),
+                        sessions__classe__department=dept)
+                    | Q(role__in=("teacher", "admin"),
+                        sessions__classe__filiere__department=dept)
+                    | Q(role__in=("teacher", "admin"),
+                        taught_modules__filiere__department=dept)
                     | Q(role="student", student_profile__classe__department=dept)
                     | Q(role="student", student_profile__classe__filiere__department=dept)
                     | Q(role="program_manager", managed_filieres__department=dept)
@@ -439,12 +445,20 @@ def teacher_import_excel(request):
                 {"detail": "Seul le format .xlsx est accepté."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        logger.info("Teacher import started: %s (%d bytes)", uploaded_file.name, uploaded_file.size)
         try:
             report = import_teachers(uploaded_file)
+            logger.info(
+                "Teacher import finished: %d created, %d updated, %d errors",
+                report.get("imported", 0),
+                report.get("updated", 0),
+                len(report.get("errors", [])),
+            )
         except ValueError as exc:
+            logger.warning("Teacher import value error: %s", exc)
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
-            logger.exception("Teacher import failed")
+            logger.exception("Teacher import failed unexpectedly")
             return Response(
                 {"detail": f"Import échoué : {exc}"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -801,6 +815,18 @@ def admin_statistics(request):
     })
 
 
+
+
+
+def _abs_cache_key(user, params):
+    """Generate a deterministic cache key for absence statistics."""
+    parts = ["abs-stats", str(user.role), str(user.id)]
+    for k in sorted(params.keys()):
+        parts.append(f"{k}={params.get(k, '')}")
+    from curriculum.views import _cache_key
+    return _cache_key(*parts)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def absence_statistics(request):
@@ -821,6 +847,19 @@ def absence_statistics(request):
     department_id = request.query_params.get("department_id", "")
     semestre_id = request.query_params.get("semestre_id", "")
     classe_id = request.query_params.get("classe_id", "")
+
+    # Try cache first
+    params = {
+        "df": date_from, "dt": date_to,
+        "f": filiere_id, "m": module_id,
+        "t": teacher_id, "d": department_id,
+        "s": semestre_id, "c": classe_id,
+    }
+    cache_key = _abs_cache_key(request.user, params)
+    from curriculum.views import _cached_response
+    cached = _cached_response(cache_key, ttl=120)
+    if cached:
+        return cached
 
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
@@ -870,17 +909,21 @@ def absence_statistics(request):
         else:
             qs = qs.none()
 
-    total = qs.count()
-    present = qs.filter(attendance_status="confirmed").count()
-    absent = qs.filter(attendance_status="absent").count()
+    # Combine all aggregate counts into a single query
+    agg = qs.aggregate(
+        total=Count("id"),
+        present=Count("id", filter=Q(attendance_status="confirmed")),
+        absent=Count("id", filter=Q(attendance_status="absent")),
+        total_students=Count("student_id", distinct=True),
+        total_sessions=Count("session_id", distinct=True),
+        total_teachers=Count("session__teacher_id", distinct=True),
+        total_modules=Count("session__module_id", distinct=True),
+        total_filieres=Count("student__classe__filiere_id", distinct=True),
+        total_departments=Count("student__classe__department_id", distinct=True),
+    )
+    total = agg["total"]
+    absent = agg["absent"]
     absence_rate = round((absent / total * 100) if total > 0 else 0, 1)
-
-    total_students = qs.values("student_id").distinct().count()
-    total_sessions = qs.values("session_id").distinct().count()
-    total_teachers = qs.values("session__teacher_id").distinct().count()
-    total_modules = qs.values("session__module_id").distinct().count()
-    total_filieres = qs.values("student__classe__filiere_id").distinct().count()
-    total_departments = qs.values("student__classe__department_id").distinct().count()
 
     by_student = list(
         qs.values("student_id", "student__first_name", "student__last_name", "student__code_massar")
@@ -978,18 +1021,18 @@ def absence_statistics(request):
         vt = r.pop("validation_time", None)
         r["time"] = vt.strftime("%H:%M:%S") if hasattr(vt, "strftime") else str(vt)[:19]
 
-    return Response({
+    resp_data = {
         "summary": {
-            "total": total,
-            "present": present,
-            "absent": absent,
+            "total": agg["total"],
+            "present": agg["present"],
+            "absent": agg["absent"],
             "absence_rate": absence_rate,
-            "total_students": total_students,
-            "total_sessions": total_sessions,
-            "total_teachers": total_teachers,
-            "total_modules": total_modules,
-            "total_filieres": total_filieres,
-            "total_departments": total_departments,
+            "total_students": agg["total_students"],
+            "total_sessions": agg["total_sessions"],
+            "total_teachers": agg["total_teachers"],
+            "total_modules": agg["total_modules"],
+            "total_filieres": agg["total_filieres"],
+            "total_departments": agg["total_departments"],
         },
         "by_student": by_student,
         "by_teacher": by_teacher,
@@ -998,7 +1041,10 @@ def absence_statistics(request):
         "by_day": by_day,
         "by_week": by_week,
         "recent_absences": recent_absences,
-    })
+    }
+    from django.core.cache import cache
+    cache.set(cache_key, resp_data, 120)
+    return Response(resp_data)
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def app_settings(request):
@@ -1059,29 +1105,46 @@ def dashboard_counts(request):
 
     user = request.user
 
+    from django.db.models import Count, Q
+    from curriculum.views import _cache_key, _cached_response
+
+    cache_key = _cache_key("dash-counts", str(user.role), str(user.id))
+    cached = _cached_response(cache_key, ttl=60)
+    if cached:
+        return cached
+
     if user.role == "admin":
+        user_agg = User.objects.aggregate(
+            users=Count("id"),
+            admins=Count("id", filter=Q(role="admin")),
+            teachers=Count("id", filter=Q(role="teacher")),
+            assistants=Count("id", filter=Q(is_also_teacher=True)),
+            students=Count("id", filter=Q(role="student")),
+            department_heads=Count("id", filter=Q(role="department_head")),
+            program_managers=Count("id", filter=Q(role="program_manager")),
+        )
+        session_agg = Session.objects.aggregate(
+            sessions=Count("id"),
+            active_sessions=Count("id", filter=Q(is_active=True)),
+            closed_sessions=Count("id", filter=Q(is_closed=True)),
+            reports=Count("id", filter=~Q(report_file="")),
+        )
+        attendance_agg = Attendance.objects.aggregate(
+            attendances=Count("id"),
+            present=Count("id", filter=Q(attendance_status="confirmed")),
+            absent=Count("id", filter=Q(attendance_status="absent")),
+        )
         return Response({
-            "users": User.objects.count(),
-            "admins": User.objects.filter(role="admin").count(),
-            "teachers": User.objects.filter(role="teacher").count(),
-            "assistants": User.objects.filter(is_also_teacher=True).count(),
-            "students": User.objects.filter(role="student").count(),
-            "department_heads": User.objects.filter(role="department_head").count(),
-            "program_managers": User.objects.filter(role="program_manager").count(),
+            **user_agg,
             "classes": Classe.objects.count(),
             "filieres": Filiere.objects.count(),
             "modules": Module.objects.count(),
-            "sessions": Session.objects.count(),
-            "active_sessions": Session.objects.filter(is_active=True).count(),
-            "closed_sessions": Session.objects.filter(is_closed=True).count(),
             "departments": Department.objects.count(),
             "blocks": Block.objects.count(),
             "rooms": Room.objects.count(),
             "amphitheaters": Amphitheater.objects.count(),
-            "attendances": Attendance.objects.count(),
-            "present": Attendance.objects.filter(attendance_status="confirmed").count(),
-            "absent": Attendance.objects.filter(attendance_status="absent").count(),
-            "reports": Session.objects.exclude(report_file="").count(),
+            **session_agg,
+            **attendance_agg,
         })
 
     classes_qs = apply_role_filtering(Classe.objects.all(), "classe", request)
@@ -1099,14 +1162,15 @@ def dashboard_counts(request):
             users_qs = User.objects.filter(
                 Q(id=user.id)
                 | Q(role="teacher", assigned_classes__department=dept)
+                | Q(role="teacher", assigned_classes__filiere__department=dept)
                 | Q(role="teacher", sessions__classe__department=dept)
                 | Q(role="teacher", sessions__classe__filiere__department=dept)
                 | Q(role="teacher", taught_modules__filiere__department=dept)
-                | Q(role="teacher", department=dept)
                 | Q(role__in=("department_head", "program_manager"), headed_department=dept)
                 | Q(role="student", student_profile__classe__department=dept)
                 | Q(role="student", student_profile__classe__filiere__department=dept)
                 | Q(role="teacher", assigned_classes__department=dept, is_also_teacher=True)
+                | Q(role="teacher", assigned_classes__filiere__department=dept, is_also_teacher=True)
             ).distinct()
             dept_count = 1
     elif user.role == "program_manager":
@@ -1127,26 +1191,38 @@ def dashboard_counts(request):
         users_qs = User.objects.filter(id=user.id)
         dept_count = Department.objects.count()
 
-    return Response({
-        "users": users_qs.count(),
-        "admins": users_qs.filter(role="admin").count(),
-        "teachers": users_qs.filter(role="teacher").count(),
-        "assistants": users_qs.filter(is_also_teacher=True).count(),
-        "students": users_qs.filter(role="student").count(),
-        "department_heads": users_qs.filter(role="department_head").count(),
-        "program_managers": users_qs.filter(role="program_manager").count(),
+    user_agg = users_qs.aggregate(
+        users=Count("id"),
+        admins=Count("id", filter=Q(role="admin")),
+        teachers=Count("id", filter=Q(role="teacher")),
+        assistants=Count("id", filter=Q(is_also_teacher=True)),
+        students=Count("id", filter=Q(role="student")),
+        department_heads=Count("id", filter=Q(role="department_head")),
+        program_managers=Count("id", filter=Q(role="program_manager")),
+    )
+    session_agg = sessions_qs.aggregate(
+        sessions=Count("id"),
+        active_sessions=Count("id", filter=Q(is_active=True)),
+        closed_sessions=Count("id", filter=Q(is_closed=True)),
+        reports=Count("id", filter=~Q(report_file="")),
+    )
+    attendance_agg = attendances_qs.aggregate(
+        attendances=Count("id"),
+        present=Count("id", filter=Q(attendance_status="confirmed")),
+        absent=Count("id", filter=Q(attendance_status="absent")),
+    )
+    resp_data = {
+        **user_agg,
         "classes": classes_qs.count(),
         "filieres": filieres_qs.count(),
         "modules": modules_qs.count(),
-        "sessions": sessions_qs.count(),
-        "active_sessions": sessions_qs.filter(is_active=True).count(),
-        "closed_sessions": sessions_qs.filter(is_closed=True).count(),
         "departments": dept_count,
         "blocks": Block.objects.count(),
         "rooms": Room.objects.count(),
         "amphitheaters": Amphitheater.objects.count(),
-        "attendances": attendances_qs.count(),
-        "present": attendances_qs.filter(attendance_status="confirmed").count(),
-        "absent": attendances_qs.filter(attendance_status="absent").count(),
-        "reports": sessions_qs.exclude(report_file="").count(),
-    })
+        **session_agg,
+        **attendance_agg,
+    }
+    from django.core.cache import cache
+    cache.set(cache_key, resp_data, 60)
+    return Response(resp_data)

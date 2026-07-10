@@ -100,10 +100,10 @@ def apply_role_filtering(queryset, model_type, request):
         if model_type == "teacher_list":
             return queryset.filter(
                 Q(assigned_classes__department=dept)
+                | Q(assigned_classes__filiere__department=dept)
                 | Q(sessions__classe__department=dept)
                 | Q(sessions__classe__filiere__department=dept)
                 | Q(taught_modules__filiere__department=dept)
-                | Q(department=dept)
             ).distinct()
 
         if model_type == "classe":
@@ -119,6 +119,7 @@ def apply_role_filtering(queryset, model_type, request):
         if model_type == "user_teacher":
             return queryset.filter(
                 Q(assigned_classes__department=dept)
+                | Q(assigned_classes__filiere__department=dept)
                 | Q(sessions__classe__department=dept)
                 | Q(sessions__classe__filiere__department=dept)
                 | Q(taught_modules__filiere__department=dept)
