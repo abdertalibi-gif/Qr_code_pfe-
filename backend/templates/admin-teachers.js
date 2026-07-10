@@ -238,6 +238,11 @@ async function openEditTeacher(userId) {
       if (deptSel) deptSel.value = user.managed_department.id;
     }
   }
+  // Pre-select filiere for program_manager teachers
+  const filSel = document.getElementById('etFiliere');
+  if (user.managed_filieres && user.managed_filieres.length && filSel) {
+    filSel.value = user.managed_filieres[0].id;
+  }
   openModal('modalEditTeacher');
 }
 

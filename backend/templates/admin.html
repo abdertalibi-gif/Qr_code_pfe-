@@ -1662,6 +1662,8 @@
     if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
     const isDeptHead = document.getElementById('euIsDeptHead');
     if (isDeptHead) isDeptHead.checked = !!(u.managed_department);
+    const isAlsoTeacher = document.getElementById('euIsAlsoTeacher');
+    if (isAlsoTeacher) isAlsoTeacher.checked = !!u.is_also_teacher;
     openModal('modalEditUser');
   }
 
@@ -3103,6 +3105,11 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
           return loadClasseFilieres(semestreId, niveau).then(() => {
             if (c.filiere_id) {
               filiereSel.value = c.filiere_id;
+              return loadClasseModules(c.filiere_id).then(() => {
+                if (c.module_id) {
+                  document.getElementById('clModule').value = c.module_id;
+                }
+              });
             }
           });
         }
