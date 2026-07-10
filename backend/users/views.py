@@ -503,12 +503,6 @@ def teacher_import_template(request):
 @permission_classes([IsAuthenticated])
 def teacher_list(request):
     teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
-    if request.user.role == "department_head":
-        teachers = apply_role_filtering(teachers, "teacher_list", request)
-    elif request.user.role == "program_manager":
-        teachers = apply_role_filtering(teachers, "teacher_list", request)
-    elif request.user.role not in ("admin",):
-        return Response([])
     data = [
         {
             "id": t.id,
@@ -518,7 +512,7 @@ def teacher_list(request):
             "cin": t.cin,
             "grade": t.grade,
             "speciality": t.speciality,
-            "department_name": t.assigned_classes.first().department.name if t.assigned_classes.first() and t.assigned_classes.first().department else (t.assigned_classes.first().filiere.department.name if t.assigned_classes.first() and t.assigned_classes.first().filiere else None),
+            "department_name": t.assigned_classes.first().department.name if t.assigned_classes.first() and t.assigned_classes.first().department else (t.assigned_classes.first().filiere.department.name if t.assigned_classes.first() and t.assigned_classes.first().filiere and t.assigned_classes.first().filiere.department else None),
             "filiere_name": t.assigned_classes.first().filiere.name if t.assigned_classes.first() and t.assigned_classes.first().filiere else None,
             "class_count": t.assigned_classes.count(),
             "assigned_class_ids": list(t.assigned_classes.values_list("id", flat=True)),
