@@ -36,7 +36,7 @@ Fix template/JS/API mismatches; add missing pages (Absences, Assistants); add mi
 - `backend/templates/admin-absences.js` — absence data loading, filtering by absent status
 - `backend/templates/admin_assistants.html` — assistants listing
 - `backend/templates/admin-assistants.js` — assistants data loading, is_also_teacher filter
-- `backend/users/views.py` — teacher_list, block_list, room_list, amphitheater_list, dashboard_counts; FIXED `admin_statistics` (timestamp→validation_time); ADDED `absence_statistics` view; FIXED teacher_list (retiré filtrage scope pour program_manager/department_head, retourne tous les 117 enseignants)
+- `backend/users/views.py` — teacher_list, block_list, room_list, amphitheater_list, dashboard_counts; FIXED `admin_statistics` (timestamp→validation_time); ADDED `absence_statistics` view; FIXED teacher_list (retiré filtrage scope, prefetch_related optimisé, retourne 115 enseignants)
 - `backend/curriculum/views.py` — semestre_list, filiere_list, module_list, niveau_list
 - `backend/config/urls.py` — routes for blocks/, rooms/, amphitheaters/, curriculum/ endpoints; ADDED `absence-stats/` route
 - `backend/templates/dashboard.css` — added `.stat-icon.teal` CSS class
@@ -57,6 +57,8 @@ Fix template/JS/API mismatches; add missing pages (Absences, Assistants); add mi
 - **Cause racine** : `teacher_list()` (GET /teachers/) appliquait `apply_role_filtering` avec les relations `assigned_classes`/`sessions`/`taught_modules`. Sur 117 enseignants, seuls 21 avaient des `assigned_classes`, 16 des sessions, 0 des modules. Pour le program_manager, seulement **3** enseignants matchaient ses filières.
 - **Fix** : Retiré le filtrage scope de `teacher_list()` dans `backend/users/views.py:504`. L'endpoint retourne désormais tous les enseignants actifs (117), sans filtre de rôle. Les endpoints concernés : `session_form.js` (formulaire séance), export wizard, absence stats.
 - **Note** : `/users/?role=teacher` (UserViewSet) garde son filtrage scope pour la page de gestion des enseignants.
+- **Optimisation** : ajout `prefetch_related(Prefetch("assigned_classes", queryset=Classe.objects.select_related("department", "filiere__department")))` pour éviter N+1 requêtes (345 requêtes → 3 requêtes).
+- **Testé** : `GET /api/v1/teachers/` via serveur réel → HTTP 200, 115 enseignants retournés pour admin.
 
 ## Department Buttons Analysis (Gérer / Modifier) — **FIXED**
 

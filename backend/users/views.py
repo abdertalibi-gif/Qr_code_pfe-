@@ -502,9 +502,26 @@ def teacher_import_template(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def teacher_list(request):
-    teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name")
-    data = [
-        {
+    from django.db.models import Prefetch
+    from users.models import Classe
+    teachers = User.objects.filter(role="teacher", is_active=True).order_by("last_name", "first_name").prefetch_related(
+        Prefetch(
+            "assigned_classes",
+            queryset=Classe.objects.select_related("department", "filiere__department"),
+        )
+    )
+    data = []
+    for t in teachers:
+        ac_list = list(t.assigned_classes.all())
+        first_ac = ac_list[0] if ac_list else None
+        dept_name = None
+        if first_ac:
+            if first_ac.department:
+                dept_name = first_ac.department.name
+            elif first_ac.filiere and first_ac.filiere.department:
+                dept_name = first_ac.filiere.department.name
+        filiere_name = first_ac.filiere.name if first_ac and first_ac.filiere else None
+        data.append({
             "id": t.id,
             "full_name": t.full_name,
             "email": t.email,
@@ -512,14 +529,12 @@ def teacher_list(request):
             "cin": t.cin,
             "grade": t.grade,
             "speciality": t.speciality,
-            "department_name": t.assigned_classes.first().department.name if t.assigned_classes.first() and t.assigned_classes.first().department else (t.assigned_classes.first().filiere.department.name if t.assigned_classes.first() and t.assigned_classes.first().filiere and t.assigned_classes.first().filiere.department else None),
-            "filiere_name": t.assigned_classes.first().filiere.name if t.assigned_classes.first() and t.assigned_classes.first().filiere else None,
-            "class_count": t.assigned_classes.count(),
-            "assigned_class_ids": list(t.assigned_classes.values_list("id", flat=True)),
+            "department_name": dept_name,
+            "filiere_name": filiere_name,
+            "class_count": len(ac_list),
+            "assigned_class_ids": [c.id for c in ac_list],
             "is_active": t.is_active,
-        }
-        for t in teachers
-    ]
+        })
     return Response(data)
 
 
