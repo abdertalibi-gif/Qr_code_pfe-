@@ -84,7 +84,7 @@
           else if (user.role === 'teacher') window.location.href = '/teacher/';
           else if (user.role === 'student') window.location.href = '/student/';
           else if (user.role === 'department_head') window.location.href = '/admin-ui/';
-          else if (user.role === 'program_manager') window.location.href = '/teacher/';
+          else if (user.role === 'program_manager') window.location.href = '/admin-ui/';
           else window.location.href = '/login/';
         } catch {}
       }
@@ -135,7 +135,7 @@
           else if (role === 'teacher') window.location.href = '/teacher/';
           else if (role === 'student') window.location.href = '/student/';
           else if (role === 'department_head') window.location.href = '/admin-ui/';
-          else if (role === 'program_manager') window.location.href = '/teacher/';
+          else if (role === 'program_manager') window.location.href = '/admin-ui/';
           else {
             showAlert('Unknown user role', 'error');
             setLoading(false);

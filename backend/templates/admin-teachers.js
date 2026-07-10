@@ -178,7 +178,7 @@ function renderTeachers() {
     '<td>' + esc(t.phone || '—') + '</td>' +
     '<td>' + esc(t.cin || '—') + '</td>' +
     '<td>' + esc((t.department_name || t.department) || '—') + '</td>' +
-    '<td>' + '—' + '</td>' +
+    '<td>' + esc((t.filiere_name || t.filiere) || '—') + '</td>' +
     '<td>' + esc(t.grade || '—') + '</td>' +
     '<td>' + esc(t.speciality || '—') + '</td>' +
     '<td>' + (t.class_count ?? (t.assigned_class_ids ? t.assigned_class_ids.length : '—')) + '</td>' +
@@ -238,14 +238,6 @@ async function openEditTeacher(userId) {
       if (deptSel) deptSel.value = user.managed_department.id;
     }
   }
-  const isProgMgr = document.getElementById('etIsProgManager');
-  if (isProgMgr) {
-    isProgMgr.checked = !!(user.managed_filieres && user.managed_filieres.length);
-    if (user.managed_filieres && user.managed_filieres.length) {
-      const filSel = document.getElementById('etFiliere');
-      if (filSel) filSel.value = user.managed_filieres[0].id;
-    }
-  }
   openModal('modalEditTeacher');
 }
 
@@ -272,7 +264,6 @@ function setupEventListeners() {
     document.getElementById('tSpeciality').value = '';
     document.getElementById('tPassword').value = '';
     document.getElementById('tIsDeptHead').checked = false;
-    document.getElementById('tIsProgManager').checked = false;
     openModal('modalAddTeacher');
   });
 
@@ -294,19 +285,11 @@ function setupEventListeners() {
       body.is_department_head = true;
       body.department_id = Number(document.getElementById('tDepartment').value) || null;
     }
-    const isProgMgr = document.getElementById('tIsProgManager');
-    if (isProgMgr && isProgMgr.checked) {
-      body.is_program_manager = true;
-      body.filiere_id = Number(document.getElementById('tFiliere').value) || null;
-    }
     if (!body.first_name || !body.last_name || !body.email) {
       showToast('Prénom, nom et email sont requis.', 'error'); return;
     }
     if (body.is_department_head && !body.department_id) {
       showToast('Le département est obligatoire pour un chef de département.', 'error'); return;
-    }
-    if (body.is_program_manager && !body.filiere_id) {
-      showToast('La filière est obligatoire pour un responsable de filière.', 'error'); return;
     }
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
@@ -334,11 +317,6 @@ function setupEventListeners() {
       body.is_department_head = true;
       body.department_id = Number(document.getElementById('etDepartment').value) || null;
     }
-    const isProgMgr = document.getElementById('etIsProgManager');
-    if (isProgMgr && isProgMgr.checked) {
-      body.is_program_manager = true;
-      body.filiere_id = Number(document.getElementById('etFiliere').value) || null;
-    }
     const pwd = document.getElementById('etPassword').value;
     if (pwd) body.password = pwd;
     if (!body.first_name || !body.last_name || !body.email) {
@@ -357,36 +335,7 @@ function setupEventListeners() {
   document.getElementById('btnDownloadTeacherImportTemplate2')?.addEventListener('click', downloadTeacherTemplate);
   document.getElementById('btnRunTeacherImport')?.addEventListener('click', runTeacherImport);
 
-  /* Cascade filieres by department for teacher create form */
-  const tDept = document.getElementById('tDepartment');
-  const tProg = document.getElementById('tIsProgManager');
-  if (tDept && tProg) {
-    tDept.addEventListener('change', function () {
-      if (tProg.checked) teacherLoadFilieresByDept('t', this.value);
-    });
-    tProg.addEventListener('change', function () {
-      if (this.checked) {
-        teacherLoadFilieresByDept('t', tDept.value || '');
-      } else {
-        populateTeacherSelects('t');
-      }
-    });
-  }
-  /* Cascade filieres by department for teacher edit form */
-  const etDept = document.getElementById('etDepartment');
-  const etProg = document.getElementById('etIsProgManager');
-  if (etDept && etProg) {
-    etDept.addEventListener('change', function () {
-      if (etProg.checked) teacherLoadFilieresByDept('et', this.value);
-    });
-    etProg.addEventListener('change', function () {
-      if (this.checked) {
-        teacherLoadFilieresByDept('et', etDept.value || '');
-      } else {
-        populateTeacherSelects('et');
-      }
-    });
-  }
+  /* Cascade filieres by department for teacher create form — removed prog_manager from teacher */
 }
 
 async function teacherLoadFilieresByDept(prefix, deptId) {

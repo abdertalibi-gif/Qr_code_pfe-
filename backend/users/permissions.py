@@ -163,21 +163,29 @@ def apply_role_filtering(queryset, model_type, request):
         if not filiere_ids:
             return queryset.none()
 
+        if model_type == "teacher_list":
+            return queryset.filter(
+                Q(assigned_classes__filiere_id__in=filiere_ids)
+                | Q(sessions__classe__filiere_id__in=filiere_ids)
+                | Q(taught_modules__filiere_id__in=filiere_ids)
+            ).distinct()
+
+        if model_type == "user_teacher":
+            return queryset.filter(
+                Q(assigned_classes__filiere_id__in=filiere_ids)
+                | Q(sessions__classe__filiere_id__in=filiere_ids)
+                | Q(taught_modules__filiere_id__in=filiere_ids)
+            ).distinct()
+
         filters = {
             "classe": {"filiere_id__in": filiere_ids},
             "student": {"classe__filiere_id__in": filiere_ids},
-            "user_teacher": {
-                "assigned_classes__filiere_id__in": filiere_ids,
-                "sessions__classe__filiere_id__in": filiere_ids,
-                "taught_modules__filiere_id__in": filiere_ids,
-            },
             "user_student": {"student_profile__classe__filiere_id__in": filiere_ids},
             "session": {"classe__filiere_id__in": filiere_ids},
             "attendance": {"session__classe__filiere_id__in": filiere_ids},
             "suspicious": {"session__classe__filiere_id__in": filiere_ids},
             "filiere": {"id__in": filiere_ids},
             "module": {"filiere_id__in": filiere_ids},
-            "teacher_list": {"managed_filieres__id__in": filiere_ids},
         }
         f = filters.get(model_type)
         if f:

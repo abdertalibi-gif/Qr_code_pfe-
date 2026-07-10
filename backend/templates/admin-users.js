@@ -149,11 +149,6 @@ async function openEditUser(id) {
     isDeptHead.checked = !!(u.managed_department);
     if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
   }
-  const isProgMgr = document.getElementById('euIsProgManager');
-  if (isProgMgr) {
-    isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
-  }
-
   openModal('modalEditUser');
 }
 
@@ -208,12 +203,6 @@ function buildPayload(prefix) {
       const deptEl = document.getElementById(prefix + 'Department');
       body.department_id = deptEl ? Number(deptEl.value) || null : null;
     }
-    const isProgMgr = document.getElementById(prefix + 'IsProgManager');
-    if (isProgMgr && isProgMgr.checked) {
-      body.is_program_manager = true;
-      const filEl = document.getElementById(prefix + 'Filiere');
-      body.filiere_id = filEl ? Number(filEl.value) || null : null;
-    }
   }
   if (role === 'student') {
     const cm = document.getElementById(prefix + 'CodeMassar');
@@ -242,21 +231,14 @@ async function populateRoleFilieresByDept(prefix, deptId) {
   }
 }
 
-function setupCascadeForPrefix(prefix) {
+function setupProgManagerCascade(prefix) {
   const deptSel = document.getElementById(prefix + 'Department');
-  const isProgCheck = document.getElementById(prefix + 'IsProgManager');
-  if (deptSel && isProgCheck) {
+  const roleSel = document.getElementById(prefix + 'Role');
+  if (deptSel && roleSel) {
     deptSel.addEventListener('change', function () {
-      if (isProgCheck.checked) {
+      const role = roleSel.value;
+      if (role === 'program_manager') {
         populateRoleFilieresByDept(prefix, this.value);
-      }
-    });
-    isProgCheck.addEventListener('change', function () {
-      const deptVal = document.getElementById(prefix + 'Department')?.value;
-      if (this.checked) {
-        populateRoleFilieresByDept(prefix, deptVal || '');
-      } else {
-        populateRoleSelects(prefix);
       }
     });
   }
@@ -280,8 +262,7 @@ function setupEventListeners() {
     populateRoleSelects('u');
     showFieldsForRole(document.getElementById('uRole').value, 'u');
     document.getElementById('uIsDeptHead').checked = false;
-    document.getElementById('uIsProgManager').checked = false;
-    setupCascadeForPrefix('u');
+    setupProgManagerCascade('u');
     openModal('modalAddUser');
   });
 
@@ -299,9 +280,6 @@ function setupEventListeners() {
     }
     if (body.role === 'teacher' && body.is_department_head && !body.department_id) {
       showToast('Le département est obligatoire pour un enseignant chef de département.', 'error'); return;
-    }
-    if (body.role === 'teacher' && body.is_program_manager && !body.filiere_id) {
-      showToast('La filière est obligatoire pour un enseignant responsable de filière.', 'error'); return;
     }
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
@@ -330,6 +308,6 @@ function setupEventListeners() {
     } catch (e) { showToast(e.message, 'error'); }
   });
 
-  setupCascadeForPrefix('u');
-  setupCascadeForPrefix('eu');
+  setupProgManagerCascade('u');
+  setupProgManagerCascade('eu');
 }

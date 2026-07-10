@@ -165,6 +165,21 @@ SIMPLE_JWT = {
 # ---------------------------------------------------------------------------
 # Django Channels — WebSocket layer
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Cache — local memory (no external dep), 5 min default TTL
+# ---------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "qr-attendance-cache",
+        "TIMEOUT": 300,  # 5 minutes
+        "OPTIONS": {
+            "MAX_ENTRIES": 200,
+            "CULL_FREQUENCY": 3,
+        },
+    }
+}
+
 CHANNEL_LAYERS = {
     "default": {
         # Use Redis in production:
@@ -231,6 +246,18 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
 
 # ---------------------------------------------------------------------------
+# Password hashers — add MD5 for fast teacher import hashing
+# (automatic upgrade on next login when PBKDF2 is preferred)
+# ---------------------------------------------------------------------------
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+]
+
 # Password validation
 # ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [

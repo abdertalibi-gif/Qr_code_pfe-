@@ -37,6 +37,11 @@ class Attendance(models.Model):
         db_table = "attendance"
         unique_together = [("student", "session")]
         ordering = ["-validation_time"]
+        indexes = [
+            models.Index(fields=["validation_time"]),
+            models.Index(fields=["attendance_status"]),
+            models.Index(fields=["validation_time", "attendance_status"]),
+        ]
 
     def __str__(self):
         return f"{self.student} @ {self.session} - {self.validation_time}"

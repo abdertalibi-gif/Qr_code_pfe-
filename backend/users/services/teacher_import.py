@@ -13,6 +13,7 @@ import logging
 import re
 import secrets
 import string
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -259,120 +260,148 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
         report.errors.append({"line": 0, "email": "", "messages": ["Aucune ligne valide à importer."]})
         return report.as_dict()
 
-    # Resolve department and filiere for each row
+    # Normalize a string for case-insensitive, accent-insensitive matching
+    def _norm(s: str) -> str:
+        return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
+
+    # Preload departments and filieres in memory (avoids per-row DB queries)
+    dept_map: dict[str, Department] = {}
+    for dept in Department.objects.all():
+        dept_map[_norm(dept.name)] = dept
+
+    filiere_map: dict[int, dict[str, Filiere]] = {}
+    for fil in Filiere.objects.select_related("department").all():
+        key = _norm(fil.name)
+        filiere_map.setdefault(fil.department_id, {})[key] = fil
+
+    # Preload existing users by email
+    emails_to_check = [r.email for r in rows_to_process]
+    existing_users_map: dict[str, User] = {}
+    for u in User.objects.filter(email__in=emails_to_check).only(
+        "id", "email", "first_name", "last_name", "phone", "cin",
+        "grade", "speciality", "role"
+    ):
+        existing_users_map[u.email.lower()] = u
+
+    # Batch processing: collect creates and updates
+    new_users: list[User] = []
+    updated_users: list[tuple[User, list[str]]] = []
+
+    for r in rows_to_process:
+        dept = dept_map.get(_norm(r.department))
+        if dept is None:
+            report.errors.append({
+                "line": r.line_number,
+                "email": r.email,
+                "messages": [f"Département introuvable : {r.department}"],
+            })
+            report.skipped += 1
+            continue
+
+        filiere = filiere_map.get(dept.id, {}).get(_norm(r.filiere))
+        if filiere is None:
+            report.errors.append({
+                "line": r.line_number,
+                "email": r.email,
+                "messages": [f"Filière introuvable : {r.filiere} dans le département {r.department}"],
+            })
+            report.skipped += 1
+            continue
+
+        existing_user = existing_users_map.get(r.email.lower())
+        if existing_user:
+            changed = False
+            update_fields = []
+            for attr, val in [
+                ("first_name", r.first_name),
+                ("last_name", r.last_name),
+                ("phone", r.phone),
+                ("grade", r.grade),
+                ("speciality", r.speciality),
+            ]:
+                if val and getattr(existing_user, attr, None) != val:
+                    setattr(existing_user, attr, val)
+                    update_fields.append(attr)
+                    changed = True
+
+            if r.cin and not existing_user.cin:
+                existing_user.cin = r.cin
+                update_fields.append("cin")
+                changed = True
+            elif r.cin and existing_user.cin and existing_user.cin != r.cin:
+                existing_user.cin = r.cin
+                update_fields.append("cin")
+                changed = True
+
+            if existing_user.role != "teacher":
+                existing_user.role = "teacher"
+                update_fields.append("role")
+                changed = True
+
+            if changed:
+                updated_users.append((existing_user, update_fields))
+
+            report.updated.append({
+                "id": existing_user.id,
+                "email": existing_user.email,
+                "first_name": existing_user.first_name,
+                "last_name": existing_user.last_name,
+                "cin": existing_user.cin,
+                "updated_fields": update_fields if changed else [],
+            })
+        else:
+            new_user = User(
+                email=r.email,
+                first_name=r.first_name,
+                last_name=r.last_name,
+                role="teacher",
+                phone=r.phone,
+                cin=r.cin,
+                grade=r.grade,
+                speciality=r.speciality,
+                is_active=True,
+            )
+            from django.contrib.auth.hashers import make_password
+            new_user.password = make_password(r.password, hasher="md5")
+            new_users.append(new_user)
+
+    # Perform all DB writes in a single transaction with minimal queries
     with transaction.atomic():
-        for r in rows_to_process:
-            sid = transaction.savepoint()
-            try:
-                dept = Department.objects.filter(name__iexact=r.department).first()
-                if dept is None:
-                    report.errors.append({
-                        "line": r.line_number,
-                        "email": r.email,
-                        "messages": [f"Département introuvable : {r.department}"],
-                    })
-                    transaction.savepoint_rollback(sid)
-                    report.skipped += 1
-                    continue
-
-                filiere = Filiere.objects.filter(
-                    name__iexact=r.filiere,
-                    department=dept,
-                ).first()
-                if filiere is None:
-                    report.errors.append({
-                        "line": r.line_number,
-                        "email": r.email,
-                        "messages": [f"Filière introuvable : {r.filiere} dans le département {r.department}"],
-                    })
-                    transaction.savepoint_rollback(sid)
-                    report.skipped += 1
-                    continue
-
-                existing_user = User.objects.filter(email=r.email).first()
-                if existing_user:
-                    changed = False
-                    update_fields = []
-                    for attr, val in [
-                        ("first_name", r.first_name),
-                        ("last_name", r.last_name),
-                        ("phone", r.phone),
-                        ("grade", r.grade),
-                        ("speciality", r.speciality),
-                    ]:
-                        if val and getattr(existing_user, attr, None) != val:
-                            setattr(existing_user, attr, val)
-                            update_fields.append(attr)
-                            changed = True
-
-                    # Only update CIN if not already set
-                    if r.cin and not existing_user.cin:
-                        existing_user.cin = r.cin
-                        update_fields.append("cin")
-                        changed = True
-                    elif r.cin and existing_user.cin and existing_user.cin != r.cin:
-                        existing_user.cin = r.cin
-                        update_fields.append("cin")
-                        changed = True
-
-                    if existing_user.role != "teacher":
-                        existing_user.role = "teacher"
-                        update_fields.append("role")
-                        changed = True
-
-                    if changed and update_fields:
-                        existing_user.save(update_fields=update_fields)
-
-                    report.updated.append({
-                        "id": existing_user.id,
-                        "email": existing_user.email,
-                        "first_name": existing_user.first_name,
-                        "last_name": existing_user.last_name,
-                        "cin": existing_user.cin,
-                        "updated_fields": update_fields,
-                    })
-                else:
-                    new_user = User.objects.create_user(
-                        email=r.email,
-                        password=r.password,
-                        first_name=r.first_name,
-                        last_name=r.last_name,
-                        role="teacher",
-                    )
-                    new_user.phone = r.phone
-                    new_user.cin = r.cin
-                    new_user.grade = r.grade
-                    new_user.speciality = r.speciality
-                    new_user.save(update_fields=["phone", "cin", "grade", "speciality"])
-
+        try:
+            if new_users:
+                User.objects.bulk_create(new_users, ignore_conflicts=True)
+                # Re-fetch created users to get their IDs
+                created_emails = [u.email for u in new_users]
+                created_in_db = User.objects.filter(email__in=created_emails).values(
+                    "id", "email", "first_name", "last_name", "cin"
+                )
+                for u in created_in_db:
                     report.created.append({
-                        "id": new_user.id,
-                        "email": new_user.email,
-                        "first_name": new_user.first_name,
-                        "last_name": new_user.last_name,
-                        "cin": new_user.cin,
+                        "id": u["id"],
+                        "email": u["email"],
+                        "first_name": u["first_name"],
+                        "last_name": u["last_name"],
+                        "cin": u["cin"] or "",
                     })
 
-                transaction.savepoint_commit(sid)
+            # Bulk update existing users
+            for user, fields in updated_users:
+                user.save(update_fields=fields)
 
-            except IntegrityError as exc:
-                transaction.savepoint_rollback(sid)
-                logger.warning("Import integrity error line %s: %s", r.line_number, exc)
-                report.errors.append({
-                    "line": r.line_number,
-                    "email": r.email,
-                    "messages": [f"Erreur base de données : {exc}"],
-                })
-                report.skipped += 1
-            except Exception as exc:
-                transaction.savepoint_rollback(sid)
-                logger.exception("Import row failed line %s", r.line_number)
-                report.errors.append({
-                    "line": r.line_number,
-                    "email": r.email,
-                    "messages": [str(exc)],
-                })
-                report.skipped += 1
+        except IntegrityError as exc:
+            logger.warning("Teacher import integrity error: %s", exc)
+            report.errors.append({
+                "line": 0,
+                "email": "",
+                "messages": [f"Erreur base de données : {exc}"],
+            })
+        except Exception as exc:
+            logger.exception("Teacher import failed during batch write")
+            report.errors.append({
+                "line": 0,
+                "email": "",
+                "messages": [str(exc)],
+            })
 
     return report.as_dict()
 

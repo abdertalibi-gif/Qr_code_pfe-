@@ -992,9 +992,6 @@
       <div class="field role-field" data-roles="teacher" style="display:none">
         <label class="checkbox-label"><input type="checkbox" id="uIsDeptHead" /> Chef de département</label>
       </div>
-      <div class="field role-field" data-roles="teacher" style="display:none">
-        <label class="checkbox-label"><input type="checkbox" id="uIsProgManager" /> Responsable de filière</label>
-      </div>
       <div class="field role-field" data-roles="student" style="display:none">
         <div class="field-row">
           <div class="field">
@@ -1120,9 +1117,6 @@
       </div>
       <div class="field role-field-edit" data-roles="teacher" style="display:none">
         <label class="checkbox-label"><input type="checkbox" id="euIsDeptHead" /> Chef de département</label>
-      </div>
-      <div class="field role-field-edit" data-roles="teacher" style="display:none">
-        <label class="checkbox-label"><input type="checkbox" id="euIsProgManager" /> Responsable de filière</label>
       </div>
       <div class="field role-field-edit" id="euClassesWrap" data-roles="teacher,department_head,program_manager">
         <label>Classes assignées</label>
@@ -1310,9 +1304,6 @@
       <div class="field">
         <label class="checkbox-label"><input type="checkbox" id="tIsDeptHead" /> Chef de département</label>
       </div>
-      <div class="field">
-        <label class="checkbox-label"><input type="checkbox" id="tIsProgManager" /> Responsable de filière</label>
-      </div>
       <div class="field" id="tClassesWrap">
         <label>Classes assignées</label>
         <select id="tClasses" multiple size="4"></select>
@@ -1353,9 +1344,6 @@
       </div>
       <div class="field">
         <label class="checkbox-label"><input type="checkbox" id="etIsDeptHead" /> Chef de département</label>
-      </div>
-      <div class="field">
-        <label class="checkbox-label"><input type="checkbox" id="etIsProgManager" /> Responsable de filière</label>
       </div>
       <div class="field" id="etClassesWrap">
         <label>Classes assignées</label>
@@ -1667,8 +1655,6 @@
     if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
     const isDeptHead = document.getElementById('euIsDeptHead');
     if (isDeptHead) isDeptHead.checked = !!(u.managed_department);
-    const isProgMgr = document.getElementById('euIsProgManager');
-    if (isProgMgr) isProgMgr.checked = !!(u.managed_filieres && u.managed_filieres.length);
     openModal('modalEditUser');
   }
 
@@ -2708,7 +2694,8 @@
     document.getElementById(id).classList.add('open');
   }
   function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
   }
 
   document.querySelectorAll('[data-close]').forEach(el => {
@@ -2793,12 +2780,6 @@
         const deptEl = document.getElementById(prefix + 'Department');
         body.department_id = deptEl ? Number(deptEl.value) || null : null;
       }
-      const isProgMgr = document.getElementById(prefix + 'IsProgManager');
-      if (isProgMgr && isProgMgr.checked) {
-        body.is_program_manager = true;
-        const filEl = document.getElementById(prefix + 'Filiere');
-        body.filiere_id = filEl ? Number(filEl.value) || null : null;
-      }
     }
     if (role === 'student') {
       const cm = document.getElementById(prefix + 'CodeMassar');
@@ -2865,20 +2846,8 @@
   /* Cascade: department -> filiere for add user */
   document.getElementById('uDepartment')?.addEventListener('change', function () {
     const role = document.getElementById('uRole').value;
-    const isProg = document.getElementById('uIsProgManager');
-    if (role === 'program_manager' || (role === 'teacher' && isProg && isProg.checked)) {
+    if (role === 'program_manager') {
       populateRoleFilieresByDept('u', this.value);
-    }
-  });
-  document.getElementById('uIsProgManager')?.addEventListener('change', function () {
-    const role = document.getElementById('uRole').value;
-    if (this.checked) {
-      const deptVal = document.getElementById('uDepartment')?.value;
-      if (role === 'program_manager' || role === 'teacher') {
-        populateRoleFilieresByDept('u', deptVal || '');
-      }
-    } else {
-      populateRoleFilieresByDept('u');
     }
   });
   document.getElementById('uIsDeptHead')?.addEventListener('change', function () {
@@ -2946,20 +2915,8 @@
   /* Cascade: department → filiere for edit user modal */
   document.getElementById('euDepartment')?.addEventListener('change', function () {
     const role = document.getElementById('euRole').value;
-    const isProg = document.getElementById('euIsProgManager');
-    if (role === 'program_manager' || (role === 'teacher' && isProg && isProg.checked)) {
+    if (role === 'program_manager') {
       populateRoleFilieresByDept('eu', this.value);
-    }
-  });
-  document.getElementById('euIsProgManager')?.addEventListener('change', function () {
-    const role = document.getElementById('euRole').value;
-    if (this.checked) {
-      const deptVal = document.getElementById('euDepartment')?.value;
-      if (role === 'program_manager' || role === 'teacher') {
-        populateRoleFilieresByDept('eu', deptVal || '');
-      }
-    } else {
-      populateRoleFilieresByDept('eu');
     }
   });
   document.getElementById('euIsDeptHead')?.addEventListener('change', function () {
@@ -3268,7 +3225,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
         teachers.forEach(t => {
           const opt = document.createElement('option');
           opt.value = t.id;
-          opt.textContent = `${t.full_name} (${t.email})`;
+          opt.textContent = (t.full_name || t.first_name + ' ' + t.last_name) + ' (' + t.email + ')';
           teacherSel.appendChild(opt);
         });
       }
@@ -3757,7 +3714,7 @@ tbody.innerHTML = list.map(function (d) {
     teachers.forEach(function (u) {
       var opt = document.createElement('option');
       opt.value = u.id;
-      opt.textContent = u.full_name + ' (' + u.email + ')';
+      opt.textContent = (u.full_name || u.first_name + ' ' + u.last_name) + ' (' + u.email + ')';
       sel.appendChild(opt);
     });
   }
@@ -4290,7 +4247,7 @@ tbody.innerHTML = list.map(function (d) {
       tSel.innerHTML = '<option value="">Tous</option>';
       API.apiFetch('/teachers/').then(function(teachers) {
         teachers.forEach(function(t) {
-          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.last_name + ' ' + t.first_name; tSel.appendChild(opt);
+          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
         });
       }).catch(function() {});
     }
