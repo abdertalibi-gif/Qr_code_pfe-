@@ -663,7 +663,7 @@ def curriculum_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+@permission_classes([IsAuthenticated])
 def semestre_list(request):
     department_id = request.query_params.get("department_id", "")
     cache_key = _cache_key("semestres", department_id)
@@ -685,7 +685,7 @@ def semestre_list(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+@permission_classes([IsAuthenticated])
 def semestres_par_niveau(request):
     from users.models import NIVEAU_SEMESTRE_MAP
 
@@ -823,7 +823,7 @@ def module_list(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminOrTeacher])
+@permission_classes([IsAuthenticated])
 def niveau_list(request):
     cache_key = _cache_key("niveaux")
     cached = _cached_response(cache_key)

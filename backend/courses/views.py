@@ -15,6 +15,7 @@ from users.permissions import (
     IsAdmin,
     IsAdminOrTeacher,
     apply_role_filtering,
+    get_user_filiere_ids,
 )
 
 from users.models import Amphitheater, Block, Room
@@ -57,6 +58,11 @@ class SessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         try:
             user = self.request.user
+            if user.role == "program_manager":
+                filiere_ids = get_user_filiere_ids(user)
+                classe = serializer.validated_data.get("classe")
+                if classe and filiere_ids and classe.filiere_id not in filiere_ids:
+                    raise serializers.ValidationError({"classe": "Cette classe ne fait pas partie de vos filières."})
             if user.role == "teacher":
                 session = serializer.save(teacher=user)
             else:

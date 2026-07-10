@@ -155,7 +155,7 @@ class ClasseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_permissions(self):
-        if self.action in ("list", "retrieve"):
+        if self.action in ("list", "retrieve", "create"):
             return [IsAuthenticated(), IsAdminOrDepartmentHeadOrFiliereManager()]
         return super().get_permissions()
 
@@ -190,6 +190,25 @@ class ClasseViewSet(viewsets.ModelViewSet):
         if academic_year:
             qs = qs.filter(academic_year=academic_year)
         return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        filiere = serializer.validated_data.get("filiere")
+        if user.role == "department_head":
+            dept = get_user_department(user)
+            if filiere and dept and filiere.department_id != dept.id:
+                from rest_framework import serializers as rf_serializers
+                raise rf_serializers.ValidationError(
+                    {"filiere": "Vous ne pouvez créer une classe que dans votre département."}
+                )
+        elif user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(user)
+            if filiere and filiere_ids and filiere.id not in filiere_ids:
+                from rest_framework import serializers as rf_serializers
+                raise rf_serializers.ValidationError(
+                    {"filiere": "Vous ne pouvez créer une classe que dans votre filière."}
+                )
+        serializer.save()
 
     def create(self, request, *args, **kwargs):
         try:

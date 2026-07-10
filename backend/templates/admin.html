@@ -318,21 +318,21 @@
     <div class="section-head" style="margin-top:1.5rem">
       <h2>Liste des étudiants</h2>
       <div class="section-actions">
-        <div class="filters" style="gap:.5rem;flex-wrap:wrap;">
-          <div class="field" style="min-width:180px;">
-            <label>Filière</label>
-            <select id="filterStudentFiliere"><option value="">— Toutes —</option></select>
+          <div class="filters" style="gap:.5rem;flex-wrap:wrap;">
+            <div class="field" style="min-width:150px;">
+              <label>Niveau</label>
+              <select id="filterStudentNiveau"><option value="">— Tous —</option></select>
+            </div>
+            <div class="field" style="min-width:150px;">
+              <label>Semestre</label>
+              <select id="filterStudentSemestre"><option value="">— Tous —</option></select>
+            </div>
+            <div class="field" style="min-width:180px;" id="filterStudentFiliereWrap">
+              <label>Filière</label>
+              <select id="filterStudentFiliere"><option value="">— Toutes —</option></select>
+            </div>
+            <input type="search" class="search-input" id="searchStudents" placeholder="Rechercher code, nom, email…" style="min-width:220px;" />
           </div>
-          <div class="field" style="min-width:150px;">
-            <label>Semestre</label>
-            <select id="filterStudentSemestre"><option value="">— Tous —</option></select>
-          </div>
-          <div class="field" style="min-width:150px;">
-            <label>Niveau</label>
-            <select id="filterStudentNiveau"><option value="">— Tous —</option></select>
-          </div>
-          <input type="search" class="search-input" id="searchStudents" placeholder="Rechercher code, nom, email…" style="min-width:220px;" />
-        </div>
       </div>
     </div>
 
@@ -363,6 +363,7 @@
       <button class="btn sm outline" id="btnStudentsNext">Suivant →</button>
     </div>
 
+    <div class="admin-only">
     <div class="section-head" style="margin-top:1.5rem">
       <h2 id="moduleStudentsTitle">Étudiants du module</h2>
       <div class="section-actions">
@@ -399,6 +400,7 @@
       <span id="modulePageInfo">Page 1 / 1</span>
       <button class="btn sm outline" id="btnModuleNext">Suivant →</button>
     </div>
+    </div>
   </div>
 
   <!-- CLASSES PANEL -->
@@ -407,7 +409,7 @@
       <h2>Toutes les classes</h2>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchClasses" placeholder="Rechercher niveau, filière, année…" />
-        <button class="btn admin-only" id="btnOpenAddClasse">+ Nouvelle classe</button>
+        <button class="btn" id="btnOpenAddClasse">+ Nouvelle classe</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -1459,6 +1461,11 @@
         sel.appendChild(opt);
       });
       sel.disabled = false;
+      // Auto-select for program_manager (single filiere)
+      if (currentUser.role === 'program_manager' && sel.options.length === 2) {
+        sel.value = sel.options[1].value;
+        sel.dispatchEvent(new Event('change'));
+      }
     } catch (e) { showToast(e.message, 'error'); }
     finally { showSpinner('clFiliereSpinner', false); }
   }
@@ -2082,18 +2089,19 @@
     if (moduleStudentsPage < moduleStudentsTotalPages) loadModuleStudents(moduleStudentsPage + 1);
   });
 
-  /* ── Student List with Filters (for Department Head) ── */
+  /* ── Student List with Filters (for Department Head / Program Manager) ── */
   let studentListPage = 1;
   let studentListTotalPages = 1;
+  let studentListFilieres = [];
 
   async function loadStudentListFilieres() {
     const dept = document.getElementById('filterStudentFiliere');
     if (!dept) return;
     try {
       const data = await API.apiFetch('/curriculum/filieres/');
-      const filieres = Array.isArray(data) ? data : (data.results || []);
+      studentListFilieres = Array.isArray(data) ? data : (data.results || []);
       dept.innerHTML = '<option value="">— Toutes —</option>';
-      filieres.forEach(f => {
+      studentListFilieres.forEach(f => {
         dept.innerHTML += `<option value="${f.id}">${esc(f.name)}</option>`;
       });
     } catch (e) { console.warn('Could not load filieres for student list:', e); }
@@ -2103,8 +2111,22 @@
     const sem = document.getElementById('filterStudentSemestre');
     if (!sem) return;
     try {
-      const data = await API.apiFetch('/curriculum/semestres/');
-      const semestres = Array.isArray(data) ? data : (data.results || []);
+      const isAdmin = currentUser.role === 'admin';
+      var semestres;
+      if (isAdmin) {
+        const data = await API.apiFetch('/curriculum/semestres/');
+        semestres = Array.isArray(data) ? data : (data.results || []);
+      } else {
+        // Derive semestres from scoped filieres
+        const seen = new Set();
+        semestres = [];
+        studentListFilieres.forEach(f => {
+          if (f.semestre_id && !seen.has(f.semestre_id)) {
+            seen.add(f.semestre_id);
+            semestres.push({ id: f.semestre_id, name: f.semestre_name || 'S' + f.semestre_id });
+          }
+        });
+      }
       sem.innerHTML = '<option value="">— Tous —</option>';
       semestres.forEach(s => {
         sem.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`;
@@ -2116,8 +2138,22 @@
     const niv = document.getElementById('filterStudentNiveau');
     if (!niv) return;
     try {
-      const data = await API.apiFetch('/curriculum/niveaux/');
-      const niveaux = Array.isArray(data) ? data : (data.results || []);
+      const isAdmin = currentUser.role === 'admin';
+      var niveaux;
+      if (isAdmin) {
+        const data = await API.apiFetch('/curriculum/niveaux/');
+        niveaux = Array.isArray(data) ? data : (data.results || []);
+      } else {
+        // Derive niveaux from scoped filieres
+        const seen = new Set();
+        niveaux = [];
+        studentListFilieres.forEach(f => {
+          if (f.niveau && !seen.has(f.niveau)) {
+            seen.add(f.niveau);
+            niveaux.push({ id: f.niveau, label: f.niveau });
+          }
+        });
+      }
       niv.innerHTML = '<option value="">— Tous —</option>';
       niveaux.forEach(n => {
         niv.innerHTML += `<option value="${n.id}">${esc(n.label)}</option>`;
@@ -2206,6 +2242,17 @@
     await loadStudentListFilieres();
     await loadStudentListSemestres();
     await loadStudentListNiveaux();
+    // Hide filiere filter for program_manager (they have only one filiere)
+    if (currentUser.role === 'program_manager') {
+      const wrap = document.getElementById('filterStudentFiliereWrap');
+      if (wrap) wrap.style.display = 'none';
+      // Pre-select their only filiere
+      const sel = document.getElementById('filterStudentFiliere');
+      if (sel && studentListFilieres.length === 1) {
+        sel.value = studentListFilieres[0].id;
+        loadStudentList(1);
+      }
+    }
   });
 
   async function loadClasses() {
