@@ -220,8 +220,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             )
         department = data.get("department")
         filiere = data.get("filiere")
-        is_dept_head = data.get("is_department_head", False)
-        is_prog_mgr = data.get("is_program_manager", False)
         if role == "department_head" and not department:
             raise serializers.ValidationError(
                 {"department_id": "Le département est obligatoire pour le chef de département."}
@@ -229,14 +227,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if role == "program_manager" and not filiere:
             raise serializers.ValidationError(
                 {"filiere_id": "La filière est obligatoire pour le responsable de filière."}
-            )
-        if role == "teacher" and is_dept_head and not department:
-            raise serializers.ValidationError(
-                {"department_id": "Le département est obligatoire pour un enseignant chef de département."}
-            )
-        if role == "teacher" and is_prog_mgr and not filiere:
-            raise serializers.ValidationError(
-                {"filiere_id": "La filière est obligatoire pour un enseignant responsable de filière."}
             )
         if role != "teacher":
             data.pop("is_also_teacher", None)
@@ -247,22 +237,22 @@ class UserCreateSerializer(serializers.ModelSerializer):
         assigned_classes = validated_data.pop("assigned_classes", [])
         department = validated_data.pop("department", None)
         filiere = validated_data.pop("filiere", None)
-        is_dept_head = validated_data.pop("is_department_head", False)
-        is_prog_mgr = validated_data.pop("is_program_manager", False)
+        validated_data.pop("is_department_head", None)
+        validated_data.pop("is_program_manager", None)
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
         user.save()
         if assigned_classes:
             user.assigned_classes.set(assigned_classes)
-        if department and (role == "department_head" or (role == "teacher" and is_dept_head)):
+        if department and role == "department_head":
             if department.head and department.head != user:
                 raise serializers.ValidationError(
                     {"department_id": "Ce département a déjà un chef."}
                 )
             department.head = user
             department.save(update_fields=["head"])
-        if filiere and (role == "program_manager" or (role == "teacher" and is_prog_mgr)):
+        if filiere and role == "program_manager":
             if filiere.manager and filiere.manager != user:
                 raise serializers.ValidationError(
                     {"filiere_id": "Cette filière a déjà un responsable."}
@@ -330,18 +320,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"assigned_class_ids": "Seuls les enseignants, chefs de département et responsables de filière peuvent avoir des classes."}
             )
-        department = data.get("department")
-        filiere = data.get("filiere")
-        is_dept_head = data.get("is_department_head", False)
-        is_prog_mgr = data.get("is_program_manager", False)
-        if role == "teacher" and is_dept_head and not department:
-            raise serializers.ValidationError(
-                {"department_id": "Le département est obligatoire pour un enseignant chef de département."}
-            )
-        if role == "teacher" and is_prog_mgr and not filiere:
-            raise serializers.ValidationError(
-                {"filiere_id": "La filière est obligatoire pour un enseignant responsable de filière."}
-            )
         if role != "teacher":
             data.pop("is_also_teacher", None)
         return data
@@ -350,10 +328,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         assigned_classes = validated_data.pop("assigned_classes", None)
         department = validated_data.pop("department", None)
         filiere = validated_data.pop("filiere", None)
-        is_dept_head = validated_data.pop("is_department_head", False)
-        is_prog_mgr = validated_data.pop("is_program_manager", False)
+        validated_data.pop("is_department_head", None)
+        validated_data.pop("is_program_manager", None)
         password = validated_data.pop("password", None)
         role = validated_data.get("role", instance.role)
+        old_role = instance.role
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
@@ -361,26 +340,26 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         if assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
-        if department is not None and (role == "department_head" or (role == "teacher" and is_dept_head)):
+        if department is not None and role == "department_head":
             if department.head and department.head != instance:
                 raise serializers.ValidationError(
                     {"department_id": "Ce département a déjà un chef."}
                 )
             department.head = instance
             department.save(update_fields=["head"])
-        elif role == "teacher" and not is_dept_head:
+        elif old_role == "department_head" and role != "department_head":
             old_dept = instance.headed_department.first()
             if old_dept:
                 old_dept.head = None
                 old_dept.save(update_fields=["head"])
-        if filiere is not None and (role == "program_manager" or (role == "teacher" and is_prog_mgr)):
+        if filiere is not None and role == "program_manager":
             if filiere.manager and filiere.manager != instance:
                 raise serializers.ValidationError(
                     {"filiere_id": "Cette filière a déjà un responsable."}
                 )
             filiere.manager = instance
             filiere.save(update_fields=["manager"])
-        elif role == "teacher" and not is_prog_mgr:
+        elif old_role == "program_manager" and role != "program_manager":
             old_filieres = instance.managed_filieres.all()
             for old_f in old_filieres:
                 old_f.manager = None
@@ -434,6 +413,11 @@ class ClasseSerializer(serializers.ModelSerializer):
     )
     amphitheater_name = serializers.CharField(source="amphitheater.name", read_only=True)
     location_display = serializers.SerializerMethodField()
+    teacher_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role__in=["teacher", "department_head", "program_manager"]),
+        required=False, allow_null=True, write_only=True,
+    )
+    teacher_name = serializers.SerializerMethodField()
     class Meta:
         model = Classe
         fields = [
@@ -458,6 +442,8 @@ class ClasseSerializer(serializers.ModelSerializer):
             "location_display",
             "student_count",
             "teacher_count",
+            "teacher_id",
+            "teacher_name",
             "level",
             "field",
             "description",
@@ -474,6 +460,7 @@ class ClasseSerializer(serializers.ModelSerializer):
             "room_name",
             "amphitheater_name",
             "location_display",
+            "teacher_name",
         ]
         extra_kwargs = {
             'academic_year': {'required': False},
@@ -493,6 +480,11 @@ class ClasseSerializer(serializers.ModelSerializer):
         return obj.teachers.count()
     def get_location_display(self, obj):
         return obj.location_display()
+    def get_teacher_name(self, obj):
+        teacher = obj.teachers.first()
+        if teacher:
+            return teacher.full_name
+        return None
     def validate(self, data):
         import logging
         logger = logging.getLogger(__name__)
@@ -540,6 +532,23 @@ class ClasseSerializer(serializers.ModelSerializer):
 
         logger.info(f"Validation passed for ClasseSerializer")
         return data
+
+    def create(self, validated_data):
+        teacher = validated_data.pop("teacher_id", None)
+        instance = super().create(validated_data)
+        if teacher:
+            teacher.assigned_classes.add(instance)
+        return instance
+
+    def update(self, instance, validated_data):
+        teacher = validated_data.pop("teacher_id", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if teacher:
+            teacher.assigned_classes.add(instance)
+        return instance
+
 class StudentSerializer(serializers.ModelSerializer):
     classe_name = serializers.SerializerMethodField()
     classe_field = serializers.SerializerMethodField()
@@ -553,6 +562,7 @@ class StudentSerializer(serializers.ModelSerializer):
     )
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     module_id = serializers.IntegerField(write_only=True, required=False)
+    code_massar = serializers.CharField()
     classe = serializers.PrimaryKeyRelatedField(
         queryset=Classe.objects.all(),
         required=False,
@@ -593,13 +603,9 @@ class StudentSerializer(serializers.ModelSerializer):
     def get_niveau(self, obj):
         return obj.classe.niveau if obj.classe else "—"
     def validate_code_massar(self, value):
-        qs = Student.objects.filter(code_massar=value)
-        if self.instance and hasattr(self.instance, "pk") and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise serializers.ValidationError("Ce code Massar est déjà utilisé.")
+        if not value:
+            raise serializers.ValidationError("Le code Massar est obligatoire.")
         return value
-
     def validate(self, data):
         module_id = data.pop("module_id", None)
         classe = data.pop("classe", None)
@@ -620,13 +626,19 @@ class StudentSerializer(serializers.ModelSerializer):
 
             today = timezone.now()
             academic_year = f"{today.year}-{today.year + 1}"
-            classe, _ = Classe.objects.get_or_create(
+            existing = Classe.objects.filter(
                 filiere=filiere,
                 semestre=semestre,
                 niveau=niveau,
                 academic_year=academic_year,
-                defaults={"location_type": "BLOC"},
-            )
+            ).first()
+            if existing:
+                classe = existing
+            else:
+                classe = Classe.objects.create(
+                    filiere=filiere, semestre=semestre, niveau=niveau,
+                    academic_year=academic_year, location_type="BLOC",
+                )
             data["_module_id"] = module_id
 
         data["classe"] = classe
@@ -636,12 +648,54 @@ class StudentSerializer(serializers.ModelSerializer):
         module_id = validated_data.pop("_module_id", None)
         password = validated_data.pop("password", "")
 
-        user = None
         email = validated_data.get("email", "")
+        code_massar = validated_data.get("code_massar", "")
+
+        # Look up existing student by email first, then by code_massar
+        existing_student = None
+        if email:
+            existing_student = Student.objects.filter(email=email).first()
+        if not existing_student and code_massar:
+            existing_student = Student.objects.filter(code_massar=code_massar).first()
+
+        if existing_student:
+            # Reuse existing student — update fields
+            if code_massar and code_massar != existing_student.code_massar:
+                other = Student.objects.filter(code_massar=code_massar).exclude(pk=existing_student.pk).first()
+                if other:
+                    raise serializers.ValidationError(
+                        {"code_massar": f"Ce code Massar appartient déjà à l'étudiant {other.first_name} {other.last_name}."}
+                    )
+                existing_student.code_massar = code_massar
+            for attr in ("first_name", "last_name", "email", "phone", "classe"):
+                val = validated_data.get(attr)
+                if val is not None:
+                    setattr(existing_student, attr, val)
+            existing_student.save()
+
+            user = existing_student.user
+            if email and not user and password:
+                user = User.objects.create_user(
+                    email=email, password=password,
+                    first_name=validated_data.get("first_name", ""),
+                    last_name=validated_data.get("last_name", ""),
+                    role="student",
+                )
+                existing_student.user = user
+                existing_student.save(update_fields=["user"])
+
+            if module_id:
+                StudentModuleEnrollment.objects.get_or_create(
+                    student=existing_student, module_id=module_id
+                )
+
+            return existing_student
+
+        # No existing student found — create new
+        user = None
         if email and password:
             user = User.objects.create_user(
-                email=email,
-                password=password,
+                email=email, password=password,
                 first_name=validated_data.get("first_name", ""),
                 last_name=validated_data.get("last_name", ""),
                 role="student",

@@ -36,6 +36,17 @@ class DepartmentSerializer(serializers.ModelSerializer):
             return f"{obj.head.first_name} {obj.head.last_name}"
         return None
 
+    def validate_head(self, value):
+        if value and value.role != "department_head":
+            raise serializers.ValidationError(
+                "Seul un compte avec le rôle Chef de Département peut être affecté."
+            )
+        if value and Department.objects.filter(head=value).exclude(pk=self.instance.pk if self.instance else None).exists():
+            raise serializers.ValidationError(
+                "Ce chef de département est déjà affecté à un autre département."
+            )
+        return value
+
 
 class FiliereSerializer(serializers.ModelSerializer):
     """Serializer for Filiere - includes nested modules."""
@@ -71,6 +82,17 @@ class FiliereSerializer(serializers.ModelSerializer):
             "manager_id", "manager_name",
             "modules",
         ]
+
+    def validate_manager_id(self, value):
+        if value and value.role != "program_manager":
+            raise serializers.ValidationError(
+                "Seul un compte avec le rôle Responsable de Filière peut être affecté."
+            )
+        if value and Filiere.objects.filter(manager=value).exclude(pk=self.instance.pk if self.instance else None).exists():
+            raise serializers.ValidationError(
+                "Ce responsable de filière est déjà affecté à une autre filière."
+            )
+        return value
 
     def get_modules(self, obj):
         return [{"id": module.id, "name": module.name} for module in obj.modules.all()]

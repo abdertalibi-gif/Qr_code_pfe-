@@ -29,7 +29,7 @@
 
   <p class="field-hint" style="margin:0 0 .75rem">
     Le fichier Excel doit contenir les colonnes :<br>
-    <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Filière, Grade, Spécialité</strong>
+    <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Grade, Spécialité</strong>
     (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
   </p>
 
@@ -53,16 +53,14 @@
         <th>Téléphone</th>
         <th>CIN</th>
         <th>Département</th>
-        <th>Filière</th>
         <th>Grade</th>
         <th>Spécialité</th>
-        <th>Classes assignées</th>
         <th>Statut</th>
         <th class="admin-only">Actions</th>
       </tr>
     </thead>
     <tbody id="teachersBody">
-      <tr class="empty-row"><td colspan="12">Chargement…</td></tr>
+      <tr class="empty-row"><td colspan="10">Chargement…</td></tr>
     </tbody>
   </table>
 </div>
@@ -105,10 +103,6 @@
         <label>Département</label>
         <select id="tDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field">
-        <label>Filière</label>
-        <select id="tFiliere"><option value="">— Sélectionner —</option></select>
-      </div>
       <div class="field-row">
         <div class="field">
           <label>Grade</label>
@@ -122,18 +116,6 @@
       <div class="field">
         <label>Mot de passe</label>
         <input type="password" id="tPassword" placeholder="••••••••" />
-      </div>
-      <div class="field">
-        <label class="checkbox-label">
-          <input type="checkbox" id="tIsDeptHead" /> Chef de département
-        </label>
-      </div>
-      <div class="field" id="tClassesWrap">
-        <label>Classes assignées</label>
-        <select id="tClasses" multiple size="4"></select>
-        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
-          Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
-        </p>
       </div>
     </div>
     <div class="modal-footer">
@@ -165,22 +147,9 @@
         <label>Département</label>
         <select id="etDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field">
-        <label>Filière</label>
-        <select id="etFiliere"><option value="">— Sélectionner —</option></select>
-      </div>
       <div class="field-row">
         <div class="field"><label>Grade</label><input type="text" id="etGrade" /></div>
         <div class="field"><label>Spécialité</label><input type="text" id="etSpeciality" /></div>
-      </div>
-      <div class="field">
-        <label class="checkbox-label">
-          <input type="checkbox" id="etIsDeptHead" /> Chef de département
-        </label>
-      </div>
-      <div class="field" id="etClassesWrap">
-        <label>Classes assignées</label>
-        <select id="etClasses" multiple size="4"></select>
       </div>
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="etPassword" /></div>
     </div>

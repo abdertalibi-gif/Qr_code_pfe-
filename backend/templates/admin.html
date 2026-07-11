@@ -209,16 +209,14 @@
             <th>Téléphone</th>
             <th>CIN</th>
             <th>Département</th>
-            <th>Filière</th>
             <th>Grade</th>
             <th>Spécialité</th>
-            <th>Classes assignées</th>
             <th>Statut</th>
             <th class="admin-only">Actions</th>
           </tr>
         </thead>
         <tbody id="teachersBody">
-          <tr class="empty-row"><td colspan="12">Chargement…</td></tr>
+          <tr class="empty-row"><td colspan="10">Chargement…</td></tr>
         </tbody>
       </table>
     </div>
@@ -234,7 +232,7 @@
 
       <p class="field-hint admin-only" style="margin:0 0 .75rem">
         Le fichier Excel doit contenir les colonnes :<br>
-        <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Filière, Grade, Spécialité</strong>
+        <strong>Prénom, Nom, Email, Téléphone, CIN, Département, Grade, Spécialité</strong>
         (Nom d'utilisateur et mot de passe sont optionnels, générés automatiquement s'ils sont vides).
       </p>
 
@@ -922,18 +920,18 @@
         <label>Mot de passe</label>
         <input type="password" id="uPassword" placeholder="••••••••" />
       </div>
-      <div class="field role-field" id="uClassesWrap" data-roles="teacher,department_head,program_manager">
+      <div class="field role-field" id="uClassesWrap" data-roles="department_head,program_manager">
         <label>Classes assignées</label>
         <select id="uClasses" multiple size="4"></select>
         <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
           Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
         </p>
       </div>
-      <div class="field role-field" data-roles="teacher,department_head" style="display:none">
+      <div class="field role-field" data-roles="department_head" style="display:none">
         <label>Département</label>
         <select id="uDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field role-field" data-roles="teacher,program_manager" style="display:none">
+      <div class="field role-field" data-roles="program_manager" style="display:none">
         <label>Filière</label>
         <select id="uFiliere"><option value="">— Sélectionner —</option></select>
       </div>
@@ -952,14 +950,6 @@
       <div class="field role-field" data-roles="teacher" style="display:none">
         <label>Spécialité</label>
         <input type="text" id="uSpeciality" placeholder="ex: Informatique" />
-      </div>
-      <div class="field role-field" data-roles="teacher" style="display:none">
-        <label class="checkbox-label">
-          <input type="checkbox" id="uIsAlsoTeacher" /> Est également enseignant
-        </label>
-      </div>
-      <div class="field role-field" data-roles="teacher" style="display:none">
-        <label class="checkbox-label"><input type="checkbox" id="uIsDeptHead" /> Chef de département</label>
       </div>
       <div class="field role-field" data-roles="student" style="display:none">
         <div class="field-row">
@@ -1076,11 +1066,11 @@
           <option value="program_manager">Responsable de filière</option>
         </select>
       </div>
-      <div class="field role-field-edit" data-roles="teacher,department_head" style="display:none">
+      <div class="field role-field-edit" data-roles="department_head" style="display:none">
         <label>Département</label>
         <select id="euDepartment"><option value="">— Sélectionner —</option></select>
       </div>
-      <div class="field role-field-edit" data-roles="teacher,program_manager" style="display:none">
+      <div class="field role-field-edit" data-roles="program_manager" style="display:none">
         <label>Filière</label>
         <select id="euFiliere"><option value="">— Sélectionner —</option></select>
       </div>
@@ -1100,10 +1090,7 @@
         <label>Spécialité</label>
         <input type="text" id="euSpeciality" />
       </div>
-      <div class="field role-field-edit" data-roles="teacher" style="display:none">
-        <label class="checkbox-label"><input type="checkbox" id="euIsDeptHead" /> Chef de département</label>
-      </div>
-      <div class="field role-field-edit" id="euClassesWrap" data-roles="teacher,department_head,program_manager">
+      <div class="field role-field-edit" id="euClassesWrap" data-roles="department_head,program_manager">
         <label>Classes assignées</label>
         <select id="euClasses" multiple size="4"></select>
       </div>
@@ -1225,6 +1212,13 @@
         <span class="spinner" id="clModuleSpinner" style="display:none"></span>
       </div>
       <div class="field">
+        <label>Enseignant</label>
+        <select id="clTeacher">
+          <option value="">— Sélectionner un enseignant —</option>
+        </select>
+        <span class="spinner" id="clTeacherSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
         <label>Année universitaire <span class="req">*</span></label>
         <input type="text" id="clYear" />
       </div>
@@ -1261,78 +1255,7 @@
   </div>
 </div>
 
-<!-- ── MODAL: Add Teacher ── -->
-<div class="modal-backdrop" id="modalAddTeacher">
-  <div class="modal wide">
-    <div class="modal-header">
-      <h3>Nouvel enseignant</h3>
-      <button type="button" class="modal-close" data-close="modalAddTeacher" aria-label="Fermer">✕</button>
-    </div>
-    <div class="modal-body">
-      <form>
-      <div class="field-row">
-        <div class="field"><label>Prénom</label><input type="text" id="tFirstName" placeholder="Jean" /></div>
-        <div class="field"><label>Nom</label><input type="text" id="tLastName" placeholder="Dupont" /></div>
-      </div>
-      <div class="field"><label>Email</label><input type="email" id="tEmail" placeholder="john@school.ma" /></div>
-      <div class="field-row">
-        <div class="field"><label>Téléphone</label><input type="text" id="tPhone" placeholder="+212 6X XX XX XX" /></div>
-        <div class="field"><label>CIN</label><input type="text" id="tCin" placeholder="EE123456" /></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Grade</label><input type="text" id="tGrade" placeholder="Professeur" /></div>
-        <div class="field"><label>Spécialité</label><input type="text" id="tSpeciality" placeholder="Informatique" /></div>
-      </div>
-      <div class="field"><label>Mot de passe</label><input type="password" id="tPassword" placeholder="••••••••" /></div>
-      <div class="field" id="tClassesWrap">
-        <label>Classes assignées</label>
-        <select id="tClasses" multiple size="4"></select>
-        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.</p>
-      </div>
-    </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn outline" data-close="modalAddTeacher">Annuler</button>
-      <button class="btn" id="btnSubmitTeacher">Créer l'enseignant</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── MODAL: Edit Teacher ── -->
-<div class="modal-backdrop" id="modalEditTeacher">
-  <div class="modal wide">
-    <div class="modal-header">
-      <h3>Modifier l'enseignant</h3>
-      <button class="modal-close" data-close="modalEditTeacher">✕</button>
-    </div>
-    <div class="modal-body">
-      <form>
-      <div class="field-row">
-        <div class="field"><label>Prénom</label><input type="text" id="etFirstName" /></div>
-        <div class="field"><label>Nom</label><input type="text" id="etLastName" /></div>
-      </div>
-      <div class="field"><label>E-mail</label><input type="email" id="etEmail" /></div>
-      <div class="field-row">
-        <div class="field"><label>Téléphone</label><input type="text" id="etPhone" /></div>
-        <div class="field"><label>CIN</label><input type="text" id="etCin" /></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Grade</label><input type="text" id="etGrade" /></div>
-        <div class="field"><label>Spécialité</label><input type="text" id="etSpeciality" /></div>
-      </div>
-      <div class="field" id="etClassesWrap">
-        <label>Classes assignées</label>
-        <select id="etClasses" multiple size="4"></select>
-      </div>
-      <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="etPassword" /></div>
-    </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn outline" data-close="modalEditTeacher">Annuler</button>
-      <button class="btn" id="btnSubmitEditTeacher">Enregistrer</button>
-    </div>
-  </div>
-</div>
+<!-- Teacher add/edit reuses modalAddUser / modalEditUser above -->
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -1637,10 +1560,6 @@
     if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
     const filSel = document.getElementById('euFiliere');
     if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
-    const isDeptHead = document.getElementById('euIsDeptHead');
-    if (isDeptHead) isDeptHead.checked = !!(u.managed_department);
-    const isAlsoTeacher = document.getElementById('euIsAlsoTeacher');
-    if (isAlsoTeacher) isAlsoTeacher.checked = !!u.is_also_teacher;
     openModal('modalEditUser');
   }
 
@@ -2642,14 +2561,7 @@
       if (gradeEl) body.grade = gradeEl.value.trim() || '';
       const specEl = document.getElementById(prefix + 'Speciality');
       if (specEl) body.speciality = specEl.value.trim() || '';
-      const cb = document.getElementById(prefix + 'IsAlsoTeacher');
-      if (cb) body.is_also_teacher = cb.checked;
-      const isDeptHead = document.getElementById(prefix + 'IsDeptHead');
-      if (isDeptHead && isDeptHead.checked) {
-        body.is_department_head = true;
-        const deptEl = document.getElementById(prefix + 'Department');
-        body.department_id = deptEl ? Number(deptEl.value) || null : null;
-      }
+
     }
     if (role === 'student') {
       const cm = document.getElementById(prefix + 'CodeMassar');
@@ -2720,13 +2632,6 @@
       populateRoleFilieresByDept('u', this.value);
     }
   });
-  document.getElementById('uIsDeptHead')?.addEventListener('change', function () {
-    if (this.checked) {
-      document.getElementById('uDepartment').value = '';
-      populateRoleSelects('u');
-    }
-  });
-
   document.getElementById('btnSubmitUser').addEventListener('click', async () => {
     const body = buildPayload('u');
 
@@ -2738,8 +2643,12 @@
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
       closeModal('modalAddUser');
       showToast('Utilisateur créé avec succès !', 'success');
-      ['uFirstName','uLastName','uEmail','uPassword'].forEach(id => document.getElementById(id).value = '');
+      ['uFirstName','uLastName','uEmail','uPassword','uPhone','uCin','uGrade','uSpeciality'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
       await loadUsers();
+      if (body.role === 'teacher' && typeof loadTeachers === 'function') await loadTeachers();
     } catch (e) {
       showToast(`Erreur: ${e.message}`, 'error');
     }
@@ -2789,13 +2698,6 @@
       populateRoleFilieresByDept('eu', this.value);
     }
   });
-  document.getElementById('euIsDeptHead')?.addEventListener('change', function () {
-    if (this.checked) {
-      document.getElementById('euDepartment').value = '';
-      populateRoleSelects('eu');
-    }
-  });
-
   document.getElementById('btnSubmitEditUser').addEventListener('click', async () => {
     const id = document.getElementById('euId').value;
     const body = buildPayload('eu');
@@ -2805,6 +2707,7 @@
       closeModal('modalEditUser');
       showToast('Utilisateur mis à jour.', 'success');
       await loadUsers();
+      if (body.role === 'teacher' && typeof loadTeachers === 'function') await loadTeachers();
     } catch (e) { showToast(e.message, 'error'); }
   });
 
@@ -2886,7 +2789,27 @@
     }
   });
 
-document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
+async function loadClasseTeachers() {
+    const sel = document.getElementById('clTeacher');
+    if (!sel) return;
+    showSpinner('clTeacherSpinner', true);
+    sel.innerHTML = '<option value="">— Sélectionner —</option>';
+    sel.disabled = true;
+    try {
+      const data = await API.apiFetch('/users/?role=teacher');
+      const teachers = Array.isArray(data) ? data : (data.results || []);
+      teachers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = (t.full_name || t.first_name + ' ' + t.last_name) + (t.email ? ' (' + t.email + ')' : '');
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+    } catch (e) { showToast('Erreur chargement enseignants: ' + e.message, 'error'); }
+    finally { showSpinner('clTeacherSpinner', false); }
+}
+
+document.getElementById('btnOpenAddClasse').addEventListener('click', async () => {
     document.getElementById('clId').value = '';
     document.getElementById('modalClasseTitle').textContent = 'Ajouter une classe';
     document.getElementById('clNiveau').value = '';
@@ -2901,6 +2824,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     document.getElementById('clLocationType').value = '';
     resetClasseLocationFields();
     populateClasseLocationSelects();
+    await loadClasseTeachers();
     openModal('modalClasse');
 });
 
@@ -2961,6 +2885,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     } else if (locType === 'AMPHITHEATRE') {
       document.getElementById('clAmphi').value = c.amphitheater_id || '';
     }
+    loadClasseTeachers();
     openModal('modalClasse');
   }
 
@@ -2983,6 +2908,8 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
     if (!academicYear) { showToast('Indiquez l\'année universitaire.', 'error'); return; }
     if (!locationType) { showToast('Sélectionnez le type de localisation.', 'error'); return; }
 
+    const teacherRaw = document.getElementById('clTeacher').value;
+
     const body = {
       niveau_id: niveau,
       semestre_id: Number(semestreId),
@@ -2991,6 +2918,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', () => {
       academic_year: academicYear,
       location_type: locationType,
     };
+    if (teacherRaw) {
+      body.teacher_id = Number(teacherRaw);
+    }
 
     if (locationType === 'BLOC') {
       if (!blockRaw || !roomRaw) {

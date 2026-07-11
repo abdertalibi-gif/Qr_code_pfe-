@@ -403,11 +403,41 @@ def _process_import_row(
 ) -> None:
     sid = transaction.savepoint()
     try:
-        student = (
-            Student.objects.select_related("user")
-            .filter(code_massar=row.code)
-            .first()
-        )
+        # Look up existing student by email first, then by code_massar
+        student = None
+        if row.email:
+            student = (
+                Student.objects.select_related("user")
+                .filter(email=row.email)
+                .first()
+            )
+        if not student and row.code:
+            student = (
+                Student.objects.select_related("user")
+                .filter(code_massar=row.code)
+                .first()
+            )
+
+        # If found by email but code_massar differs, check for conflicts
+        if student and row.code and student.code_massar != row.code:
+            other = (
+                Student.objects.filter(code_massar=row.code)
+                .exclude(pk=student.pk)
+                .first()
+            )
+            if other:
+                report.errors.append({
+                    "line": row.line_number,
+                    "code": row.code,
+                    "messages": [
+                        f"Le code Massar {row.code} appartient déjà à un autre étudiant ({other.first_name} {other.last_name})."
+                    ],
+                })
+                transaction.savepoint_rollback(sid)
+                return
+            # Safe to update code_massar on the found student
+            student.code_massar = row.code
+            student.save(update_fields=["code_massar"])
 
         user, user_errors = _resolve_user_for_row(row, student)
         if user_errors:
@@ -422,21 +452,6 @@ def _process_import_row(
                 student = user.student_profile
             except Student.DoesNotExist:
                 student = None
-            if student and student.code_massar != row.code:
-                report.errors.append(
-                    {
-                        "line": row.line_number,
-                        "code": row.code,
-                        "messages": [
-                            f"User account is already linked to student {student.code_massar}."
-                        ],
-                    }
-                )
-                transaction.savepoint_rollback(sid)
-                return
-
-        created = False
-        updated = False
 
         if student is None:
             student = Student.objects.create(
@@ -448,14 +463,12 @@ def _process_import_row(
                 classe=classe,
                 user=user,
             )
-            created = True
             report.created.append(_student_payload(student))
         else:
             if student.classe_id != classe.id:
                 student.classe = classe
                 student.save(update_fields=["classe"])
-            updated = _apply_student_updates(student, row, user)
-            if updated:
+            if _apply_student_updates(student, row, user):
                 report.updated.append(_student_payload(student))
 
         enrollment, enrollment_created = StudentModuleEnrollment.objects.get_or_create(

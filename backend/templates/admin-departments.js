@@ -44,22 +44,16 @@ function renderDepartments() {
 async function loadDeptHeadSelect() {
   const sel = document.getElementById('deptHead');
   sel.innerHTML = '<option value="">— Non assigné —</option>';
-  let teachers = [];
   try {
-    const data = await API.apiFetch('/users/?role=teacher');
-    teachers = Array.isArray(data) ? data : (data.results || []);
-    const admins = await API.apiFetch('/users/?role=admin');
-    const adminList = Array.isArray(admins) ? admins : (admins.results || []);
-    teachers = teachers.concat(adminList);
-  } catch (e) {
-    teachers = [];
-  }
-  teachers.forEach(function (u) {
-    const opt = document.createElement('option');
-    opt.value = u.id;
-    opt.textContent = (u.full_name || u.first_name + ' ' + u.last_name) + ' (' + u.email + ')';
-    sel.appendChild(opt);
-  });
+    const data = await API.apiFetch('/users/?role=department_head');
+    const users = Array.isArray(data) ? data : (data.results || []);
+    users.forEach(function (u) {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = (u.full_name || u.first_name + ' ' + u.last_name) + ' (' + u.email + ')';
+      sel.appendChild(opt);
+    });
+  } catch (e) { /* ignore */ }
 }
 
 function openDepartmentModal(dept) {
@@ -141,7 +135,7 @@ async function manageFiliereManagers(deptId) {
       }
       let options = '<option value="">— Non assigné —</option>';
       const eligibleUsers = eligible.filter(function (u) {
-        return u.role === 'teacher' || u.role === 'program_manager' || u.role === 'admin';
+        return u.role === 'program_manager';
       });
       eligibleUsers.forEach(function (u) {
         const selected = String(u.id) === String(currentManagerId) ? ' selected' : '';

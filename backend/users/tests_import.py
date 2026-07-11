@@ -128,8 +128,10 @@ class StudentImportServiceTests(TestCase):
         )
         report = import_students_for_module(self.module.id, self._csv_file(csv_content))
 
-        self.assertEqual(len(report["errors"]), 1)
-        self.assertEqual(Student.objects.filter(code_massar="CNE001").count(), 0)
+        # Email matches existing student → reuses and updates code_massar
+        self.assertEqual(len(report["errors"]), 0)
+        student = Student.objects.get(email="shared@test.ma")
+        self.assertEqual(student.code_massar, "CNE001")
 
 
 class StudentImportAPITests(TestCase):

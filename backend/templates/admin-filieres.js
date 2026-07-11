@@ -40,12 +40,8 @@ async function loadDepartments() {
 
 async function loadUsersForManagerSelect() {
   try {
-    const data = await API.apiFetch('/users/?role=teacher');
-    let users = Array.isArray(data) ? data : (data.results || []);
-    const adminData = await API.apiFetch('/users/?role=admin');
-    const admins = Array.isArray(adminData) ? adminData : (adminData.results || []);
-    users = users.concat(admins);
-    return users;
+    const data = await API.apiFetch('/users/?role=program_manager');
+    return Array.isArray(data) ? data : (data.results || []);
   } catch (e) { return []; }
 }
 

@@ -145,14 +145,6 @@ async function openEditUser(id) {
   const sel = document.getElementById('euClasses');
   if (sel) Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)); });
 
-  const cb = document.getElementById('euIsAlsoTeacher');
-  if (cb) cb.checked = !!u.is_also_teacher;
-
-  const isDeptHead = document.getElementById('euIsDeptHead');
-  if (isDeptHead) {
-    isDeptHead.checked = !!(u.managed_department);
-    if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
-  }
   openModal('modalEditUser');
 }
 
@@ -207,14 +199,6 @@ function buildPayload(prefix) {
     if (gradeEl) body.grade = gradeEl.value.trim() || '';
     const specEl = document.getElementById(prefix + 'Speciality');
     if (specEl) body.speciality = specEl.value.trim() || '';
-    const cb = document.getElementById(prefix + 'IsAlsoTeacher');
-    if (cb) body.is_also_teacher = cb.checked;
-    const isDeptHead = document.getElementById(prefix + 'IsDeptHead');
-    if (isDeptHead && isDeptHead.checked) {
-      body.is_department_head = true;
-      const deptEl = document.getElementById(prefix + 'Department');
-      body.department_id = deptEl ? Number(deptEl.value) || null : null;
-    }
   }
   if (role === 'student') {
     const cm = document.getElementById(prefix + 'CodeMassar');
@@ -273,7 +257,6 @@ function setupEventListeners() {
   document.getElementById('btnOpenAddUser')?.addEventListener('click', async function () {
     populateRoleSelects('u');
     showFieldsForRole(document.getElementById('uRole').value, 'u');
-    document.getElementById('uIsDeptHead').checked = false;
     setupProgManagerCascade('u');
     openModal('modalAddUser');
   });
@@ -289,9 +272,6 @@ function setupEventListeners() {
     }
     if (body.role === 'program_manager' && !body.filiere_id) {
       showToast('La filière est obligatoire pour le responsable de filière.', 'error'); return;
-    }
-    if (body.role === 'teacher' && body.is_department_head && !body.department_id) {
-      showToast('Le département est obligatoire pour un enseignant chef de département.', 'error'); return;
     }
     try {
       await API.apiFetch('/users/', { method: 'POST', body: JSON.stringify(body) });
