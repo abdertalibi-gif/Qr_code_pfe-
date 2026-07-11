@@ -542,17 +542,63 @@ def import_students_for_module(module_id: int, uploaded_file) -> dict[str, Any]:
 
 def build_import_template_xlsx() -> bytes:
     from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
 
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Students"
-    sheet.append(["Student Code", "Last Name", "First Name", "Email", "Phone"])
-    sheet.append(
-        ["A123456789", "Benali", "Ayman", "ayman.benali@umi.ac.ma", "0612345678"]
-    )
 
-    for column, width in zip("ABCDE", [18, 18, 18, 30, 16]):
+    headers = ["Student Code", "Last Name", "First Name", "Email", "Phone"]
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    for col, header in enumerate(headers, 1):
+        cell = sheet.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    sample_data = [
+        ["M123456789", "Benali",   "Ayman",   "ayman.benali@umi.ac.ma",   "0612345678"],
+        ["M987654321", "Alaoui",   "Fatima",  "fatima.alaoui@umi.ac.ma",  "0612345679"],
+        ["M456789123", "Idrissi",  "Karim",   "karim.idrissi@umi.ac.ma",  "0612345680"],
+        ["M321654987", "Zahraoui", "Nadia",   "nadia.zahraoui@umi.ac.ma", "0612345681"],
+        ["M741852963", "El Amrani","Youssef", "youssef.elamrani@umi.ac.ma","0612345682"],
+        ["M852963741", "Bennani",  "Sara",    "sara.bennani@umi.ac.ma",   "0612345683"],
+        ["M159753456", "Tazi",     "Omar",    "omar.tazi@umi.ac.ma",      "0612345684"],
+        ["M357951852", "Fassi",    "Imane",   "imane.fassi@umi.ac.ma",    "0612345685"],
+    ]
+    for row in sample_data:
+        sheet.append(row)
+
+    for column, width in zip("ABCDE", [22, 22, 22, 35, 18]):
         sheet.column_dimensions[column].width = width
+
+    # Instructions sheet
+    ws2 = workbook.create_sheet("Instructions")
+    instructions = [
+        "INSTRUCTIONS POUR L'IMPORT D'ÉTUDIANTS (format simple)",
+        "",
+        "Colonnes obligatoires :",
+        "  - Student Code   (Code Massar ou CNE)",
+        "  - Last Name      (Nom de famille)",
+        "  - First Name     (Prénom)",
+        "  - Email          (adresse email)",
+        "",
+        "Colonne optionnelle :",
+        "  - Phone          (numéro de téléphone)",
+        "",
+        "Formats acceptés : .xlsx et .csv",
+        "",
+        "Chaque ligne sera importée dans le module sélectionné.",
+        "Si un étudiant existe déjà avec le même email ou le même Code Massar,",
+        "ses informations seront mises à jour sans créer de doublon.",
+    ]
+    for i, line in enumerate(instructions, 1):
+        cell = ws2.cell(row=i, column=1, value=line)
+        if i == 1:
+            cell.font = Font(bold=True, size=14)
+
+    ws2.column_dimensions["A"].width = 80
 
     buffer = io.BytesIO()
     workbook.save(buffer)
@@ -807,39 +853,71 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
 
 def build_complete_import_template_xlsx() -> bytes:
     from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
 
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Import Étudiants"
-    columns = [
-        "Nom",
-        "Prénom",
-        "Code Massar",
-        "Email",
-        "Mot de passe",
-        "Niveau",
-        "Filière",
-        "Semestre",
-        "Module",
-    ]
-    sheet.append(columns)
-    sheet.append(
-        [
-            "Benali",
-            "Youssef",
-            "M123456789",
-            "y.benali@test.com",
-            "123456",
-            "LIC",
-            "Informatique",
-            "S3",
-            "Java",
-        ]
-    )
 
-    widths = [16, 16, 18, 30, 14, 10, 22, 10, 22]
+    headers = [
+        "Nom", "Prénom", "Code Massar", "Email", "Mot de passe",
+        "Niveau", "Filière", "Semestre", "Module",
+    ]
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    for col, header in enumerate(headers, 1):
+        cell = sheet.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    sample_data = [
+        ["Benali",   "Ayman",   "M123456789", "ayman.benali@umi.ac.ma",   "Pass1234", "LIC", "Informatique",            "S3", "Java"],
+        ["Alaoui",   "Fatima",  "M987654321", "fatima.alaoui@umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Java"],
+        ["Idrissi",  "Karim",   "M456789123", "karim.idrissi@umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Python"],
+        ["Zahraoui", "Nadia",   "M321654987", "nadia.zahraoui@umi.ac.ma", "Pass1234", "LIC", "Mathématiques",           "S3", "Algèbre"],
+        ["El Amrani","Youssef", "M741852963", "youssef.elamrani@umi.ac.ma","Pass1234","LIC", "Mathématiques",           "S3", "Analyse"],
+        ["Bennani",  "Sara",    "M852963741", "sara.bennani@umi.ac.ma",   "Pass1234", "MAS", "Génie Logiciel",          "S1", "Architecture"],
+        ["Tazi",     "Omar",    "M159753456", "omar.tazi@umi.ac.ma",      "Pass1234", "MAS", "Génie Logiciel",          "S1", "UML"],
+        ["Fassi",    "Imane",   "M357951852", "imane.fassi@umi.ac.ma",    "Pass1234", "MAS", "Sécurité Informatique",   "S2", "Cryptographie"],
+        ["Chraibi",  "Amine",   "M753159456", "amine.chraibi@umi.ac.ma",  "Pass1234", "MAS", "Réseaux",                "S2", "Routage"],
+    ]
+    for row in sample_data:
+        sheet.append(row)
+
+    widths = [18, 18, 20, 35, 16, 10, 26, 10, 26]
     for col_letter, width in zip("ABCDEFGHI", widths):
         sheet.column_dimensions[col_letter].width = width
+
+    # Instructions sheet
+    ws2 = workbook.create_sheet("Instructions")
+    instructions = [
+        "INSTRUCTIONS POUR L'IMPORT COMPLET D'ÉTUDIANTS",
+        "",
+        "Colonnes obligatoires :",
+        "  - Nom, Prénom, Code Massar, Niveau, Filière, Semestre, Module",
+        "",
+        "Colonnes optionnelles :",
+        "  - Email (si vide, l'étudiant n'aura pas de compte email)",
+        "  - Mot de passe (si vide, un mot de passe sera généré automatiquement)",
+        "",
+        "Format accepté : .xlsx uniquement",
+        "",
+        "Le système va :",
+        "  1. Chercher ou créer la filière correspondante",
+        "  2. Chercher ou créer le module correspondant",
+        "  3. Créer ou mettre à jour l'étudiant",
+        "  4. L'inscrire au module",
+        "",
+        "Si un étudiant existe déjà avec le même email ou Code Massar,",
+        "ses informations seront mises à jour.",
+    ]
+    for i, line in enumerate(instructions, 1):
+        cell = ws2.cell(row=i, column=1, value=line)
+        if i == 1:
+            cell.font = Font(bold=True, size=14)
+
+    ws2.column_dimensions["A"].width = 80
 
     buffer = io.BytesIO()
     workbook.save(buffer)
