@@ -2,7 +2,7 @@
 Bulk teacher import from Excel (.xlsx).
 
 Expected columns:
-  first_name, last_name, email, phone, cin, department, filiere, grade, speciality
+  first_name, last_name, email, phone, cin, department, grade, speciality
 Optional:
   password
 """
@@ -20,7 +20,6 @@ from typing import Any
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 
-from curriculum.models import Filiere
 from users.models import Department, User
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,6 @@ HEADER_ALIASES = {
     "phone": {"phone", "telephone", "téléphone", "tel", "mobile", "gsm"},
     "cin": {"cin", "c.i.n", "carte nationale", "identity"},
     "department": {"department", "departement", "département", "dept"},
-    "filiere": {"filiere", "filière", "field"},
     "grade": {"grade", "rank"},
     "speciality": {"speciality", "specialty", "specialite", "spécialité", "field of study"},
     "password": {"password", "mot de passe", "pass"},
@@ -51,7 +49,6 @@ class TeacherImportRow:
     phone: str
     cin: str
     department: str
-    filiere: str
     grade: str
     speciality: str
     password: str
@@ -109,7 +106,7 @@ def _map_headers(raw_headers: list[str]) -> dict[str, int]:
 
 
 def _validate_headers(mapping: dict[str, int]) -> list[str]:
-    required = ("first_name", "last_name", "email", "phone", "cin", "department", "filiere", "grade", "speciality")
+    required = ("first_name", "last_name", "email", "phone", "cin", "department", "grade", "speciality")
     labels = {
         "first_name": "first_name",
         "last_name": "last_name",
@@ -117,7 +114,6 @@ def _validate_headers(mapping: dict[str, int]) -> list[str]:
         "phone": "phone",
         "cin": "cin",
         "department": "department",
-        "filiere": "filiere",
         "grade": "grade",
         "speciality": "speciality",
     }
@@ -201,7 +197,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
         phone = _cell(row, mapping.get("phone"))
         cin = _cell(row, mapping.get("cin"))
         department_name = _cell(row, mapping.get("department"))
-        filiere_name = _cell(row, mapping.get("filiere"))
         grade = _cell(row, mapping.get("grade"))
         speciality = _cell(row, mapping.get("speciality"))
         password = _cell(row, mapping.get("password"))
@@ -231,8 +226,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
             seen_cins[cin] = offset
         if not department_name:
             row_errors.append("Département obligatoire.")
-        if not filiere_name:
-            row_errors.append("Filière obligatoire.")
         if not grade:
             row_errors.append("Grade obligatoire.")
         if not speciality:
@@ -250,7 +243,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
             phone=phone,
             cin=cin,
             department=department_name,
-            filiere=filiere_name,
             grade=grade,
             speciality=speciality,
             password=password or _generate_password(),
@@ -264,15 +256,10 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
     def _norm(s: str) -> str:
         return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
 
-    # Preload departments and filieres in memory (avoids per-row DB queries)
+    # Preload departments in memory (avoids per-row DB queries)
     dept_map: dict[str, Department] = {}
     for dept in Department.objects.all():
         dept_map[_norm(dept.name)] = dept
-
-    filiere_map: dict[int, dict[str, Filiere]] = {}
-    for fil in Filiere.objects.select_related("department").all():
-        key = _norm(fil.name)
-        filiere_map.setdefault(fil.department_id, {})[key] = fil
 
     # Preload existing users by email
     emails_to_check = [r.email for r in rows_to_process]
@@ -294,16 +281,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                 "line": r.line_number,
                 "email": r.email,
                 "messages": [f"Département introuvable : {r.department}"],
-            })
-            report.skipped += 1
-            continue
-
-        filiere = filiere_map.get(dept.id, {}).get(_norm(r.filiere))
-        if filiere is None:
-            report.errors.append({
-                "line": r.line_number,
-                "email": r.email,
-                "messages": [f"Filière introuvable : {r.filiere} dans le département {r.department}"],
             })
             report.skipped += 1
             continue
@@ -417,7 +394,7 @@ def build_teacher_import_template_xlsx() -> bytes:
 
     headers = [
         "Prénom", "Nom", "Email", "Téléphone", "CIN",
-        "Département", "Filière", "Grade", "Spécialité",
+        "Département", "Grade", "Spécialité",
         "Mot de passe (optionnel)"
     ]
 
@@ -433,14 +410,14 @@ def build_teacher_import_template_xlsx() -> bytes:
     # Example row
     example = [
         "Jean", "Dupont", "jean.dupont@umi.ac.ma", "0612345678", "EE123456",
-        "Informatique", "Génie Informatique", "Professeur", "Intelligence Artificielle",
+        "Informatique", "Professeur", "Intelligence Artificielle",
         "Pass@12345"
     ]
     for col, val in enumerate(example, 1):
         ws.cell(row=2, column=col, value=val)
 
     # Set column widths
-    widths = [15, 15, 30, 15, 15, 20, 25, 15, 25, 20]
+    widths = [15, 15, 30, 15, 15, 20, 15, 25, 20]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
 
@@ -456,7 +433,6 @@ def build_teacher_import_template_xlsx() -> bytes:
         "  - Téléphone",
         "  - CIN",
         "  - Département (nom exact)",
-        "  - Filière (nom exact dans le département)",
         "  - Grade",
         "  - Spécialité",
         "",

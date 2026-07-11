@@ -125,9 +125,9 @@ class AttendanceService:
         )
 
         try:
-            session = Session.objects.select_related("teacher", "classe").get(
-                qr_token=qr_token
-            )
+            session = Session.objects.select_related(
+                "teacher", "classe__filiere"
+            ).get(qr_token=qr_token)
         except Session.DoesNotExist:
             AttendanceService._log_suspicious(
                 SuspiciousAttempt.ATTEMPT_INVALID_TOKEN,
@@ -184,9 +184,9 @@ class AttendanceService:
             raise ValueError("Cette séance n'est plus active.")
 
         try:
-            student = Student.objects.select_related("classe").get(
-                code_massar=code_massar
-            )
+            student = Student.objects.select_related(
+                "classe__filiere"
+            ).get(code_massar=code_massar)
         except Student.DoesNotExist:
             AttendanceService._log_suspicious(
                 SuspiciousAttempt.ATTEMPT_UNKNOWN_STUDENT,
@@ -208,7 +208,54 @@ class AttendanceService:
                 "Contactez votre enseignant pour vous inscrire."
             )
 
-        if student.classe_id != session.classe_id:
+        print("========== VALIDATION ==========")
+        print("QR :", qr_token)
+        print("SESSION :", session.id)
+        print("SESSION MODULE :", session.module_id)
+        print("SESSION CLASSE :", session.classe_id, session.classe)
+        print("STUDENT :", student.id)
+        print("MASSAR :", code_massar)
+        print("STUDENT CLASSE :", student.classe_id, student.classe)
+        print("STUDENT MODULES :", list(student.modules.values_list("id", "name")))
+        print("ENROLLMENTS :", list(student.module_enrollments.values_list("module_id", "module__name")))
+        print("================================")
+
+        classe_matches = student.classe_id == session.classe_id
+        module_enrolled = (
+            session.module_id is not None
+            and student.modules.filter(id=session.module_id).exists()
+        )
+        class_module_matches = (
+            session.module_id is not None
+            and student.classe_id is not None
+            and student.classe.module_id is not None
+            and student.classe.module_id == session.module_id
+        )
+        same_filiere_niveau = (
+            not classe_matches
+            and student.classe_id is not None
+            and session.classe_id is not None
+            and student.classe.filiere_id is not None
+            and student.classe.filiere_id == session.classe.filiere_id
+            and student.classe.niveau == session.classe.niveau
+        )
+        cohort_matches = (
+            same_filiere_niveau
+            and student.classe.semestre_id == session.classe.semestre_id
+            and student.classe.academic_year == session.classe.academic_year
+        )
+
+        if classe_matches:
+            print("[OK] Same class — allowing attendance.")
+        elif module_enrolled:
+            print("[OK] Student enrolled in this module — allowing attendance.")
+        elif class_module_matches:
+            print("[OK] Student's class module matches session module — allowing attendance.")
+        elif cohort_matches:
+            print("[OK] Same cohort (filiere/semestre/niveau/year) — allowing attendance.")
+        elif same_filiere_niveau:
+            print("[OK] Same filiere+niveau — allowing attendance.")
+        else:
             AttendanceService._log_suspicious(
                 SuspiciousAttempt.ATTEMPT_CLASS_MISMATCH,
                 "Student does not belong to session class.",

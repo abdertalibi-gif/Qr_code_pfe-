@@ -197,6 +197,7 @@ class ClasseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         filiere = serializer.validated_data.get("filiere")
+        teacher_id = self.request.data.get("teacher_id")
         if user.role == "department_head":
             dept = get_user_department(user)
             if filiere and dept and filiere.department_id != dept.id:
@@ -204,6 +205,20 @@ class ClasseViewSet(viewsets.ModelViewSet):
                 raise rf_serializers.ValidationError(
                     {"filiere": "Vous ne pouvez créer une classe que dans votre département."}
                 )
+            if teacher_id:
+                from users.models import User
+                teacher = User.objects.filter(pk=teacher_id).first()
+                if teacher and not teacher.assigned_classes.filter(
+                    Q(department=dept) | Q(filiere__department=dept)
+                ).exists() and not teacher.sessions.filter(
+                    Q(classe__department=dept) | Q(classe__filiere__department=dept)
+                ).exists() and not teacher.taught_modules.filter(
+                    Q(filiere__department=dept)
+                ).exists():
+                    from rest_framework import serializers as rf_serializers
+                    raise rf_serializers.ValidationError(
+                        {"teacher_id": "Cet enseignant n'appartient pas à votre département."}
+                    )
         elif user.role == "program_manager":
             filiere_ids = get_user_filiere_ids(user)
             if filiere and filiere_ids and filiere.id not in filiere_ids:
@@ -211,6 +226,20 @@ class ClasseViewSet(viewsets.ModelViewSet):
                 raise rf_serializers.ValidationError(
                     {"filiere": "Vous ne pouvez créer une classe que dans votre filière."}
                 )
+            if teacher_id and filiere_ids:
+                from users.models import User
+                teacher = User.objects.filter(pk=teacher_id).first()
+                if teacher and not teacher.assigned_classes.filter(
+                    filiere_id__in=filiere_ids
+                ).exists() and not teacher.sessions.filter(
+                    classe__filiere_id__in=filiere_ids
+                ).exists() and not teacher.taught_modules.filter(
+                    filiere_id__in=filiere_ids
+                ).exists():
+                    from rest_framework import serializers as rf_serializers
+                    raise rf_serializers.ValidationError(
+                        {"teacher_id": "Cet enseignant n'appartient pas à votre filière."}
+                    )
         serializer.save()
 
     def create(self, request, *args, **kwargs):
@@ -521,10 +550,6 @@ def teacher_list(request):
     data = []
     for t in teachers:
         ac = list(t.assigned_classes.all())
-        filieres = sorted(set(
-            c.filiere.name for c in ac if c.filiere and c.filiere.name
-        ))
-        filiere_name = ", ".join(filieres) if filieres else None
         departments = sorted(set(
             c.department.name for c in ac if c.department and c.department.name
         ))
@@ -543,9 +568,6 @@ def teacher_list(request):
             "grade": t.grade,
             "speciality": t.speciality,
             "department_name": dept_name,
-            "filiere_name": filiere_name,
-            "class_count": len(ac),
-            "assigned_class_ids": [c.id for c in ac],
             "is_active": t.is_active,
         })
     return Response(data)

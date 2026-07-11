@@ -192,17 +192,24 @@ class SessionSerializer(serializers.ModelSerializer):
                             {"module": "Le module sélectionné n'a pas de niveau via la filière."}
                         )
 
-                    classe, _ = Classe.objects.get_or_create(
+                    existing = Classe.objects.filter(
                         niveau=niveau,
                         semestre=filiere.semestre,
                         filiere=filiere,
                         module=getattr(module, "pk", None) and module,
-                        defaults={
-                            "name": classe_name,
-                            "academic_year": academic_year,
-                            "location_type": "BLOC",
-                        },
-                    )
+                    ).first()
+                    if existing:
+                        classe = existing
+                    else:
+                        classe = Classe.objects.create(
+                            niveau=niveau,
+                            semestre=filiere.semestre,
+                            filiere=filiere,
+                            module=getattr(module, "pk", None) and module,
+                            name=classe_name,
+                            academic_year=academic_year,
+                            location_type="BLOC",
+                        )
                     data["classe"] = classe
                     logger.info(f"Auto-resolved classe: {classe}")
                 except Exception as e:
