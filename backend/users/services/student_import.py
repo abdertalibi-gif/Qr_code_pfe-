@@ -737,6 +737,11 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
             name__iexact=r.filiere,
             semestre__name__iexact=r.semestre,
         ).first()
+        if f_obj is None and r.niveau:
+            f_obj = FiliereModel.objects.filter(
+                name__iexact=r.filiere,
+                semestre__name__iexact=r.semestre,
+            ).first()
         if f_obj is None:
             report.errors.append(
                 {
