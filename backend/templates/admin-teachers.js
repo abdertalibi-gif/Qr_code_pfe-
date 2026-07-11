@@ -19,21 +19,21 @@ function displayTeacherImportReport(result, containerId) {
       <div class="card-icon">✅</div>
       <div class="card-content">
         <div class="card-label">Nouveaux inscrits</div>
-        <div class="card-value">${result.created_teachers || result.created?.length || 0}</div>
+        <div class="card-value">${result.imported ?? result.summary?.created ?? result.created_teachers?.length ?? 0}</div>
       </div>
     </div>
     <div class="summary-card warning">
       <div class="card-icon">🔄</div>
       <div class="card-content">
         <div class="card-label">Déjà existants</div>
-        <div class="card-value">${result.updated_teachers || result.updated?.length || 0}</div>
+        <div class="card-value">${result.updated ?? result.summary?.updated ?? result.updated_teachers?.length ?? 0}</div>
       </div>
     </div>
     <div class="summary-card error">
       <div class="card-icon">❌</div>
       <div class="card-content">
         <div class="card-label">Erreurs</div>
-        <div class="card-value">${result.errors?.length || 0}</div>
+        <div class="card-value">${result.summary?.errors ?? result.errors?.length ?? 0}</div>
       </div>
     </div>
   `;
