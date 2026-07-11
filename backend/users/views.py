@@ -1299,14 +1299,40 @@ class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        first_name = request.data.get("first_name", "").strip().lower()
+        last_name = request.data.get("last_name", "").strip().lower()
+        code_massar = request.data.get("code_massar", "").strip()
         email = request.data.get("email", "").strip().lower()
+
+        missing = []
+        if not first_name:
+            missing.append("Prénom")
+        if not last_name:
+            missing.append("Nom")
+        if not code_massar:
+            missing.append("Code Massar")
         if not email:
-            return Response({"detail": "Email requis."}, status=status.HTTP_400_BAD_REQUEST)
+            missing.append("Email")
+        if missing:
+            return Response(
+                {"detail": f"Champs obligatoires : {', '.join(missing)}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        user = User.objects.filter(email=email).first()
-        msg = "Si cet email existe, un lien de réinitialisation vous a été envoyé."
+        user = User.objects.filter(email=email, is_active=True).first()
+        msg = "Identifiants incorrects. Veuillez vérifier vos informations."
 
-        if user and user.is_active:
+        if user:
+            from users.models import Student
+            student = Student.objects.filter(
+                user=user,
+                first_name__iexact=first_name,
+                last_name__iexact=last_name,
+                code_massar__iexact=code_massar,
+            ).first()
+            if not student:
+                return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
             token_generator = PasswordResetTokenGenerator()
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
@@ -1315,8 +1341,6 @@ class PasswordResetView(APIView):
             logger.info(f"Password reset link for {email}: {reset_url}")
 
             from django.conf import settings
-            is_console_backend = "console" in settings.EMAIL_BACKEND.lower()
-            email_sent = False
             try:
                 from django.core.mail import send_mail
                 subject = "Reinitialisation de votre mot de passe - PresenceQR"
@@ -1326,26 +1350,22 @@ class PasswordResetView(APIView):
                     f"Cliquez sur le lien ci-dessous pour definir un nouveau mot de passe :\n"
                     f"{reset_url}\n\n"
                     f"Ce lien est valable 24 heures.\n\n"
-                    f"Si vous n'avez pas demande cette reinitialisation, ignorez cet email.\n\n"
                     f"---\nPresenceQR"
                 )
                 send_mail(
-                    subject,
-                    message,
+                    subject, message,
                     settings.DEFAULT_FROM_EMAIL or "noreply@presenceqr.ma",
-                    [email],
-                    fail_silently=True,
+                    [email], fail_silently=True,
                 )
-                email_sent = True
             except Exception as e:
                 logger.warning(f"Email sending failed for {email}: {e}")
 
-            response_data = {"detail": msg}
-            if not email_sent or is_console_backend:
-                response_data["reset_url"] = reset_url
-            return Response(response_data)
+            return Response({
+                "detail": "Identifiants vérifiés. Utilisez le lien ci-dessous.",
+                "reset_url": reset_url,
+            })
 
-        return Response({"detail": msg})
+        return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetConfirmView(APIView):
