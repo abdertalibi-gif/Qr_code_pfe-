@@ -1,0 +1,274 @@
+@startuml
+skinparam class {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  BackgroundColor #EAF2F8
+}
+skinparam arrow {
+  Color #2E86C1
+  FontColor #2E86C1
+}
+
+' --- ENUMS ---
+enum RoleType {
+  admin
+  teacher
+  student
+  department_head
+  program_manager
+}
+
+enum NiveauClasse {
+  LIC
+  LIC_EXC
+  MAS
+  MAS_EXC
+}
+
+enum SessionType {
+  Cours
+  TD
+  TP
+  Exam
+  Other
+}
+
+enum AttendanceStatus {
+  confirmed
+  rejected
+  absent
+}
+
+' --- USERS APP ---
+class User {
+  - id: PK
+  - email: string (unique)
+  - password: string
+  - first_name: string
+  - last_name: string
+  - role: RoleType
+  - is_active: boolean
+  - is_staff: boolean
+  - phone: string
+  - cin: string
+  - grade: string
+  - speciality: string
+  - is_also_teacher: boolean
+  - created_at: datetime
+}
+
+class Department {
+  - id: PK
+  - name: string
+}
+
+class Block {
+  - id: PK
+  - name: string (unique)
+}
+
+class Room {
+  - id: PK
+  - name: string
+  {unique block+name}
+}
+
+class Amphitheater {
+  - id: PK
+  - name: string (unique)
+}
+
+class AcademicYear {
+  - id: PK
+  - label: string
+  - start_date: date
+  - end_date: date
+  - is_current: boolean
+}
+
+class Group {
+  - id: PK
+  - name: string
+}
+
+class Faculty {
+  - id: PK
+  - name: string
+  - code: string
+  - description: text
+}
+
+class Classe {
+  - id: PK
+  - name: string
+  - code: string
+  - niveau: NiveauClasse
+  - academic_year: string
+  - location_type: string
+  - level: string
+  - field: string
+  - description: text
+  - created_at: datetime
+}
+
+class Student {
+  - id: PK
+  - first_name: string
+  - last_name: string
+  - code_massar: string (unique)
+  - code_apogee: string
+  - email: string
+  - phone: string
+  - created_at: datetime
+}
+
+class StudentModuleEnrollment {
+  - id: PK
+  - enrolled_at: datetime
+  {unique student+module}
+}
+
+' --- CURRICULUM APP ---
+class Semestre {
+  - id: PK
+  - name: string (unique)
+}
+
+class Filiere {
+  - id: PK
+  - name: string
+  - niveau: NiveauClasse
+}
+
+class Module {
+  - id: PK
+  - name: string
+  - code: string
+  - coefficient: integer
+  - total_hours: integer
+}
+
+' --- COURSES APP ---
+class Session {
+  - id: PK
+  - subject: string
+  - date: date
+  - start_time: time
+  - end_time: time
+  - qr_token: string (unique)
+  - qr_session_id: string
+  - qr_expires_at: datetime
+  - attendance_radius_meters: integer
+  - location_latitude: decimal
+  - location_longitude: decimal
+  - is_active: boolean
+  - is_closed: boolean
+  - session_type: SessionType
+  - report_file: string
+  - created_at: datetime
+}
+
+class SessionReport {
+  - id: PK
+  - filename: string
+  - file_data: binary
+  - created_at: datetime
+}
+
+' --- ATTENDANCE APP ---
+class Attendance {
+  - id: PK
+  - validation_time: datetime
+  - ip_address: string
+  - device_id: string
+  - device_fingerprint: string
+  - device_info: text
+  - latitude: decimal
+  - longitude: decimal
+  - qr_session_id: string
+  - attendance_status: AttendanceStatus
+  {unique student+session}
+}
+
+class SuspiciousAttempt {
+  - id: PK
+  - attempt_type: string
+  - qr_token: string
+  - qr_session_id: string
+  - code_massar: string
+  - first_name: string
+  - last_name: string
+  - ip_address: string
+  - device_id: string
+  - device_fingerprint: string
+  - device_info: text
+  - latitude: decimal
+  - longitude: decimal
+  - error_message: text
+  - created_at: datetime
+}
+
+' --- RELATIONS ---
+
+' User -> Department
+User "1" -- "0..1" Department : head >
+User "1" -- "0..*" Filiere : manager >
+
+' User -> Classe (M2M)
+User "*" -- "*" Classe : assigned_classes >
+
+' Student -> User
+Student "0..1" -- "1" User : user >
+
+' Student -> Classe
+Student "*" -- "1" Classe : classe >
+
+' Student -> Module (M2M via StudentModuleEnrollment)
+Student "1" -- "*" StudentModuleEnrollment : student
+StudentModuleEnrollment "*" -- "1" Module : module
+
+' Classe -> Department / Block / Room / Amphitheater / Group / AcademicYear
+Classe "*" -- "0..1" Department : department >
+Classe "*" -- "0..1" Block : block >
+Classe "*" -- "0..1" Room : room >
+Classe "*" -- "0..1" Amphitheater : amphitheater >
+Classe "*" -- "0..1" Group : group >
+Classe "*" -- "0..1" AcademicYear : academic_year_ref >
+
+' Classe -> Filiere / Semestre / Module
+Classe "*" -- "0..1" Filiere : filiere >
+Classe "*" -- "0..1" Semestre : semestre >
+Classe "*" -- "0..1" Module : module >
+
+' Group -> AcademicYear / Department
+Group "*" -- "1" AcademicYear : academic_year >
+Group "*" -- "0..1" Department : department >
+
+' Room -> Block
+Room "*" -- "1" Block : block >
+
+' Filiere -> Semestre / Department
+Filiere "*" -- "1" Semestre : semestre >
+Filiere "*" -- "0..1" Department : department >
+
+' Module -> Filiere / User (teacher)
+Module "*" -- "1" Filiere : filiere >
+Module "*" -- "0..1" User : teacher >
+
+' Session -> Module / User / Classe / Block / Room / Amphitheater
+Session "*" -- "0..1" Module : module >
+Session "*" -- "1" User : teacher >
+Session "*" -- "1" Classe : classe >
+Session "*" -- "0..1" Block : block >
+Session "*" -- "0..1" Room : room >
+Session "*" -- "0..1" Amphitheater : amphitheater >
+
+' Session -> SessionReport / Attendance / SuspiciousAttempt
+Session "1" -- "*" SessionReport : reports >
+Session "1" -- "*" Attendance : attendances >
+Session "1" -- "*" SuspiciousAttempt : suspicious_attempts >
+
+' Attendance -> Student
+Attendance "*" -- "1" Student : student >
+
+@enduml

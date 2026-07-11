@@ -1,0 +1,73 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam usecase {
+  BorderColor #2E86C1
+  FontColor #1F4E79
+}
+
+actor "Administrateur" as admin #FF6B35
+actor "Chef de\nDépartement" as dept_head #3498DB
+actor "Responsable de\nFilière" as prog_mgr #1e3d2b
+actor "Enseignant" as teacher #9B59B6
+actor "Étudiant" as student #E74C3C
+
+rectangle "Système PresenceQR" {
+
+  usecase "S'authentifier" as UC1
+  usecase "Gérer les utilisateurs\n(CRUD)" as UC2
+  usecase "Importer des\nétudiants (Excel)" as UC3
+  usecase "Importer des\nenseignants (Excel)" as UC4
+  usecase "Gérer les départements\net chefs" as UC5
+  usecase "Gérer les filières\net responsables" as UC6
+  usecase "Gérer les classes\net emplois" as UC7
+  usecase "Créer une séance\nde cours" as UC8
+  usecase "Générer un QR code\nd'émargement" as UC9
+  usecase "Scanner le QR code\n(présence)" as UC10
+  usecase "Consulter mes\nprésences" as UC11
+  usecase "Consulter les\nstatistiques" as UC12
+  usecase "Exporter les\nrapports (Excel)" as UC13
+  usecase "Réinitialiser son\nmot de passe" as UC14
+  usecase "Gérer les modules\net semestres" as UC15
+
+  admin --> UC1
+  admin --> UC2
+  admin --> UC3
+  admin --> UC4
+  admin --> UC5
+  admin --> UC6
+  admin --> UC7
+  admin --> UC8
+  admin --> UC12
+  admin --> UC13
+  admin --> UC15
+
+  dept_head --> UC1
+  dept_head --> UC5
+  dept_head --> UC6
+  dept_head --> UC7
+  dept_head --> UC8
+  dept_head --> UC12
+
+  prog_mgr --> UC1
+  prog_mgr --> UC6
+  prog_mgr --> UC7
+  prog_mgr --> UC8
+  prog_mgr --> UC12
+
+  teacher --> UC1
+  teacher --> UC8
+  teacher --> UC9
+  teacher --> UC12
+
+  student --> UC1
+  student --> UC10
+  student --> UC11
+  student --> UC14
+}
+
+@enduml

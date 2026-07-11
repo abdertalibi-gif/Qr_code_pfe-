@@ -8,6 +8,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -134,6 +135,16 @@ class UserViewSet(viewsets.ModelViewSet):
             if self.action in ("list", "retrieve"):
                 return [IsAuthenticated()]
         return [IsAuthenticated(), IsAdmin()]
+
+    def perform_destroy(self, instance):
+        if self.request.user == instance:
+            raise ValidationError("Vous ne pouvez pas supprimer votre propre compte.")
+        if instance.is_superuser:
+            raise ValidationError("Impossible de supprimer un superutilisateur.")
+        protected = ["admin@fs.umi.ac.ma", "admin@umi.ac.ma"]
+        if instance.email and instance.email.lower() in protected:
+            raise ValidationError("Ce compte administrateur ne peut pas être supprimé.")
+        instance.delete()
 
     @action(detail=True, methods=["post"], url_path="toggle-active")
     def toggle_active(self, request, pk=None):
@@ -1299,9 +1310,9 @@ class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        role = request.data.get("role", "student").strip().lower()
         first_name = request.data.get("first_name", "").strip().lower()
         last_name = request.data.get("last_name", "").strip().lower()
-        code_massar = request.data.get("code_massar", "").strip()
         email = request.data.get("email", "").strip().lower()
 
         missing = []
@@ -1309,10 +1320,19 @@ class PasswordResetView(APIView):
             missing.append("Prénom")
         if not last_name:
             missing.append("Nom")
-        if not code_massar:
-            missing.append("Code Massar")
         if not email:
             missing.append("Email")
+
+        if role == "teacher":
+            identifier = request.data.get("cin", "").strip()
+            ident_label = "CNE / CIN"
+        else:
+            identifier = request.data.get("code_massar", "").strip()
+            ident_label = "Code Massar"
+
+        if not identifier:
+            missing.append(ident_label)
+
         if missing:
             return Response(
                 {"detail": f"Champs obligatoires : {', '.join(missing)}."},
@@ -1323,22 +1343,32 @@ class PasswordResetView(APIView):
         msg = "Identifiants incorrects. Veuillez vérifier vos informations."
 
         if user:
-            from users.models import Student
-            student = Student.objects.filter(
-                user=user,
-                first_name__iexact=first_name,
-                last_name__iexact=last_name,
-                code_massar__iexact=code_massar,
-            ).first()
-            if not student:
-                return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            if role == "teacher":
+                if user.role != "teacher":
+                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+                if (
+                    user.first_name.strip().lower() != first_name
+                    or user.last_name.strip().lower() != last_name
+                    or (user.cin or "").strip().lower() != identifier.lower()
+                ):
+                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                from users.models import Student
+                student = Student.objects.filter(
+                    user=user,
+                    first_name__iexact=first_name,
+                    last_name__iexact=last_name,
+                    code_massar__iexact=identifier,
+                ).first()
+                if not student:
+                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
             token_generator = PasswordResetTokenGenerator()
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
             reset_url = f"{request.scheme}://{request.get_host()}/password-reset/{uidb64}/{token}/"
 
-            logger.info(f"Password reset link for {email}: {reset_url}")
+            logger.info(f"Password reset link for {email} (role={role}): {reset_url}")
 
             from django.conf import settings
             try:

@@ -1,0 +1,237 @@
+@startuml
+skinparam entity {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  BackgroundColor #FDEBD0
+}
+
+' ================= ENTITÉS =================
+
+entity "UTILISATEUR" as User {
+  *id_user: PK
+  --
+  email: string (unique)
+  password: string
+  first_name: string
+  last_name: string
+  role: string
+  is_active: boolean
+  phone: string
+  cin: string
+  grade: string
+  speciality: string
+  created_at: datetime
+}
+
+entity "ÉTUDIANT" as Student {
+  *id_etudiant: PK
+  --
+  code_massar: string (unique)
+  code_apogee: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  created_at: datetime
+}
+
+entity "CLASSE" as Classe {
+  *id_classe: PK
+  --
+  name: string
+  code: string
+  niveau: string
+  academic_year: string
+  location_type: string
+  description: text
+  created_at: datetime
+}
+
+entity "DÉPARTEMENT" as Departement {
+  *id_dept: PK
+  --
+  name: string
+}
+
+entity "BLOC" as Block {
+  *id_bloc: PK
+  --
+  name: string (unique)
+}
+
+entity "SALLE" as Room {
+  *id_salle: PK
+  --
+  name: string
+}
+
+entity "AMPHITHÉÂTRE" as Amphi {
+  *id_amphi: PK
+  --
+  name: string (unique)
+}
+
+entity "ANNÉE_UNIV" as AcademicYear {
+  *id_annee: PK
+  --
+  label: string
+  start_date: date
+  end_date: date
+  is_current: boolean
+}
+
+entity "GROUPE" as Group {
+  *id_groupe: PK
+  --
+  name: string
+}
+
+entity "SEMESTRE" as Semestre {
+  *id_semestre: PK
+  --
+  name: string (unique)
+}
+
+entity "FILIÈRE" as Filiere {
+  *id_filiere: PK
+  --
+  name: string
+  niveau: string
+}
+
+entity "MODULE" as Module {
+  *id_module: PK
+  --
+  name: string
+  code: string
+  coefficient: integer
+  total_hours: integer
+}
+
+entity "SÉANCE" as Session {
+  *id_seance: PK
+  --
+  subject: string
+  date: date
+  start_time: time
+  end_time: time
+  qr_token: string (unique)
+  qr_session_id: string
+  qr_expires_at: datetime
+  radius: integer
+  latitude: decimal
+  longitude: decimal
+  is_active: boolean
+  is_closed: boolean
+  session_type: string
+  created_at: datetime
+}
+
+entity "PRÉSENCE" as Attendance {
+  *id_presence: PK
+  --
+  validation_time: datetime
+  ip_address: string
+  device_id: string
+  device_fingerprint: string
+  latitude: decimal
+  longitude: decimal
+  status: string
+}
+
+entity "TENTATIVE_SUSPECTE" as Suspicious {
+  *id_tentative: PK
+  --
+  attempt_type: string
+  qr_token: string
+  code_massar: string
+  ip_address: string
+  device_id: string
+  device_fingerprint: string
+  error_message: text
+  created_at: datetime
+}
+
+entity "INSCRIPTION_MODULE" as Enrollment {
+  *id_inscription: PK
+  --
+  enrolled_at: datetime
+}
+
+entity "RAPPORT_SÉANCE" as SessionReport {
+  *id_rapport: PK
+  --
+  filename: string
+  created_at: datetime
+}
+
+' ================= RELATIONS =================
+
+' Étudiant ↔ Utilisateur (1,1)
+User ||--|| Student : "possède"
+
+' Étudiant ↔ Classe (0,N) - (1,1)
+Student }o--|| Classe : "appartient"
+
+' Classe ↔ Département / Bloc / Salle / Amphi / Groupe / Année
+Classe }o--|| Departement : "relève_de"
+Classe }o--|| Block : "située_dans_bloc"
+Classe }o--|| Room : "occupe_salle"
+Classe }o--|| Amphi : "occupe_amphi"
+Classe }o--|| Group : "rattachée_à"
+Classe }o--|| AcademicYear : "programmée_en"
+
+' Classe ↔ Filière / Semestre / Module
+Classe }o--|| Filiere : "filière"
+Classe }o--|| Semestre : "semestre"
+Classe }o--|| Module : "module"
+
+' Filière ↔ Semestre / Département
+Filiere }o--|| Semestre : "a_pour"
+Filiere }o--|| Departement : "gérée_par"
+
+' Module ↔ Filière
+Module }o--|| Filiere : "appartient"
+
+' Module ↔ Utilisateur (enseignant)
+Module }o--|| User : "enseigné_par"
+
+' Inscription_Module (Étudiant - Module) M2M
+Student ||--o{ Enrollment : "s'inscrit"
+Enrollment }o--|| Module : "dans"
+
+' Séance ↔ Module / Classe / Utilisateur / Bloc / Salle / Amphi
+Session }o--|| Module : "concerne"
+Session }o--|| Classe : "pour_classe"
+Session }o--|| User : "animée_par"
+Session }o--|| Block : "bloc"
+Session }o--|| Room : "salle"
+Session }o--|| Amphi : "amphi"
+
+' Séance ↔ Présence (1,N) - (1,1)
+Session ||--o{ Attendance : "a_lieu"
+Attendance }o--|| Student : "concerne"
+
+' Séance ↔ Tentative (1,N) - (0,N)
+Session ||--o{ Suspicious : "génère"
+
+' Séance ↔ Rapport (1,N) - (1,N)
+Session ||--o{ SessionReport : "produit"
+
+' Bloc ↔ Salle
+Block ||--o{ Room : "contient"
+
+' Utilisateur ↔ Classe (M2M)
+User }o--o{ Classe : "enseigne_dans"
+
+' Utilisateur ↔ Département (chef)
+User }o--|| Departement : "dirige"
+
+' Utilisateur ↔ Filière (responsable)
+User }o--|| Filiere : "gère"
+
+' Groupe ↔ Année / Département
+Group }o--|| AcademicYear : "année"
+Group }o--|| Departement : "département"
+
+@enduml
