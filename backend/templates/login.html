@@ -184,10 +184,13 @@
           body: JSON.stringify({ email }),
         });
         const data = await res.json();
-        showResetAlert(
-          'Si cet email existe, un lien de reinitialisation vous a ete envoye.',
-          'success'
-        );
+        let message = 'Si cet email existe, un lien de reinitialisation vous a ete envoye.';
+        if (data.reset_url) {
+          message = 'Cliquez sur le lien ci-dessous pour reinitialiser votre mot de passe :<br><br>'
+                  + '<a href="' + data.reset_url + '" style="color:var(--primary);word-break:break-all">'
+                  + data.reset_url + '</a>';
+        }
+        showResetAlert(message, 'success');
         resetBtn.style.display = 'none';
         resetEmail.disabled = true;
       } catch (err) {

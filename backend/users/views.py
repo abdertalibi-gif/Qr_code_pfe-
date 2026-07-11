@@ -1314,9 +1314,11 @@ class PasswordResetView(APIView):
 
             logger.info(f"Password reset link for {email}: {reset_url}")
 
+            from django.conf import settings
+            is_console_backend = "console" in settings.EMAIL_BACKEND.lower()
+            email_sent = False
             try:
                 from django.core.mail import send_mail
-                from django.conf import settings
                 subject = "Reinitialisation de votre mot de passe - PresenceQR"
                 message = (
                     f"Bonjour {user.first_name},\n\n"
@@ -1334,8 +1336,14 @@ class PasswordResetView(APIView):
                     [email],
                     fail_silently=True,
                 )
+                email_sent = True
             except Exception as e:
                 logger.warning(f"Email sending failed for {email}: {e}")
+
+            response_data = {"detail": msg}
+            if not email_sent or is_console_backend:
+                response_data["reset_url"] = reset_url
+            return Response(response_data)
 
         return Response({"detail": msg})
 
