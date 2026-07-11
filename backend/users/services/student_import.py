@@ -465,23 +465,16 @@ def _process_import_row(
             )
             report.created.append(_student_payload(student))
         else:
-            if student.classe_id and student.classe_id != classe.id:
-                old_filiere_id = student.classe.filiere_id
-                new_filiere_id = classe.filiere_id
-                if old_filiere_id and old_filiere_id != new_filiere_id:
-                    report.errors.append({
-                        "line": row.line_number,
-                        "code": row.code,
-                        "messages": [
-                            f"Cet étudiant est déjà rattaché à la filière {student.classe.filiere.name} "
-                            f"et ne peut pas être inscrit dans une autre filière."
-                        ],
-                    })
-                    transaction.savepoint_rollback(sid)
-                    return
-            if student.classe_id != classe.id:
-                student.classe = classe
-                student.save(update_fields=["classe"])
+            if module.filiere_id != student.classe.filiere_id:
+                report.errors.append({
+                    "line": row.line_number,
+                    "code": row.code,
+                    "messages": [
+                        "Ce module n'appartient pas à la filière de cet étudiant."
+                    ],
+                })
+                transaction.savepoint_rollback(sid)
+                return
             if _apply_student_updates(student, row, user):
                 report.updated.append(_student_payload(student))
 
