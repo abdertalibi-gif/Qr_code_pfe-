@@ -659,12 +659,13 @@ class StudentSerializer(serializers.ModelSerializer):
             existing_student = Student.objects.filter(code_massar=code_massar).first()
 
         if existing_student:
-            # Verify module belongs to the student's filiere
+            # Prevent changing filiere on existing student
             if module_id and existing_student.classe_id:
                 mod = Module.objects.get(pk=module_id)
                 if existing_student.classe.filiere_id != mod.filiere_id:
                     raise serializers.ValidationError(
-                        "Ce module n'appartient pas à la filière de cet étudiant."
+                        f"Cet étudiant est déjà rattaché à la filière {existing_student.classe.filiere.name} "
+                        f"et ne peut pas être inscrit dans une autre filière."
                     )
 
             if code_massar and code_massar != existing_student.code_massar:
@@ -692,13 +693,9 @@ class StudentSerializer(serializers.ModelSerializer):
                 existing_student.save(update_fields=["user"])
 
             if module_id:
-                _, created = StudentModuleEnrollment.objects.get_or_create(
+                StudentModuleEnrollment.objects.get_or_create(
                     student=existing_student, module_id=module_id
                 )
-                if not created:
-                    raise serializers.ValidationError(
-                        "Cet étudiant est déjà inscrit dans ce module."
-                    )
 
             return existing_student
 
@@ -716,13 +713,9 @@ class StudentSerializer(serializers.ModelSerializer):
         student = super().create(validated_data)
 
         if module_id:
-            _, created = StudentModuleEnrollment.objects.get_or_create(
+            StudentModuleEnrollment.objects.get_or_create(
                 student=student, module_id=module_id
             )
-            if not created:
-                raise serializers.ValidationError(
-                    "Cet étudiant est déjà inscrit dans ce module."
-                )
 
         return student
 
