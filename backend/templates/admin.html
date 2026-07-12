@@ -2520,7 +2520,7 @@
       department_id: document.getElementById('fDepartment').value || null,
       manager_id: document.getElementById('fManager').value || null,
     };
-    if (!body.name || !body.semestre) {
+    if (!body.name || !body.semestre_id) {
       showToast('Nom et semestre sont requis.', 'error'); return;
     }
     try {

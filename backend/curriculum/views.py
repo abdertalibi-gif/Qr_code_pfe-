@@ -719,18 +719,26 @@ def semestres_par_niveau(request):
 @permission_classes([IsAuthenticated])
 def filiere_list(request):
     if request.method == "POST":
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("=== POST_FILIERE data=%s role=%s", request.data, request.user.role)
         if request.user.role != "admin":
+            logger.warning("=== POST_FILIERE PERMISSION_DENIED")
             return Response({"detail": "Permission refusée."}, status=403)
         serializer = FiliereSerializer(data=request.data)
         if serializer.is_valid():
+            logger.info("=== POST_FILIERE VALID_OK validated_data=%s", serializer.validated_data)
             try:
-                serializer.save()
+                obj = serializer.save()
+                logger.info("=== POST_FILIERE SAVED id=%s name=%s", obj.id, obj.name)
                 return Response(serializer.data, status=201)
             except Exception as exc:
+                logger.error("=== POST_FILIERE SAVE_ERROR %s", exc, exc_info=True)
                 return Response(
                     {"detail": f"Erreur lors de la création : {exc}"},
                     status=500,
                 )
+        logger.error("=== POST_FILIERE VALID_FAIL errors=%s", serializer.errors)
         return Response(serializer.errors, status=400)
 
     semestre_id = request.query_params.get("semestre_id", "")
