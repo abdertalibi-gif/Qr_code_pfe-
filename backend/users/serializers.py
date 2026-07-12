@@ -438,6 +438,13 @@ class ClasseSerializer(serializers.ModelSerializer):
         required=False, allow_null=True, write_only=True,
     )
     teacher_name = serializers.SerializerMethodField()
+    department_id = serializers.PrimaryKeyRelatedField(
+        source="department",
+        queryset=Department.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    department_name = serializers.CharField(source="department.name", read_only=True)
     class Meta:
         model = Classe
         fields = [
@@ -464,6 +471,8 @@ class ClasseSerializer(serializers.ModelSerializer):
             "teacher_count",
             "teacher_id",
             "teacher_name",
+            "department_id",
+            "department_name",
             "level",
             "field",
             "description",
@@ -481,6 +490,7 @@ class ClasseSerializer(serializers.ModelSerializer):
             "amphitheater_name",
             "location_display",
             "teacher_name",
+            "department_name",
         ]
         extra_kwargs = {
             'academic_year': {'required': False},
