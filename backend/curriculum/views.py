@@ -786,13 +786,27 @@ def filiere_detail(request, pk):
         return Response(serializer.data)
 
     if request.method == "PATCH":
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("=== FILIERE_PATCH_START pk=%s role=%s user_id=%s data=%s", pk, request.user.role, request.user.id, request.data)
         if request.user.role not in ("admin", "department_head", "program_manager"):
+            logger.warning("=== FILIERE_PATCH_PERMISSION_DENIED pk=%s", pk)
             return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+        logger.info("=== FILIERE_PATCH_BEFORE_SERIALIZER pk=%s", pk)
         serializer = FiliereSerializer(filiere, data=request.data, partial=True)
+        logger.info("=== FILIERE_PATCH_BEFORE_VALIDATION pk=%s", pk)
         if serializer.is_valid():
+            logger.info("=== FILIERE_PATCH_VALID_OK pk=%s validated_data=%s", pk, serializer.validated_data)
+            logger.info("=== FILIERE_PATCH_BEFORE_SAVE pk=%s", pk)
             serializer.save()
+            logger.info("=== FILIERE_PATCH_AFTER_SAVE pk=%s", pk)
+            logger.info("=== FILIERE_PATCH_BEFORE_CACHE_CLEAR pk=%s", pk)
             cache.clear()
-            return Response(serializer.data)
+            logger.info("=== FILIERE_PATCH_AFTER_CACHE_CLEAR pk=%s", pk)
+            resp_data = serializer.data
+            logger.info("=== FILIERE_PATCH_RESPONSE_OK pk=%s", pk)
+            return Response(resp_data)
+        logger.error("=== FILIERE_PATCH_VALID_FAIL pk=%s errors=%s", pk, serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
