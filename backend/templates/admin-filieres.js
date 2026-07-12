@@ -72,31 +72,10 @@ function renderFilieres() {
   '</tr>').join('');
 }
 
-async function loadSemestresForNiveau(niveau) {
-  const semSel = document.getElementById('fSemestre');
-  if (!niveau) {
-    semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
-    semSel.disabled = true;
-    return;
-  }
-  semSel.disabled = true;
-  semSel.innerHTML = '<option value="">Chargement…</option>';
-  try {
-    const data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
-    const sems = Array.isArray(data) ? data : (data.results || []);
-    semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-      sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
-    semSel.disabled = false;
-  } catch (e) {
-    semSel.innerHTML = '<option value="">Erreur</option>';
-    semSel.disabled = false;
-  }
-}
-
 async function populateFiliereFormSelects() {
   const semSel = document.getElementById('fSemestre');
-  semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
-  semSel.disabled = true;
+  semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    allSemestres.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
 
   const deptSel = document.getElementById('fDepartment');
   deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -106,24 +85,6 @@ async function populateFiliereFormSelects() {
   const mgrSel = document.getElementById('fManager');
   mgrSel.innerHTML = '<option value="">— Non assigné —</option>' +
     users.map(u => '<option value="' + u.id + '">' + esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>').join('');
-}
-
-function openEditFiliere(id) {
-  const f = allFilieres.find(x => x.id === id);
-  if (!f) return;
-  populateFiliereFormSelects().then(async () => {
-    document.getElementById('fId').value = f.id;
-    document.getElementById('filiereModalTitle').textContent = 'Modifier la filière';
-    document.getElementById('fName').value = f.name || '';
-    document.getElementById('fNiveau').value = f.niveau || '';
-    if (f.niveau) {
-      await loadSemestresForNiveau(f.niveau);
-      if (f.semestre) document.getElementById('fSemestre').value = f.semestre;
-    }
-    if (f.department_id) document.getElementById('fDepartment').value = f.department_id;
-    if (f.manager_id) document.getElementById('fManager').value = f.manager_id;
-    openModal('modalFiliere');
-  });
 }
 
 async function deleteFiliere(id) {
@@ -141,39 +102,66 @@ function setupEventListeners() {
 
   document.getElementById('btnRefreshFilieres')?.addEventListener('click', loadFilieres);
 
+  const fiSemestreGroup = document.getElementById('fSemestre')?.closest('.field');
+
   document.getElementById('btnOpenAddFiliere')?.addEventListener('click', async function () {
     await populateFiliereFormSelects();
     document.getElementById('fId').value = '';
     document.getElementById('filiereModalTitle').textContent = 'Ajouter une filière';
     document.getElementById('fName').value = '';
     document.getElementById('fNiveau').value = '';
+    if (fiSemestreGroup) fiSemestreGroup.style.display = 'none';
     openModal('modalFiliere');
   });
 
-  document.getElementById('fNiveau')?.addEventListener('change', function () {
-    loadSemestresForNiveau(this.value);
-  });
+  window.openEditFiliere = function (id) {
+    const f = allFilieres.find(x => x.id === id);
+    if (!f) return;
+    populateFiliereFormSelects().then(() => {
+      document.getElementById('fId').value = f.id;
+      document.getElementById('filiereModalTitle').textContent = 'Modifier la filière';
+      document.getElementById('fName').value = f.name || '';
+      if (f.semestre) document.getElementById('fSemestre').value = f.semestre;
+      document.getElementById('fNiveau').value = f.niveau || '';
+      if (f.department_id) document.getElementById('fDepartment').value = f.department_id;
+      if (f.manager_id) document.getElementById('fManager').value = f.manager_id;
+      if (fiSemestreGroup) fiSemestreGroup.style.display = '';
+      openModal('modalFiliere');
+    });
+  };
 
   document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {
     const id = document.getElementById('fId').value;
     const body = {
       name: document.getElementById('fName').value.trim(),
-      semestre_id: document.getElementById('fSemestre').value || null,
       niveau: document.getElementById('fNiveau').value || '',
       department_id: document.getElementById('fDepartment').value || null,
       manager_id: document.getElementById('fManager').value || null,
     };
-    if (!body.name || !body.semestre_id) {
-      showToast('Nom et semestre sont requis.', 'error'); return;
+    if (!body.name) {
+      showToast('Le nom est requis.', 'error'); return;
     }
     try {
       if (id) {
+        body.semestre_id = document.getElementById('fSemestre').value || null;
+        if (!body.semestre_id) {
+          showToast('Le semestre est requis pour la modification.', 'error'); return;
+        }
         await API.apiFetch('/curriculum/filieres/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
+        closeModal('modalFiliere');
+        showToast('Filière modifiée.', 'success');
       } else {
-        await API.apiFetch('/curriculum/filieres/', { method: 'POST', body: JSON.stringify(body) });
+        const resp = await API.apiFetch('/curriculum/filieres/', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        closeModal('modalFiliere');
+        if (resp.message) {
+          showToast(resp.message, 'success');
+        } else {
+          showToast('Filière créée.', 'success');
+        }
       }
-      closeModal('modalFiliere');
-      showToast('Filière enregistrée.', 'success');
       await loadFilieres();
     } catch (e) { showToast(e.message, 'error'); }
   });

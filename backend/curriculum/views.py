@@ -715,30 +715,91 @@ def semestres_par_niveau(request):
     return Response(data)
 
 
+def _bulk_create_filieres(name, niveau, extra_data):
+    """Create Filiere records for every semester of the given niveau."""
+    from users.models import NIVEAU_SEMESTRE_MAP
+
+    allowed_sem_names = NIVEAU_SEMESTRE_MAP.get(niveau, [])
+    if not allowed_sem_names:
+        return Response(
+            {"detail": f"Aucun semestre trouvé pour le niveau '{niveau}'."},
+            status=400,
+        )
+
+    semestres = Semestre.objects.filter(name__in=allowed_sem_names).order_by("name")
+    created = []
+    skipped = []
+
+    department_id = extra_data.get("department_id")
+    manager_id = extra_data.get("manager_id")
+
+    for sem in semestres:
+        existing = Filiere.objects.filter(name=name, semestre=sem, niveau=niveau).first()
+        if existing:
+            skipped.append(existing)
+            continue
+
+        filiere = Filiere(
+            name=name,
+            semestre=sem,
+            niveau=niveau,
+        )
+        if department_id:
+            try:
+                filiere.department_id = int(department_id)
+            except (ValueError, TypeError):
+                pass
+        if manager_id:
+            try:
+                filiere.manager_id = int(manager_id)
+            except (ValueError, TypeError):
+                pass
+        filiere.save()
+        created.append(filiere)
+
+    cache.clear()
+    serializer = FiliereSerializer(created + skipped, many=True)
+
+    msg_parts = []
+    if created:
+        msg_parts.append(f"{len(created)} filière(s) créée(s)")
+    if skipped:
+        msg_parts.append(f"{len(skipped)} existai(en)t déjà")
+    message = ", ".join(msg_parts) + "."
+
+    return Response({
+        "created": len(created),
+        "skipped": len(skipped),
+        "message": message,
+        "filieres": serializer.data,
+    })
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def filiere_list(request):
     if request.method == "POST":
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info("=== POST_FILIERE data=%s role=%s", request.data, request.user.role)
         if request.user.role != "admin":
-            logger.warning("=== POST_FILIERE PERMISSION_DENIED")
             return Response({"detail": "Permission refusée."}, status=403)
+
+        name = request.data.get("name", "").strip()
+        niveau = request.data.get("niveau", "")
+        semestre_id = request.data.get("semestre_id", None)
+
+        # Bulk create: name + niveau only (no semestre_id)
+        if name and niveau and not semestre_id and semestre_id is None:
+            return _bulk_create_filieres(name, niveau, request.data)
+
+        # Single create (backward compatible, used by edit when changing semester)
+        if not semestre_id:
+            return Response(
+                {"semestre_id": "Le semestre est requis pour la création unitaire."},
+                status=400,
+            )
         serializer = FiliereSerializer(data=request.data)
         if serializer.is_valid():
-            logger.info("=== POST_FILIERE VALID_OK validated_data=%s", serializer.validated_data)
-            try:
-                obj = serializer.save()
-                logger.info("=== POST_FILIERE SAVED id=%s name=%s", obj.id, obj.name)
-                return Response(serializer.data, status=201)
-            except Exception as exc:
-                logger.error("=== POST_FILIERE SAVE_ERROR %s", exc, exc_info=True)
-                return Response(
-                    {"detail": f"Erreur lors de la création : {exc}"},
-                    status=500,
-                )
-        logger.error("=== POST_FILIERE VALID_FAIL errors=%s", serializer.errors)
+            serializer.save()
+            return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
     semestre_id = request.query_params.get("semestre_id", "")

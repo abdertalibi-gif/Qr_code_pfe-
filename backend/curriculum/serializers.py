@@ -84,15 +84,10 @@ class FiliereSerializer(serializers.ModelSerializer):
         ]
 
     def validate_manager_id(self, value):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info("=== FILIERE_SERIALIZER_VALIDATE_MANAGER pk=%s value=%s", self.instance.pk if self.instance else None, value)
         if value and value.role != "program_manager":
-            logger.warning("=== FILIERE_SERIALIZER_VALIDATE_MANAGER_REJECT role=%s", value.role)
             raise serializers.ValidationError(
                 "Seul un compte avec le rôle Responsable de Filière peut être affecté."
             )
-        logger.info("=== FILIERE_SERIALIZER_VALIDATE_MANAGER_OK")
         return value
 
     def get_modules(self, obj):

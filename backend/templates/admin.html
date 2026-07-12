@@ -2477,39 +2477,20 @@
   };
 
   /* ── Filiere CRUD (from Curriculum tab) ── */
-  async function loadSemestresForNiveau(niveau) {
-    const semSel = document.getElementById('fSemestre');
-    if (!niveau) {
-      semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
-      semSel.disabled = true;
-      return;
-    }
-    semSel.disabled = true;
-    semSel.innerHTML = '<option value="">Chargement…</option>';
-    try {
-      const data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
-      const sems = Array.isArray(data) ? data : (data.results || []);
-      semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-        sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
-      semSel.disabled = false;
-    } catch (e) {
-      semSel.innerHTML = '<option value="">Erreur</option>';
-      semSel.disabled = false;
-    }
-  }
-
   async function populateFiliereFormSelects() {
     try {
-      const [departments, users] = await Promise.all([
+      const [semestres, departments, users] = await Promise.all([
+        API.apiFetch('/curriculum/semestres/'),
         API.apiFetch('/departments/'),
         API.apiFetch('/users/?role=program_manager'),
       ]);
+      const sems = Array.isArray(semestres) ? semestres : (semestres.results || []);
       const depts = Array.isArray(departments) ? departments : (departments.results || []);
       const mgrs = Array.isArray(users) ? users : (users.results || []);
 
       const semSel = document.getElementById('fSemestre');
-      semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
-      semSel.disabled = true;
+      semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
 
       const deptSel = document.getElementById('fDepartment');
       deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -2521,40 +2502,48 @@
     } catch (e) { showToast('Erreur chargement: ' + e.message, 'error'); }
   }
 
+  const fiSemestreGroup = document.getElementById('fSemestre')?.closest('.field');
+
   document.getElementById('btnOpenAddFiliereCurric')?.addEventListener('click', async () => {
     await populateFiliereFormSelects();
     document.getElementById('fId').value = '';
     document.getElementById('filiereModalTitle').textContent = 'Ajouter une filière';
     document.getElementById('fName').value = '';
     document.getElementById('fNiveau').value = '';
+    if (fiSemestreGroup) fiSemestreGroup.style.display = 'none';
     openModal('modalFiliere');
-  });
-
-  document.getElementById('fNiveau')?.addEventListener('change', function () {
-    loadSemestresForNiveau(this.value);
   });
 
   document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {
     const id = document.getElementById('fId').value;
     const body = {
       name: document.getElementById('fName').value.trim(),
-      semestre_id: document.getElementById('fSemestre').value || null,
       niveau: document.getElementById('fNiveau').value || '',
       department_id: document.getElementById('fDepartment').value || null,
       manager_id: document.getElementById('fManager').value || null,
     };
-    if (!body.name || !body.semestre_id) {
-      showToast('Nom et semestre sont requis.', 'error'); return;
+    if (!body.name) {
+      showToast('Le nom est requis.', 'error'); return;
     }
     try {
       if (id) {
+        body.semestre_id = document.getElementById('fSemestre').value || null;
+        if (!body.semestre_id) {
+          showToast('Le semestre est requis pour la modification.', 'error'); return;
+        }
         await API.apiFetch('/curriculum/filieres/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
+        closeModal('modalFiliere');
+        showToast('Filière modifiée.', 'success');
+        loadCurriculum();
       } else {
-        await API.apiFetch('/curriculum/filieres/', { method: 'POST', body: JSON.stringify(body) });
+        const resp = await API.apiFetch('/curriculum/filieres/', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        closeModal('modalFiliere');
+        showToast(resp.message || 'Filière créée.', 'success');
+        loadCurriculum();
       }
-      closeModal('modalFiliere');
-      showToast('Filière enregistrée.', 'success');
-      loadCurriculum();
     } catch (e) { showToast(e.message, 'error'); }
   });
 
