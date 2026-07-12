@@ -2477,20 +2477,39 @@
   };
 
   /* ── Filiere CRUD (from Curriculum tab) ── */
+  async function loadSemestresForNiveau(niveau) {
+    const semSel = document.getElementById('fSemestre');
+    if (!niveau) {
+      semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
+      semSel.disabled = true;
+      return;
+    }
+    semSel.disabled = true;
+    semSel.innerHTML = '<option value="">Chargement…</option>';
+    try {
+      const data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
+      const sems = Array.isArray(data) ? data : (data.results || []);
+      semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+      semSel.disabled = false;
+    } catch (e) {
+      semSel.innerHTML = '<option value="">Erreur</option>';
+      semSel.disabled = false;
+    }
+  }
+
   async function populateFiliereFormSelects() {
     try {
-      const [semestres, departments, users] = await Promise.all([
-        API.apiFetch('/curriculum/semestres/'),
+      const [departments, users] = await Promise.all([
         API.apiFetch('/departments/'),
         API.apiFetch('/users/?role=program_manager'),
       ]);
-      const sems = Array.isArray(semestres) ? semestres : (semestres.results || []);
       const depts = Array.isArray(departments) ? departments : (departments.results || []);
       const mgrs = Array.isArray(users) ? users : (users.results || []);
 
       const semSel = document.getElementById('fSemestre');
-      semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-        sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+      semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
+      semSel.disabled = true;
 
       const deptSel = document.getElementById('fDepartment');
       deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -2509,6 +2528,10 @@
     document.getElementById('fName').value = '';
     document.getElementById('fNiveau').value = '';
     openModal('modalFiliere');
+  });
+
+  document.getElementById('fNiveau')?.addEventListener('change', function () {
+    loadSemestresForNiveau(this.value);
   });
 
   document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {

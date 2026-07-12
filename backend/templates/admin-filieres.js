@@ -72,10 +72,31 @@ function renderFilieres() {
   '</tr>').join('');
 }
 
+async function loadSemestresForNiveau(niveau) {
+  const semSel = document.getElementById('fSemestre');
+  if (!niveau) {
+    semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
+    semSel.disabled = true;
+    return;
+  }
+  semSel.disabled = true;
+  semSel.innerHTML = '<option value="">Chargement…</option>';
+  try {
+    const data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
+    const sems = Array.isArray(data) ? data : (data.results || []);
+    semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+    semSel.disabled = false;
+  } catch (e) {
+    semSel.innerHTML = '<option value="">Erreur</option>';
+    semSel.disabled = false;
+  }
+}
+
 async function populateFiliereFormSelects() {
   const semSel = document.getElementById('fSemestre');
-  semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    allSemestres.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+  semSel.innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
+  semSel.disabled = true;
 
   const deptSel = document.getElementById('fDepartment');
   deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -90,12 +111,15 @@ async function populateFiliereFormSelects() {
 function openEditFiliere(id) {
   const f = allFilieres.find(x => x.id === id);
   if (!f) return;
-  populateFiliereFormSelects().then(() => {
+  populateFiliereFormSelects().then(async () => {
     document.getElementById('fId').value = f.id;
     document.getElementById('filiereModalTitle').textContent = 'Modifier la filière';
     document.getElementById('fName').value = f.name || '';
-    if (f.semestre) document.getElementById('fSemestre').value = f.semestre;
     document.getElementById('fNiveau').value = f.niveau || '';
+    if (f.niveau) {
+      await loadSemestresForNiveau(f.niveau);
+      if (f.semestre) document.getElementById('fSemestre').value = f.semestre;
+    }
     if (f.department_id) document.getElementById('fDepartment').value = f.department_id;
     if (f.manager_id) document.getElementById('fManager').value = f.manager_id;
     openModal('modalFiliere');
@@ -124,6 +148,10 @@ function setupEventListeners() {
     document.getElementById('fName').value = '';
     document.getElementById('fNiveau').value = '';
     openModal('modalFiliere');
+  });
+
+  document.getElementById('fNiveau')?.addEventListener('change', function () {
+    loadSemestresForNiveau(this.value);
   });
 
   document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {
