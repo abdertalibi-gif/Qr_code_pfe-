@@ -4497,7 +4497,7 @@ function absOnModuleChange() {
     set('absStatTeachers', s.total_teachers);
     set('absStatModules', s.total_modules);
 
-    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Étudiant', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student__first_name', 'student__last_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Nom', 'Prénom', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absTeacherBody', d.by_teacher, ['teacher_name', 'total', 'absent_count', 'rate'], ['Enseignant', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absModuleBody', d.by_module, ['module_name', 'total', 'absent_count', 'rate'], ['Module', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absFiliereBody', d.by_filiere, ['filiere_name', 'total', 'absent_count', 'rate'], ['Filière', 'Total', 'Absences', 'Taux']);
