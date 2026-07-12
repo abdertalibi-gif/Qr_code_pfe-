@@ -558,6 +558,12 @@ def teacher_list(request):
     elif user.role not in ("admin",):
         return Response([])
 
+    classe_id = request.query_params.get("classe_id", "")
+    if classe_id:
+        teachers = teachers.filter(
+            Q(assigned_classes__id=classe_id) | Q(sessions__classe_id=classe_id)
+        ).distinct()
+
     data = []
     for t in teachers:
         ac = list(t.assigned_classes.all())

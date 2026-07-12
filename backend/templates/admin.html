@@ -615,15 +615,11 @@
         <div class="stat-card"><div class="stat-icon pink">📚</div><div><div class="label">Modules</div><div class="value" id="absStatModules">—</div></div></div>
       </div>
 
-      <!-- Hierarchical filters -->
+      <!-- Hierarchical filters (cascade: Semestre → Filière → Module → Classe → Enseignant → Étudiant) -->
       <div class="absence-filters">
         <div class="field">
-          <label>Département</label>
-          <select id="absDept" class="form-control" onchange="absOnDeptChange()"><option value="">-- Sélectionner --</option></select>
-        </div>
-        <div class="field">
           <label>Semestre</label>
-          <select id="absSemestre" class="form-control" onchange="absOnSemestreChange()" disabled><option value="">-- Sélectionner --</option></select>
+          <select id="absSemestre" class="form-control" onchange="absOnSemestreChange()"><option value="">-- Sélectionner --</option></select>
         </div>
         <div class="field">
           <label>Filière</label>
@@ -635,27 +631,26 @@
         </div>
         <div class="field">
           <label>Classe</label>
-          <select id="absClasse" class="form-control" disabled><option value="">Toutes</option></select>
+          <select id="absClasse" class="form-control" onchange="absOnClasseChange()" disabled><option value="">Toutes</option></select>
         </div>
         <div class="field">
           <label>Enseignant</label>
-          <select id="absTeacher" class="form-control"><option value="">Tous</option></select>
+          <select id="absTeacher" class="form-control" onchange="onAnyFilterChange()"><option value="">Tous</option></select>
         </div>
         <div class="field">
           <label>Étudiant</label>
-          <input type="text" id="absStudentSearch" class="form-control" placeholder="Nom, Massar, Apogée..." />
+          <input type="text" id="absStudentSearch" class="form-control" placeholder="Nom, Massar, Apogée..." oninput="onAnyFilterChange()" />
         </div>
         <div class="field">
           <label>Du</label>
-          <input type="date" id="absDateFrom" class="form-control" onchange="applyAbsenceFilters()" />
+          <input type="date" id="absDateFrom" class="form-control" onchange="onAnyFilterChange()" />
         </div>
         <div class="field">
           <label>Au</label>
-          <input type="date" id="absDateTo" class="form-control" onchange="applyAbsenceFilters()" />
+          <input type="date" id="absDateTo" class="form-control" onchange="onAnyFilterChange()" />
         </div>
       </div>
       <div class="absence-actions">
-        <button class="btn btn-primary" onclick="applyAbsenceFilters()">🔍 Appliquer</button>
         <button class="btn btn-secondary" onclick="resetAbsenceFilters()">↺ Réinitialiser</button>
         <button class="btn btn-success" id="btnExportProf" onclick="exportProfessionalAbsences()" disabled>📥 Générer Excel</button>
       </div>
@@ -4317,11 +4312,11 @@ tbody.innerHTML = list.map(function (d) {
   /* ── Absence Statistics ── */
   let absenceData = null;
   /* ── Hierarchical absence filters ── */
-  var _absLoadingDept = false;
   var _absLoadingSemestre = false;
   var _absLoadingFiliere = false;
+  var _absLoadingModule = false;
+  var _absLoadingClasse = false;
 
-  function _absHideField(id) { var el = document.getElementById(id); if (el) { var g = el.closest('.field'); if (g) g.style.display = 'none'; } }
   function _absSetOpts(selId, arr, labelFn) {
     var sel = document.getElementById(selId); if (!sel) return;
     sel.innerHTML = '<option value="">-- Sélectionner --</option>';
@@ -4330,148 +4325,122 @@ tbody.innerHTML = list.map(function (d) {
     });
   }
 
+  function absResetDownstream(from) {
+    var cascade = { 'absSemestre': ['absFiliere','absModule','absClasse','absTeacher'],
+                    'absFiliere': ['absModule','absClasse','absTeacher'],
+                    'absModule': ['absClasse','absTeacher'],
+                    'absClasse': ['absTeacher'] };
+    var toReset = cascade[from] || [];
+    toReset.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.tagName === 'SELECT') {
+        if (id === 'absClasse') { el.innerHTML = '<option value="">Toutes</option>'; }
+        else if (id === 'absTeacher') { el.innerHTML = '<option value="">Tous</option>'; }
+        else { el.innerHTML = '<option value="">-- Sélectionner --</option>'; }
+        el.disabled = true;
+      }
+    });
+  }
+
   function populateAbsenceFilters() {
     var role = currentUser.role;
-
-    var deptSel = document.getElementById('absDept');
-    if (!deptSel) return;
+    var semSel = document.getElementById('absSemestre');
+    if (!semSel) return;
 
     if (role === 'department_head' && currentUser.managed_department) {
       var dept = currentUser.managed_department;
-      // Show cascade normally but pre-set department
-      deptSel.innerHTML = '<option value="' + dept.id + '">' + esc(dept.name) + '</option>';
-      deptSel.disabled = true;
-      absOnDeptChange(); // cascade → semestre → filiere → module → classe
+      semSel.disabled = false;
+      semSel.innerHTML = '<option value="">Chargement...</option>';
+      API.apiFetch('/curriculum/semestres/?department_id=' + dept.id).then(function(semestres) {
+        semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+        semestres.forEach(function(s) {
+          var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; semSel.appendChild(opt);
+        });
+        if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+      }).catch(function() { semSel.disabled = true; });
     } else if (role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length) {
-      // Hide department/semestre cascade; show filiere select with managed filieres
-      _absHideField('absDept'); _absHideField('absSemestre');
-      var filSel = document.getElementById('absFiliere');
-      if (filSel) {
-        filSel.disabled = false;
-        _absSetOpts('absFiliere', currentUser.managed_filieres, function(f) { return f.name; });
-        // Show filiere field
-        var filGroup = filSel.closest('.field');
-        if (filGroup) filGroup.style.display = '';
-      }
+      // Load all semestres; filieres will be scoped by role
+      semSel.disabled = false;
+      API.apiFetch('/curriculum/semestres/').then(function(semestres) {
+        semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+        semestres.forEach(function(s) {
+          var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; semSel.appendChild(opt);
+        });
+        if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+      }).catch(function() { semSel.disabled = true; });
     } else {
-      // Admin: load all departments
-      deptSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-      API.apiFetch('/departments/').then(function(depts) {
-        depts.forEach(function(d) {
-          var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name || d.label; deptSel.appendChild(opt);
+      // Admin: load all semestres
+      semSel.disabled = false;
+      API.apiFetch('/curriculum/semestres/').then(function(semestres) {
+        semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+        semestres.forEach(function(s) {
+          var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; semSel.appendChild(opt);
         });
-      }).catch(function() {});
+        if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+      }).catch(function() { semSel.disabled = true; });
     }
-    // Load teachers (independent, always available)
-    var tSel = document.getElementById('absTeacher');
-    if (tSel) {
-      tSel.innerHTML = '<option value="">Tous</option>';
-      API.apiFetch('/teachers/').then(function(teachers) {
-        teachers.forEach(function(t) {
-          var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
-        });
-      }).catch(function() {});
-    }
-  }
-
-  function absOnDeptChange() {
-    if (_absLoadingDept) return;
-    var deptId = document.getElementById('absDept').value;
-    var semSel = document.getElementById('absSemestre');
-    var fSel = document.getElementById('absFiliere');
-    var mSel = document.getElementById('absModule');
-    var cSel = document.getElementById('absClasse');
-
-    // Reset all downstream
-    semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    semSel.disabled = true;
-    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    fSel.disabled = true;
-    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    mSel.disabled = true;
-    cSel.innerHTML = '<option value="">Toutes</option>';
-    cSel.disabled = true;
-
-    if (!deptId) return;
-    _absLoadingDept = true;
-    semSel.disabled = false;
-    semSel.innerHTML = '<option value="">Chargement...</option>';
-    // Load semestres for this department (via filieres endpoint with department filter)
-    API.apiFetch('/curriculum/semestres/?department_id=' + deptId).then(function(semestres) {
-      semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-      semestres.forEach(function(s) {
-        var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name || 'Semestre ' + s.name; semSel.appendChild(opt);
-      });
-      if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
-    }).catch(function() { semSel.disabled = true; semSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingDept = false; });
   }
 
   function absOnSemestreChange() {
     if (_absLoadingSemestre) return;
-    var deptId = document.getElementById('absDept').value;
     var semId = document.getElementById('absSemestre').value;
     var fSel = document.getElementById('absFiliere');
-    var mSel = document.getElementById('absModule');
-    var cSel = document.getElementById('absClasse');
 
-    // Reset downstream
-    fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    fSel.disabled = true;
-    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    mSel.disabled = true;
-    cSel.innerHTML = '<option value="">Toutes</option>';
-    cSel.disabled = true;
+    absResetDownstream('absSemestre');
 
-    if (!deptId || !semId) return;
+    if (!semId) { onAnyFilterChange(); return; }
     _absLoadingSemestre = true;
     fSel.disabled = false;
     fSel.innerHTML = '<option value="">Chargement...</option>';
-    // Load filières for department + semestre
-    API.apiFetch('/curriculum/filieres/?department_id=' + deptId + '&semestre_id=' + semId).then(function(filieres) {
+
+    var url = '/curriculum/filieres/?semestre_id=' + semId;
+    if (currentUser.role === 'department_head' && currentUser.managed_department) {
+      url += '&department_id=' + currentUser.managed_department.id;
+    }
+    API.apiFetch(url).then(function(filieres) {
       fSel.innerHTML = '<option value="">-- Sélectionner --</option>';
       filieres.forEach(function(f) {
         var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
       });
       if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
-    }).catch(function() { fSel.disabled = true; fSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingSemestre = false; });
+      onAnyFilterChange();
+    }).catch(function() { fSel.disabled = true; }).finally(function() { _absLoadingSemestre = false; });
   }
 
   function absOnFiliereChange() {
     if (_absLoadingFiliere) return;
     var filiereId = document.getElementById('absFiliere').value;
     var mSel = document.getElementById('absModule');
-    var cSel = document.getElementById('absClasse');
 
-    // Reset downstream
-    mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    mSel.disabled = true;
-    cSel.innerHTML = '<option value="">Toutes</option>';
-    cSel.disabled = true;
+    absResetDownstream('absFiliere');
 
-    if (!filiereId) return;
+    if (!filiereId) { onAnyFilterChange(); return; }
     _absLoadingFiliere = true;
     mSel.disabled = false;
     mSel.innerHTML = '<option value="">Chargement...</option>';
-    // Load modules for filiere
     API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId).then(function(modules) {
       mSel.innerHTML = '<option value="">-- Sélectionner --</option>';
       modules.forEach(function(m) {
-        var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
+        var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name; mSel.appendChild(opt);
       });
       if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
-    }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingFiliere = false; });
+      onAnyFilterChange();
+    }).catch(function() { mSel.disabled = true; }).finally(function() { _absLoadingFiliere = false; });
   }
 
-function absOnModuleChange() {
+  function absOnModuleChange() {
+    if (_absLoadingModule) return;
     var modId = document.getElementById('absModule').value;
     var cSel = document.getElementById('absClasse');
-    cSel.innerHTML = '<option value="">Toutes</option>';
-    cSel.disabled = true;
-    if (!modId) return;
+
+    absResetDownstream('absModule');
+
+    if (!modId) { onAnyFilterChange(); return; }
+    _absLoadingModule = true;
     cSel.disabled = false;
     cSel.innerHTML = '<option value="">Chargement...</option>';
     var filiereId = document.getElementById('absFiliere').value;
-    // Classes can be filtered by module_id and/or filiere_id
     var url = '/classes/?module_id=' + modId;
     if (filiereId) url += '&filiere_id=' + filiereId;
     API.apiFetch(url).then(function(data) {
@@ -4482,15 +4451,42 @@ function absOnModuleChange() {
         if (c.code) opt.textContent = c.name + ' (' + c.code + ')';
         cSel.appendChild(opt);
       });
-    }).catch(function() { cSel.disabled = true; cSel.innerHTML = '<option value="">Erreur</option>'; });
+      if (classes.length === 0) { cSel.disabled = true; cSel.innerHTML = '<option value="">Toutes</option>'; }
+      onAnyFilterChange();
+    }).catch(function() { cSel.disabled = true; }).finally(function() { _absLoadingModule = false; });
+  }
+
+  function absOnClasseChange() {
+    if (_absLoadingClasse) return;
+    var classeId = document.getElementById('absClasse').value;
+    var tSel = document.getElementById('absTeacher');
+
+    // Reset teacher downstream
+    tSel.innerHTML = '<option value="">Tous</option>';
+    tSel.disabled = false;
+
+    if (!classeId) { onAnyFilterChange(); return; }
+    _absLoadingClasse = true;
+    tSel.innerHTML = '<option value="">Chargement...</option>';
+    API.apiFetch('/teachers/?classe_id=' + classeId).then(function(teachers) {
+      tSel.innerHTML = '<option value="">Tous</option>';
+      teachers.forEach(function(t) {
+        var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
+      });
+      if (teachers.length === 0) { tSel.innerHTML = '<option value="">Tous</option>'; }
+      onAnyFilterChange();
+    }).catch(function() { tSel.innerHTML = '<option value="">Tous</option>'; }).finally(function() { _absLoadingClasse = false; });
+  }
+
+  function onAnyFilterChange() {
+    loadAbsenceStats();
   }
 
   function absGetFilterParams() {
     var p = {};
     var v;
-    v = document.getElementById('absDept') ? document.getElementById('absDept').value : ''; if (v) p.department_id = v;
-    v = document.getElementById('absFiliere') ? document.getElementById('absFiliere').value : ''; if (v) p.filiere_id = v;
     v = document.getElementById('absSemestre') ? document.getElementById('absSemestre').value : ''; if (v) p.semestre_id = v;
+    v = document.getElementById('absFiliere') ? document.getElementById('absFiliere').value : ''; if (v) p.filiere_id = v;
     v = document.getElementById('absModule') ? document.getElementById('absModule').value : ''; if (v) p.module_id = v;
     v = document.getElementById('absClasse') ? document.getElementById('absClasse').value : ''; if (v) p.classe_id = v;
     v = document.getElementById('absTeacher') ? document.getElementById('absTeacher').value : ''; if (v) p.teacher_id = v;
@@ -4594,90 +4590,35 @@ function absOnModuleChange() {
     }
   };
 
-  function applyAbsenceFilters() {
-    loadAbsenceStats();
-  }
-
   function resetAbsenceFilters() {
     var ids = ['absSemestre','absFiliere','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
     ids.forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
-      if (el.tagName === 'SELECT') { el.value = ''; }
+      if (el.tagName === 'SELECT') { el.innerHTML = (id === 'absClasse') ? '<option value="">Toutes</option>' : (id === 'absTeacher') ? '<option value="">Tous</option>' : '<option value="">-- Sélectionner --</option>'; el.value = ''; el.disabled = true; }
       else { el.value = ''; }
     });
-    // Reset cascade state (in order: Semestre → Filière → Module → Classe)
-    document.getElementById('absSemestre').disabled = true;
-    document.getElementById('absSemestre').innerHTML = '<option value="">-- Sélectionner --</option>';
-    document.getElementById('absFiliere').disabled = true;
-    document.getElementById('absFiliere').innerHTML = '<option value="">-- Sélectionner --</option>';
-    document.getElementById('absModule').disabled = true;
-    document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
-    document.getElementById('absClasse').disabled = true;
-    document.getElementById('absClasse').innerHTML = '<option value="">Toutes</option>';
-    // Re-apply role scoping (department_head / program_manager)
-    if (currentUser.role === 'department_head' && currentUser.managed_department) {
-      var dept = currentUser.managed_department;
-      var deptSel = document.getElementById('absDept');
-      if (deptSel) {
-        deptSel.innerHTML = '<option value="' + dept.id + '">' + esc(dept.name) + '</option>';
-        deptSel.disabled = true;
-        absOnDeptChange();
-      }
-    } else if (currentUser.role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length) {
-      _absHideField('absDept'); _absHideField('absSemestre');
-      var filSel = document.getElementById('absFiliere');
-      if (filSel) {
-        filSel.disabled = false;
-        _absSetOpts('absFiliere', currentUser.managed_filieres, function(f) { return f.name; });
-        var filGroup = filSel.closest('.field');
-        if (filGroup) filGroup.style.display = '';
-      }
-    }
+    document.getElementById('absSemestre').disabled = false;
+    // Re-apply role scoping
+    populateAbsenceFilters();
     loadAbsenceStats();
   }
 
-  function absCheckExportEnabled() {
-    var dept = document.getElementById('absDept').value;
-    var fil = document.getElementById('absFiliere').value;
-    var sem = document.getElementById('absSemestre').value;
-    var mod = document.getElementById('absModule').value;
-    var btn = document.getElementById('btnExportProf');
-    if (btn) {
-      btn.disabled = !(dept && fil && sem && mod);
-    }
-  }
-
-  // Monitor filter selects to enable/disable export button
-  document.addEventListener('change', function(e) {
-    if (e.target.id && ['absDept','absFiliere','absSemestre','absModule'].indexOf(e.target.id) >= 0) {
-      absCheckExportEnabled();
-    }
-  });
-
   function exportProfessionalAbsences() {
-    var btn = document.getElementById('btnExportProf');
-    if (!btn || btn.disabled) return;
     var p = absGetFilterParams();
-    // Map frontend param names to ExportWizardView param names
+    if (!p.filiere_id || !p.semestre_id) { showToast('Veuillez sélectionner au moins un semestre et une filière.', 'error'); return; }
     var qs = [];
     qs.push('export_mode=professional');
     qs.push('export_type=all');
     if (p.date_from) { qs.push('start_date=' + encodeURIComponent(p.date_from)); }
     if (p.date_to) { qs.push('end_date=' + encodeURIComponent(p.date_to)); }
-    if (p.department_id) { qs.push('department_id=' + p.department_id); }
     if (p.filiere_id) { qs.push('filiere_id=' + p.filiere_id); }
     if (p.semestre_id) { qs.push('semestre_id=' + p.semestre_id); }
     if (p.module_id) { qs.push('module_id=' + p.module_id); }
     if (p.classe_id) { qs.push('classe_id=' + p.classe_id); }
     if (p.teacher_id) { qs.push('enseignant_id=' + p.teacher_id); }
 
-    // Also pass department/filiere name for header
-    var deptSel = document.getElementById('absDept');
     var filSel = document.getElementById('absFiliere');
-    if (deptSel && deptSel.options[deptSel.selectedIndex]) {
-      qs.push('department_name=' + encodeURIComponent(deptSel.options[deptSel.selectedIndex].textContent));
-    }
     if (filSel && filSel.options[filSel.selectedIndex]) {
       qs.push('filiere_name=' + encodeURIComponent(filSel.options[filSel.selectedIndex].textContent));
     }
