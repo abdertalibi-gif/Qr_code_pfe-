@@ -32,9 +32,9 @@ function renderDepartments() {
       '<td><strong>' + esc(d.name) + '</strong></td>' +
       '<td>' + esc(d.head_name || '—') + '</td>' +
       '<td>' + (d.filiere_count || 0) + '</td>' +
-      '<td><button class="btn sm outline" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
-      '<td class="actions-cell">' +
-        '<button class="btn sm" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
+      '<td class="admin-only"><button class="btn sm outline admin-only" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
+      '<td class="actions-cell admin-only">' +
+        '<button class="btn sm admin-only" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
         '<button class="btn sm outline admin-only" onclick="deleteDepartment(' + d.id + ')">🗑️</button>' +
       '</td>' +
     '</tr>';
