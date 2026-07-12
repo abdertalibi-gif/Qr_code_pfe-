@@ -4495,6 +4495,12 @@ tbody.innerHTML = list.map(function (d) {
 
   function onAnyFilterChange() {
     loadAbsenceStats();
+    var btn = document.getElementById('btnExportProf');
+    if (btn) {
+      var sem = document.getElementById('absSemestre')?.value;
+      var fil = document.getElementById('absFiliere')?.value;
+      btn.disabled = !(sem && fil);
+    }
   }
 
   function absGetFilterParams() {
@@ -4635,10 +4641,13 @@ tbody.innerHTML = list.map(function (d) {
     if (p.classe_id) { qs.push('classe_id=' + p.classe_id); }
     if (p.teacher_id) { qs.push('enseignant_id=' + p.teacher_id); }
 
-    var filSel = document.getElementById('absFiliere');
-    if (filSel && filSel.options[filSel.selectedIndex]) {
-      qs.push('filiere_name=' + encodeURIComponent(filSel.options[filSel.selectedIndex].textContent));
-    }
+    ['absFiliere','absSemestre','absModule','absClasse','absTeacher'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.options[el.selectedIndex]) {
+        var name = id.replace('abs', '').toLowerCase();
+        qs.push(name + '_name=' + encodeURIComponent(el.options[el.selectedIndex].textContent));
+      }
+    });
 
     var token = localStorage.getItem('access_token') || '';
     var url = '/api/v1/attendance/export-wizard/?' + qs.join('&');

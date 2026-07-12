@@ -908,6 +908,12 @@ class ExportWizardView(APIView):
             "filiere_id": request.query_params.get("filiere_id", "").strip(),
             "semestre_id": request.query_params.get("semestre_id", "").strip(),
             "module_id": request.query_params.get("module_id", "").strip(),
+            "filiere_name": request.query_params.get("filiere_name", "").strip(),
+            "semestre_name": request.query_params.get("semestre_name", "").strip(),
+            "module_name": request.query_params.get("module_name", "").strip(),
+            "classe_name": request.query_params.get("classe_name", "").strip(),
+            "enseignant_name": request.query_params.get("enseignant_name", "").strip(),
+            "department_name": request.query_params.get("department_name", "").strip(),
         }
 
         etudiant_id = filters.get("etudiant_id")
