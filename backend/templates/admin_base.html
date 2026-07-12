@@ -132,6 +132,9 @@
         : ['attendance-live', 'sessions', 'curriculum', 'departments', 'filieres', 'rooms', 'reports', 'statistics'];
       link.style.display = allowedPages.includes(page) ? '' : 'none';
     });
+    if (!isAdmin) {
+      document.querySelectorAll('.admin-only').forEach(function(el) { el.style.display = 'none'; });
+    }
   }
 </script>
 </body>
