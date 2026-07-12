@@ -19,6 +19,7 @@ from typing import Any
 
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from users.models import Classe, Department, User
 
@@ -390,8 +391,15 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
         # Preload classes per department to avoid per-user queries
         dept_ids = set(d.id for d in user_dept_map.values())
         classes_by_dept: dict[int, list[Classe]] = {}
-        for c in Classe.objects.filter(department_id__in=dept_ids).only("id", "department_id"):
-            classes_by_dept.setdefault(c.department_id, []).append(c)
+        # Match classes via direct department FK OR filiere department FK
+        for c in Classe.objects.filter(
+            Q(department_id__in=dept_ids) | Q(filiere__department_id__in=dept_ids)
+        ).select_related("filiere").only("id", "department_id", "filiere_id"):
+            dept_key = c.department_id
+            if dept_key is None and c.filiere:
+                dept_key = c.filiere.department_id
+            if dept_key:
+                classes_by_dept.setdefault(dept_key, []).append(c)
         for u in User.objects.filter(email__in=emails).only("id", "email").iterator():
             dept = user_dept_map.get(u.email.lower())
             if dept and dept.id in classes_by_dept:

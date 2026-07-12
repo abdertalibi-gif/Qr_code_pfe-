@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.backends import ModelBackend
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -251,7 +252,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             if assigned_classes:
                 user.assigned_classes.set(assigned_classes)
             else:
-                dept_classes = Classe.objects.filter(department=department)
+                dept_classes = Classe.objects.filter(
+                    Q(department=department) | Q(filiere__department=department)
+                )
                 user.assigned_classes.set(list(dept_classes))
         elif assigned_classes:
             user.assigned_classes.set(assigned_classes)
@@ -356,7 +359,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             if assigned_classes:
                 instance.assigned_classes.set(assigned_classes)
             else:
-                dept_classes = Classe.objects.filter(department=department)
+                dept_classes = Classe.objects.filter(
+                    Q(department=department) | Q(filiere__department=department)
+                )
                 instance.assigned_classes.set(list(dept_classes))
         elif assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
