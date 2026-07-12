@@ -4390,6 +4390,7 @@ tbody.innerHTML = list.map(function (d) {
     absResetDownstream('absSemestre');
 
     if (!semId) { onAnyFilterChange(); return; }
+    onAnyFilterChange();
     _absLoadingSemestre = true;
     fSel.disabled = false;
     fSel.innerHTML = '<option value="">Chargement...</option>';
@@ -4404,7 +4405,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
       });
       if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
-      onAnyFilterChange();
     }).catch(function() { fSel.disabled = true; }).finally(function() { _absLoadingSemestre = false; });
   }
 
@@ -4416,6 +4416,7 @@ tbody.innerHTML = list.map(function (d) {
     absResetDownstream('absFiliere');
 
     if (!filiereId) { onAnyFilterChange(); return; }
+    onAnyFilterChange();
     _absLoadingFiliere = true;
     mSel.disabled = false;
     mSel.innerHTML = '<option value="">Chargement...</option>';
@@ -4425,7 +4426,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name; mSel.appendChild(opt);
       });
       if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
-      onAnyFilterChange();
     }).catch(function() { mSel.disabled = true; }).finally(function() { _absLoadingFiliere = false; });
   }
 
@@ -4437,6 +4437,7 @@ tbody.innerHTML = list.map(function (d) {
     absResetDownstream('absModule');
 
     if (!modId) { onAnyFilterChange(); return; }
+    onAnyFilterChange();
     _absLoadingModule = true;
     cSel.disabled = false;
     cSel.innerHTML = '<option value="">Chargement...</option>';
@@ -4452,7 +4453,6 @@ tbody.innerHTML = list.map(function (d) {
         cSel.appendChild(opt);
       });
       if (classes.length === 0) { cSel.disabled = true; cSel.innerHTML = '<option value="">Toutes</option>'; }
-      onAnyFilterChange();
     }).catch(function() { cSel.disabled = true; }).finally(function() { _absLoadingModule = false; });
   }
 
@@ -4466,6 +4466,7 @@ tbody.innerHTML = list.map(function (d) {
     tSel.disabled = false;
 
     if (!classeId) { onAnyFilterChange(); return; }
+    onAnyFilterChange();
     _absLoadingClasse = true;
     tSel.innerHTML = '<option value="">Chargement...</option>';
     API.apiFetch('/teachers/?classe_id=' + classeId).then(function(teachers) {
@@ -4474,7 +4475,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.full_name || t.first_name + ' ' + t.last_name; tSel.appendChild(opt);
       });
       if (teachers.length === 0) { tSel.innerHTML = '<option value="">Tous</option>'; }
-      onAnyFilterChange();
     }).catch(function() { tSel.innerHTML = '<option value="">Tous</option>'; }).finally(function() { _absLoadingClasse = false; });
   }
 
@@ -4509,12 +4509,14 @@ tbody.innerHTML = list.map(function (d) {
   }
 
   function renderAbsenceStats(d) {
+    if (!d || !d.summary) { showToast('Données statistiques invalides.', 'error'); return; }
     var s = d.summary;
-    var set = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; };
+    var Z = 0;
+    var set = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = (val ?? Z); };
     set('absStatTotal', s.total);
     set('absStatPresent', s.present);
     set('absStatAbsent', s.absent);
-    set('absStatRate', s.absence_rate + '%');
+    set('absStatRate', (s.absence_rate != null ? s.absence_rate + '%' : Z + '%'));
     set('absStatStudents', s.total_students);
     set('absStatSessions', s.total_sessions);
     set('absStatTeachers', s.total_teachers);
@@ -4527,7 +4529,7 @@ tbody.innerHTML = list.map(function (d) {
     renderAbsenceTable('absPeriodBody', d.by_day, ['date', 'present', 'absent', 'total', 'rate'], ['Date', 'Présents', 'Absents', 'Total', 'Taux']);
     renderAbsenceTable('absRecentBody', d.recent_absences, ['student', 'student__code_massar', 'module', 'teacher', 'date', 'time'], ['Étudiant', 'Code Massar', 'Module', 'Enseignant', 'Date', 'Heure']);
     var cnt = document.getElementById('cntAbsenceStats');
-    if (cnt) cnt.textContent = s.total;
+    if (cnt) cnt.textContent = s.total ?? Z;
   }
 
   function renderAbsenceTable(tbodyId, data, fields, headers) {
