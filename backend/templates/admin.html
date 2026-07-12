@@ -4360,25 +4360,16 @@ tbody.innerHTML = list.map(function (d) {
         if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
       }).catch(function() { semSel.disabled = true; });
     } else if (role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length) {
-      // Only semestres that have managed filieres
+      // Only semestres that have managed filieres (use filiere_ids param for fresh filter)
       semSel.disabled = false;
-      var semIds = {};
-      currentUser.managed_filieres.forEach(function(f) { if (f.semestre) semIds[f.semestre] = true; });
-      var semIdsList = Object.keys(semIds);
-      if (semIdsList.length) {
-        API.apiFetch('/curriculum/semestres/').then(function(semestres) {
-          semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-          semestres.forEach(function(s) {
-            if (semIdsList.indexOf(String(s.id)) >= 0) {
-              var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; semSel.appendChild(opt);
-            }
-          });
-          if (semSel.options.length <= 1) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
-        }).catch(function() { semSel.disabled = true; });
-      } else {
-        semSel.disabled = true;
-        semSel.innerHTML = '<option value="">Aucun semestre</option>';
-      }
+      var fids = currentUser.managed_filieres.map(function(f) { return f.id; }).join(',');
+      API.apiFetch('/curriculum/semestres/?filiere_ids=' + fids).then(function(semestres) {
+        semSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+        semestres.forEach(function(s) {
+          var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; semSel.appendChild(opt);
+        });
+        if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+      }).catch(function() { semSel.disabled = true; });
     } else {
       // Admin: load all semestres
       semSel.disabled = false;

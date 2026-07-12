@@ -666,7 +666,8 @@ def curriculum_view(request):
 @permission_classes([IsAuthenticated])
 def semestre_list(request):
     department_id = request.query_params.get("department_id", "")
-    cache_key = _cache_key("semestres", department_id)
+    filiere_ids = request.query_params.get("filiere_ids", "")
+    cache_key = _cache_key("semestres", department_id, filiere_ids)
     cached = _cached_response(cache_key)
     if cached:
         return cached
@@ -677,6 +678,10 @@ def semestre_list(request):
     )
     if department_id:
         sems = sems.filter(filieres__department_id=department_id)
+    if filiere_ids:
+        ids = [int(x) for x in filiere_ids.split(",") if x.strip().isdigit()]
+        if ids:
+            sems = sems.filter(filieres__id__in=ids)
     sems = sems.distinct().order_by("name").values("id", "name")
     
     data = list(sems)
