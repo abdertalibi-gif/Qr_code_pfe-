@@ -723,8 +723,14 @@ def filiere_list(request):
             return Response({"detail": "Permission refusée."}, status=403)
         serializer = FiliereSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
+            try:
+                serializer.save()
+                return Response(serializer.data, status=201)
+            except Exception as exc:
+                return Response(
+                    {"detail": f"Erreur lors de la création : {exc}"},
+                    status=500,
+                )
         return Response(serializer.errors, status=400)
 
     semestre_id = request.query_params.get("semestre_id", "")
