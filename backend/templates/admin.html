@@ -2303,6 +2303,7 @@
         <div class="curriculum-section">
           <div class="curriculum-header" data-filiere-id="${f.id}" style="cursor:pointer">
             <h3>🎓 ${esc(f.name)} <span class="chevron" style="font-size:.8rem;color:var(--muted);margin-left:.5rem">▶</span>
+              <button class="btn sm outline" style="float:right;margin-top:-3px;font-size:.8rem;padding:2px 8px;margin-left:4px" onclick="event.stopPropagation();deleteFiliereFromCurric(${f.id})">🗑️</button>
               <button class="btn sm outline" style="float:right;margin-top:-3px;font-size:.8rem;padding:2px 8px" onclick="event.stopPropagation();openManageModules(${f.id})">📦 Modules</button>
             </h3>
           </div>
@@ -2473,6 +2474,15 @@
       await API.apiFetch('/curriculum/subjects/' + moduleId + '/', { method: 'DELETE' });
       showToast('Module supprimé.', 'success');
       await openManageModules(_currentModuleFiliereId);
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+
+  window.deleteFiliereFromCurric = async function (filiereId) {
+    if (!confirm('Supprimer cette filière et tous ses modules ?')) return;
+    try {
+      await API.apiFetch('/curriculum/filieres/' + filiereId + '/', { method: 'DELETE' });
+      showToast('Filière supprimée.', 'success');
+      loadCurriculum();
     } catch (e) { showToast(e.message, 'error'); }
   };
 

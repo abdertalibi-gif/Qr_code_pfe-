@@ -839,7 +839,7 @@ def filiere_list(request):
     return Response(data)
 
 
-@api_view(["GET", "PATCH"])
+@api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def filiere_detail(request, pk):
     try:
@@ -883,6 +883,19 @@ def filiere_detail(request, pk):
             return Response(resp_data)
         logger.error("=== FILIERE_PATCH_VALID_FAIL pk=%s errors=%s", pk, serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "DELETE":
+        if request.user.role != "admin":
+            return Response({"detail": "Permission refusée."}, status=403)
+        try:
+            filiere.delete()
+            cache.clear()
+            return Response(status=204)
+        except Exception as exc:
+            return Response(
+                {"detail": f"Erreur lors de la suppression : {exc}"},
+                status=500,
+            )
 
 
 @api_view(["GET"])
