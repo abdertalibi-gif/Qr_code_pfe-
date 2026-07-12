@@ -387,6 +387,7 @@
     <div class="section-head">
       <h2>Structure académique <span class="tab-count" id="cntCurriculumDetail" style="font-size:.85rem;font-weight:400;color:var(--muted)"></span></h2>
       <div class="section-actions">
+        <button class="btn" id="btnOpenAddFiliereCurric">+ Ajouter une filière</button>
         <button class="btn" id="btnRefreshCurriculum">🔄 Actualiser</button>
       </div>
     </div>
@@ -765,6 +766,49 @@
         <button class="btn" id="btnSaveFiliereManagers">💾 Enregistrer les responsables</button>
         <button type="button" class="btn outline" data-close="modalFiliereManagers">Fermer</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Filiere ── -->
+<div class="modal-backdrop" id="modalFiliere">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="filiereModalTitle">Ajouter une filière</h3>
+      <button class="modal-close" data-close="modalFiliere">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fId" />
+      <div class="field">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="fName" placeholder="L1 Informatique" />
+      </div>
+      <div class="field">
+        <label>Semestre <span class="req">*</span></label>
+        <select id="fSemestre"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Niveau</label>
+        <select id="fNiveau">
+          <option value="">— Sélectionner —</option>
+          <option value="LIC">Licence</option>
+          <option value="LIC_EXC">Licence Excellence</option>
+          <option value="MAS">Master</option>
+          <option value="MAS_EXC">Master Parcours d'excellence</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Département</label>
+        <select id="fDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Responsable de filière</label>
+        <select id="fManager"><option value="">— Non assigné —</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalFiliere">Annuler</button>
+      <button class="btn" id="btnSubmitFiliere">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -2298,6 +2342,65 @@
     document.getElementById('curricNavSemestres').innerHTML = '';
     document.getElementById('curriculumContainer').innerHTML = '<div class="curriculum-loading">Chargement…</div>';
     loadCurriculum();
+  });
+
+  /* ── Filiere CRUD (from Curriculum tab) ── */
+  async function populateFiliereFormSelects() {
+    try {
+      const [semestres, departments, users] = await Promise.all([
+        API.apiFetch('/curriculum/semestres/'),
+        API.apiFetch('/departments/'),
+        API.apiFetch('/users/?role=program_manager'),
+      ]);
+      const sems = Array.isArray(semestres) ? semestres : (semestres.results || []);
+      const depts = Array.isArray(departments) ? departments : (departments.results || []);
+      const mgrs = Array.isArray(users) ? users : (users.results || []);
+
+      const semSel = document.getElementById('fSemestre');
+      semSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        sems.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+
+      const deptSel = document.getElementById('fDepartment');
+      deptSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        depts.map(d => '<option value="' + d.id + '">' + esc(d.name) + '</option>').join('');
+
+      const mgrSel = document.getElementById('fManager');
+      mgrSel.innerHTML = '<option value="">— Non assigné —</option>' +
+        mgrs.map(u => '<option value="' + u.id + '">' + esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>').join('');
+    } catch (e) { showToast('Erreur chargement: ' + e.message, 'error'); }
+  }
+
+  document.getElementById('btnOpenAddFiliereCurric')?.addEventListener('click', async () => {
+    await populateFiliereFormSelects();
+    document.getElementById('fId').value = '';
+    document.getElementById('filiereModalTitle').textContent = 'Ajouter une filière';
+    document.getElementById('fName').value = '';
+    document.getElementById('fNiveau').value = '';
+    openModal('modalFiliere');
+  });
+
+  document.getElementById('btnSubmitFiliere')?.addEventListener('click', async () => {
+    const id = document.getElementById('fId').value;
+    const body = {
+      name: document.getElementById('fName').value.trim(),
+      semestre: document.getElementById('fSemestre').value || null,
+      niveau: document.getElementById('fNiveau').value || '',
+      department_id: document.getElementById('fDepartment').value || null,
+      manager_id: document.getElementById('fManager').value || null,
+    };
+    if (!body.name || !body.semestre) {
+      showToast('Nom et semestre sont requis.', 'error'); return;
+    }
+    try {
+      if (id) {
+        await API.apiFetch('/curriculum/filieres/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
+      } else {
+        await API.apiFetch('/curriculum/filieres/', { method: 'POST', body: JSON.stringify(body) });
+      }
+      closeModal('modalFiliere');
+      showToast('Filière enregistrée.', 'success');
+      loadCurriculum();
+    } catch (e) { showToast(e.message, 'error'); }
   });
 
   /* ── Tabs ── */
