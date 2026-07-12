@@ -139,7 +139,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_managed_filieres(self, obj):
         return [
-            {"id": f.id, "name": f.name}
+            {"id": f.id, "name": f.name, "semestre": f.semestre_id}
             for f in obj.managed_filieres.all()
         ]
 
