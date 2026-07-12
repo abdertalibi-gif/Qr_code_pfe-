@@ -57,6 +57,7 @@ function renderFilieres() {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="7">' + (query ? 'Aucun résultat.' : 'Aucune filière.') + '</td></tr>';
     return;
   }
+  var _isAdminFil = currentUser && currentUser.role === 'admin';
   tbody.innerHTML = filtered.map((f, i) => '<tr>' +
     '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
     '<td><strong>' + esc(f.name) + '</strong></td>' +
@@ -64,11 +65,14 @@ function renderFilieres() {
     '<td>' + esc(f.niveau || '—') + '</td>' +
     '<td>' + esc(f.manager_name || '—') + '</td>' +
     '<td>' + (f.module_count ?? '—') + '</td>' +
-    '<td class="actions-cell">' +
-      '<button class="btn sm outline admin-only" onclick="openManageModules(' + f.id + ')">📦 Modules</button>' +
-      '<button class="btn sm outline admin-only" onclick="openEditFiliere(' + f.id + ')">Modifier</button>' +
-      '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteFiliere(' + f.id + ')">Supprimer</button>' +
-    '</td>' +
+    (_isAdminFil
+      ? '<td class="actions-cell">' +
+        '<button class="btn sm outline" onclick="openManageModules(' + f.id + ')">📦 Modules</button>' +
+        '<button class="btn sm outline" onclick="openEditFiliere(' + f.id + ')">Modifier</button>' +
+        '<button class="btn sm outline" style="color:var(--red)" onclick="deleteFiliere(' + f.id + ')">Supprimer</button>' +
+        '</td>'
+      : '<td>—</td>'
+    ) +
   '</tr>').join('');
 }
 
@@ -184,13 +188,16 @@ function setupEventListeners() {
         return;
       }
 
+      var _isAdminFil = currentUser && currentUser.role === 'admin';
       container.innerHTML = data.semesters.map(sem => `
         <div class="curriculum-section" style="margin-bottom:.75rem">
           <div class="curriculum-header" style="padding:.5rem .75rem;background:var(--surface2);border-radius:6px;font-weight:600">
             📘 ${esc(sem.semestre_name)}
-            ${sem.filiere_id
+            ${sem.filiere_id && _isAdminFil
               ? '<button class="btn sm outline" style="float:right;margin-top:-2px" onclick="addModuleToSemester(' + sem.filiere_id + ', \'' + esc(sem.semestre_name) + '\')">+ Ajouter un module</button>'
-              : '<span style="float:right;font-size:.8rem;color:var(--muted)">Aucune filière</span>'
+              : !_isAdminFil && sem.filiere_id
+                ? '<span style="float:right;font-size:.8rem;color:var(--muted)">' + (sem.modules.length || 0) + ' module(s)</span>'
+                : '<span style="float:right;font-size:.8rem;color:var(--muted)">Aucune filière</span>'
             }
           </div>
           <div class="filiere-modules" style="padding:.5rem .75rem">
@@ -198,11 +205,7 @@ function setupEventListeners() {
               ? sem.modules.map(m => `
                 <span class="module-tag" style="display:inline-flex;align-items:center;gap:.4rem;margin:.2rem">
                   <span class="module-name-display" data-module-id="${m.id}" data-original="${esc(m.name)}">${esc(m.name)}</span>
-                  <input class="module-name-input" data-module-id="${m.id}" style="display:none;width:180px;padding:2px 6px;font-size:.85rem" />
-                  <button class="btn-icon" onclick="editModuleName(${m.id})" title="Modifier">✏️</button>
-                  <button class="btn-icon" onclick="saveModuleName(${m.id})" style="display:none" title="Enregistrer">💾</button>
-                  <button class="btn-icon" onclick="cancelEditModuleName(${m.id})" style="display:none" title="Annuler">❌</button>
-                  <button class="btn-icon" style="color:var(--red)" onclick="deleteModule(${m.id})" title="Supprimer">🗑️</button>
+                  ${_isAdminFil ? '<input class="module-name-input" data-module-id="' + m.id + '" style="display:none;width:180px;padding:2px 6px;font-size:.85rem" /><button class="btn-icon" onclick="editModuleName(' + m.id + ')" title="Modifier">✏️</button><button class="btn-icon" onclick="saveModuleName(' + m.id + ')" style="display:none" title="Enregistrer">💾</button><button class="btn-icon" onclick="cancelEditModuleName(' + m.id + ')" style="display:none" title="Annuler">❌</button><button class="btn-icon" style="color:var(--red)" onclick="deleteModule(' + m.id + ')" title="Supprimer">🗑️</button>' : ''}
                 </span>
               `).join('')
               : '<span style="color:var(--muted);font-size:.85rem">Aucun module.</span>'

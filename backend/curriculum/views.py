@@ -864,8 +864,7 @@ def filiere_detail(request, pk):
         import logging
         logger = logging.getLogger(__name__)
         logger.info("=== FILIERE_PATCH_START pk=%s role=%s user_id=%s data=%s", pk, request.user.role, request.user.id, request.data)
-        if request.user.role not in ("admin", "department_head", "program_manager"):
-            logger.warning("=== FILIERE_PATCH_PERMISSION_DENIED pk=%s", pk)
+        if request.user.role != "admin":
             return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
         logger.info("=== FILIERE_PATCH_BEFORE_SERIALIZER pk=%s", pk)
         serializer = FiliereSerializer(filiere, data=request.data, partial=True)
