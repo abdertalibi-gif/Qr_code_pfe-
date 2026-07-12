@@ -1475,9 +1475,9 @@
     if (isAdminOnly()) {
       promises.push(loadUsers());
     } else {
-      promises.push(loadClasses(), loadStudents(), loadCurriculum());
       promises.push(loadDepartmentTeachers());
     }
+    promises.push(loadClasses(), loadStudents(), loadCurriculum());
     await Promise.all(promises);
     if (isAdminOnly()) {
       await loadAttendance();
@@ -1489,9 +1489,8 @@
     if (typeof initTeachersTab === 'function') await initTeachersTab(currentUser?.role || 'admin');
     setupRoomsEventListeners();
     if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
-    setupAbsenceSubTabNavigation();
     populateAbsenceFilters();
-    if (!isAdminOnly()) loadAbsenceStats();
+    loadAbsenceStats();
     try {
       const data = await API.apiFetch('/curriculum/filieres/');
       allFilieres = Array.isArray(data) ? data : [];
@@ -4292,6 +4291,24 @@ tbody.innerHTML = list.map(function (d) {
       depts.forEach(function(d) {
         var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name || d.label; deptSel.appendChild(opt);
       });
+      // Pre-select department for department_head
+      if (currentUser.role === 'department_head' && currentUser.managed_department) {
+        deptSel.value = currentUser.managed_department.id;
+        absOnDeptChange();
+      }
+      // For program_manager: find the first managed filiere's department+semestre
+      if (currentUser.role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length > 0) {
+        var fmId = currentUser.managed_filieres[0].id;
+        API.apiFetch('/curriculum/filieres/' + fmId + '/').then(function(f) {
+          if (f.department_id) {
+            deptSel.value = f.department_id;
+            absOnDeptChange();
+            // After dept change & semestres loaded, pick the right semestre + filiere
+            _absAutoSemestreId = f.semestre_id;
+            _absAutoFiliereId = fmId;
+          }
+        }).catch(function() {});
+      }
     }).catch(function() {});
     // Load teachers (independent, always available)
     var tSel = document.getElementById('absTeacher');
@@ -4304,6 +4321,9 @@ tbody.innerHTML = list.map(function (d) {
       }).catch(function() {});
     }
   }
+
+  var _absAutoSemestreId = null;
+  var _absAutoFiliereId = null;
 
   function absOnDeptChange() {
     if (_absLoadingDept) return;
@@ -4334,6 +4354,16 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name || 'Semestre ' + s.name; semSel.appendChild(opt);
       });
       if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
+      if (_absAutoSemestreId) {
+        var autoOpt = semSel.querySelector('option[value="' + _absAutoSemestreId + '"]');
+        if (autoOpt) {
+          semSel.value = _absAutoSemestreId;
+          _absAutoSemestreId = null;
+          absOnSemestreChange();
+          return;
+        }
+      }
+      applyAbsenceFilters();
     }).catch(function() { semSel.disabled = true; semSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingDept = false; });
   }
 
@@ -4364,6 +4394,16 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
       });
       if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
+      if (_absAutoFiliereId) {
+        var autoOpt = fSel.querySelector('option[value="' + _absAutoFiliereId + '"]');
+        if (autoOpt) {
+          fSel.value = _absAutoFiliereId;
+          _absAutoFiliereId = null;
+          absOnFiliereChange();
+          return;
+        }
+      }
+      applyAbsenceFilters();
     }).catch(function() { fSel.disabled = true; fSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingSemestre = false; });
   }
 
@@ -4390,6 +4430,8 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
       });
       if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
+      // Trigger stats refresh at end of cascade (program_manager auto-selection)
+      applyAbsenceFilters();
     }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingFiliere = false; });
   }
 
