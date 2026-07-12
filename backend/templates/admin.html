@@ -94,6 +94,9 @@
     <button class="tab-btn" data-tab="absence-stats">
       📊 Statistiques des absences <span class="tab-count" id="cntAbsenceStats">—</span>
     </button>
+    <button class="tab-btn" data-tab="workload">
+      ⏱ Charge horaire <span class="tab-count" id="cntWorkload">—</span>
+    </button>
   </div>
 
   <!-- LIVE ATTENDANCE PANEL -->
@@ -690,6 +693,34 @@
       <!-- Récentes -->
       <div class="sub-tab-panel" id="abs-recent">
         <div class="table-wrap"><table class="data-table"><thead><tr><th>Étudiant</th><th>Code Massar</th><th>Module</th><th>Enseignant</th><th>Date</th><th>Heure</th></tr></thead><tbody id="absRecentBody"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ⏱ TEACHER WORKLOAD -->
+    <div class="tab-panel" id="tab-workload">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon purple">👨‍🏫</div><div><div class="label">Enseignants</div><div class="value" id="wlTeacherCount">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📅</div><div><div class="label">Séances</div><div class="value" id="wlSessionCount">—</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏱</div><div><div class="label">Total heures</div><div class="value" id="wlTotalHours">—</div></div></div>
+      </div>
+      <div class="absence-actions" style="margin:1rem 0">
+        <button class="btn btn-primary" onclick="loadTeacherWorkload()">🔄 Actualiser</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Enseignant</th>
+              <th>Département</th>
+              <th>Filière</th>
+              <th>Séances</th>
+              <th>Total heures</th>
+            </tr>
+          </thead>
+          <tbody id="workloadBody">
+            <tr class="empty-row"><td colspan="5">Chargement…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </main>
@@ -1558,10 +1589,10 @@
     }
     // Show/hide tabs based on role
     const isAdmin = user.role === 'admin';
-    const allTabs = ['attendance', 'users', 'teacher-import', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'rooms', 'absence-stats'];
+    const allTabs = ['attendance', 'users', 'teacher-import', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'rooms', 'absence-stats', 'workload'];
     const allowedTabs = isAdmin
       ? allTabs
-      : ['sessions', 'curriculum', 'teacher-import', 'classes', 'students', 'absence-stats'];
+      : ['sessions', 'curriculum', 'teacher-import', 'classes', 'students', 'absence-stats', 'workload'];
     document.querySelectorAll('.tab-btn').forEach(btn => {
       const tab = btn.dataset.tab;
       btn.style.display = allowedTabs.includes(tab) ? '' : 'none';
@@ -2570,6 +2601,7 @@
         _tabLoaded[tab] = true;
         if (tab === 'classes') loadClasses();
         else if (tab === 'absence-stats') loadAbsenceStats();
+        else if (tab === 'workload') loadTeacherWorkload();
       }
     });
   });
@@ -4523,6 +4555,45 @@ function absOnModuleChange() {
       return '<tr>' + cells.join('') + '</tr>';
     }).join('');
   }
+
+  /* ── Teacher Workload ── */
+  window.loadTeacherWorkload = async function () {
+    var tbody = document.getElementById('workloadBody');
+    if (!tbody) return;
+    try {
+      var data = await API.apiFetch('/teacher-workload/');
+      var arr = Array.isArray(data) ? data : (data.results || []);
+      var totalSessions = 0;
+      var totalHours = 0;
+      arr.forEach(function (w) {
+        totalSessions += w.session_count || 0;
+        totalHours += w.total_hours || 0;
+      });
+      document.getElementById('wlTeacherCount').textContent = arr.length;
+      document.getElementById('wlSessionCount').textContent = totalSessions;
+      document.getElementById('wlTotalHours').textContent = totalHours.toFixed(1) + 'h';
+      document.getElementById('cntWorkload').textContent = arr.length;
+      if (!arr.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucune donnée.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = arr.map(function (w) {
+        var name = esc(w.last_name || '') + ' ' + esc(w.first_name || '');
+        var dept = esc(w.department || '—');
+        var fil = esc(w.filiere || '—');
+        var hours = (w.total_hours || 0).toFixed(2) + 'h';
+        return '<tr>' +
+          '<td>' + name + '</td>' +
+          '<td>' + dept + '</td>' +
+          '<td>' + fil + '</td>' +
+          '<td>' + (w.session_count || 0) + '</td>' +
+          '<td>' + hours + '</td>' +
+        '</tr>';
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+  };
 
   function applyAbsenceFilters() {
     loadAbsenceStats();

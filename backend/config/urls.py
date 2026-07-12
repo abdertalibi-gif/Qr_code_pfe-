@@ -37,6 +37,7 @@ from users.views import (
     teacher_list,
     teacher_import_excel,
     teacher_import_template,
+    teacher_workload,
     dashboard_counts,
     system_info,
 )
@@ -169,6 +170,7 @@ api_v1_urlpatterns = [
     path("dashboard/counts/", dashboard_counts, name="dashboard-counts"),
     path("statistics/", admin_statistics, name="admin-statistics"),
     path("absence-stats/", absence_statistics, name="absence-stats"),
+    path("teacher-workload/", teacher_workload, name="teacher-workload"),
     path("settings/", app_settings, name="app-settings"),
     path("system-info/", system_info, name="system-info"),
     path("blocks/", block_list, name="block-list"),

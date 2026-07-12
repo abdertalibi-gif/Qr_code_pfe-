@@ -1127,6 +1127,103 @@ def absence_statistics(request):
     from django.core.cache import cache
     cache.set(cache_key, resp_data, 120)
     return Response(resp_data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_workload(request):
+    """Return teacher workload (total hours) with role-based scoping."""
+    from django.db.models import (
+        Count, F, ExpressionWrapper, DurationField, FloatField,
+        Value, Case, When, Sum,
+    )
+    from django.db.models.functions import Extract
+    from courses.models import Session
+
+    qs = Session.objects.filter(teacher__is_active=True)
+
+    # Role-based scoping
+    if request.user.role == "department_head":
+        dept = get_user_department(request.user)
+        if dept:
+            qs = qs.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
+            )
+        else:
+            qs = qs.none()
+    elif request.user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(request.user)
+        if filiere_ids:
+            qs = qs.filter(classe__filiere_id__in=filiere_ids)
+        else:
+            qs = qs.none()
+    elif request.user.role != "admin":
+        return Response({"detail": "Permission refusée."}, status=403)
+
+    # Duration in seconds from (end_time - start_time)
+    duration_seconds = Extract(
+        ExpressionWrapper(F("end_time") - F("start_time"), output_field=DurationField()),
+        "epoch",
+    )
+
+    # Adjusted hours based on session type
+    adjusted_hours = Case(
+        When(session_type="Cours", then=duration_seconds / 3600.0),
+        When(session_type="TD", then=duration_seconds / 3600.0 / 1.5),
+        When(session_type="TP", then=duration_seconds / 3600.0 / 1.5),
+        default=Value(0.0),
+        output_field=FloatField(),
+    )
+
+    workload = (
+        qs
+        .values("teacher_id", "teacher__first_name", "teacher__last_name")
+        .annotate(
+            session_count=Count("id"),
+            total_hours=Sum(adjusted_hours),
+        )
+        .order_by("-total_hours")
+    )
+
+    # Resolve department / filiere for each teacher
+    teacher_ids = [w["teacher_id"] for w in workload]
+    teacher_info = {}
+    if teacher_ids:
+        teachers = User.objects.filter(id__in=teacher_ids).prefetch_related(
+            Prefetch(
+                "assigned_classes",
+                queryset=Classe.objects.select_related("department", "filiere"),
+            )
+        )
+        for t in teachers:
+            dept_name = None
+            filiere_name = None
+            ac = list(t.assigned_classes.all())
+            if ac:
+                c = ac[0]
+                if c.department:
+                    dept_name = c.department.name
+                if c.filiere:
+                    filiere_name = c.filiere.name
+            teacher_info[t.id] = {"department": dept_name, "filiere": filiere_name}
+
+    result = []
+    for w in workload:
+        tid = w["teacher_id"]
+        info = teacher_info.get(tid, {})
+        result.append({
+            "id": tid,
+            "first_name": w["teacher_first_name"],
+            "last_name": w["teacher_last_name"],
+            "department": info.get("department"),
+            "filiere": info.get("filiere"),
+            "session_count": w["session_count"],
+            "total_hours": round(w["total_hours"], 2) if w["total_hours"] else 0.0,
+        })
+
+    return Response(result)
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def app_settings(request):
