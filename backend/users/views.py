@@ -826,8 +826,8 @@ def admin_statistics(request):
     start_date = end_date - timedelta(days=period_days)
 
     attend_qs = Attendance.objects.filter(
-        validation_time__date__gte=start_date.date(),
-        validation_time__date__lte=end_date.date(),
+        session__date__gte=start_date.date(),
+        session__date__lte=end_date.date(),
     )
     session_qs = Session.objects.all()
     student_qs = User.objects.filter(role="student")
@@ -873,18 +873,17 @@ def admin_statistics(request):
 
     daily = (
         attend_qs
-        .extra({"date": "date(validation_time)"})
-        .values("date")
+        .values("session__date")
         .annotate(
             present=Count("id", filter=Q(attendance_status="confirmed")),
             total=Count("id"),
         )
-        .order_by("date")
+        .order_by("session__date")
     )
 
     daily_data = [
         {
-            "date": d["date"].isoformat() if hasattr(d["date"], "isoformat") else str(d["date"]),
+            "date": d["session__date"].isoformat() if hasattr(d["session__date"], "isoformat") else str(d["session__date"]),
             "present": d["present"],
             "total": d["total"],
         }
@@ -924,6 +923,8 @@ def absence_statistics(request):
     from django.db.models import Count, Q
     from django.db.models.functions import TruncDate, TruncWeek
     from datetime import datetime, timedelta
+    import logging
+    logger = logging.getLogger(__name__)
 
     date_from = request.query_params.get("date_from", "")
     date_to = request.query_params.get("date_to", "")
@@ -933,6 +934,9 @@ def absence_statistics(request):
     department_id = request.query_params.get("department_id", "")
     semestre_id = request.query_params.get("semestre_id", "")
     classe_id = request.query_params.get("classe_id", "")
+    logger.info("=== ABSENCE_STATS role=%s user=%s date_from=%s date_to=%s filiere=%s module=%s teacher=%s dept=%s semestre=%s classe=%s",
+                request.user.role, request.user.id, date_from, date_to,
+                filiere_id, module_id, teacher_id, department_id, semestre_id, classe_id)
 
     # Try cache first
     params = {
@@ -961,8 +965,8 @@ def absence_statistics(request):
             pass
 
     qs = Attendance.objects.filter(
-        validation_time__gte=start_date,
-        validation_time__lt=end_date,
+        session__date__gte=start_date.date(),
+        session__date__lte=end_date.date(),
     )
 
     if filiere_id:
@@ -1012,6 +1016,10 @@ def absence_statistics(request):
     total = agg["total"]
     absent = agg["absent"]
     absence_rate = round((absent / total * 100) if total > 0 else 0, 1)
+    logger.info("=== ABSENCE_STATS_AGG total=%s present=%s absent=%s rate=%s students=%s sessions=%s teachers=%s modules=%s",
+                agg["total"], agg["present"], agg["absent"], absence_rate,
+                agg["total_students"], agg["total_sessions"], agg["total_teachers"], agg["total_modules"])
+    logger.info("=== ABSENCE_STATS_RAW_QS count=%s", qs.count())
 
     by_student = list(
         qs.values("student_id", "student__first_name", "student__last_name", "student__code_massar")
@@ -1062,21 +1070,21 @@ def absence_statistics(request):
         f["filiere_name"] = f.get("student__classe__filiere__name") or ""
 
     by_day = list(
-        qs.annotate(date=TruncDate("validation_time"))
-        .values("date")
+        qs.values("session__date")
         .annotate(
             present=Count("id", filter=Q(attendance_status="confirmed")),
             absent=Count("id", filter=Q(attendance_status="absent")),
             total=Count("id"),
         )
-        .order_by("date")
+        .order_by("session__date")
     )
     for d in by_day:
-        d["date"] = d["date"].isoformat() if hasattr(d["date"], "isoformat") else str(d["date"])
+        d["date"] = d["session__date"].isoformat() if hasattr(d["session__date"], "isoformat") else str(d["session__date"])
+        d.pop("session__date", None)
         d["rate"] = round((d["absent"] / d["total"] * 100) if d["total"] > 0 else 0, 1)
 
     by_week = list(
-        qs.annotate(week=TruncWeek("validation_time"))
+        qs.annotate(week=TruncWeek("session__date"))
         .values("week")
         .annotate(
             present=Count("id", filter=Q(attendance_status="confirmed")),
@@ -1130,6 +1138,7 @@ def absence_statistics(request):
         "by_week": by_week,
         "recent_absences": recent_absences,
     }
+    logger.info("=== ABSENCE_STATS_RESP summary=%s", resp_data["summary"])
     from django.core.cache import cache
     cache.set(cache_key, resp_data, 120)
     return Response(resp_data)
