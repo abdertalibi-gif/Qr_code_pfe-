@@ -85,6 +85,24 @@
 </div>
 {% endblock %}
 
+<!-- MODAL: Manage Modules -->
+<div class="modal-backdrop" id="modalManageModules">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3 id="modulesFiliereName">Gérer les modules</h3>
+      <button class="modal-close" data-close="modalManageModules">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <div id="modulesBySemester">
+        <div class="curriculum-loading">Chargement…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalManageModules">Fermer</button>
+    </div>
+  </div>
+</div>
+
 {% block extra_js %}
 <script src="/admin-filieres.js"></script>
 {% endblock %}

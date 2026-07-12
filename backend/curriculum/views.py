@@ -812,6 +812,48 @@ def filiere_detail(request, pk):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def filiere_modules_by_semester(request, pk):
+    """Return modules grouped by semester for all filieres sharing the same name."""
+    try:
+        filiere = Filiere.objects.select_related("semestre").get(pk=pk)
+    except Filiere.DoesNotExist:
+        return Response({"detail": "Filière introuvable."}, status=404)
+
+    niveau = filiere.niveau
+    from users.models import NIVEAU_SEMESTRE_MAP
+    allowed_sem_names = NIVEAU_SEMESTRE_MAP.get(niveau, [])
+
+    sems = Semestre.objects.filter(name__in=allowed_sem_names).order_by("name")
+
+    result = []
+    for sem in sems:
+        filiere_same = Filiere.objects.filter(
+            name=filiere.name, semestre=sem, niveau=niveau,
+        ).first()
+        modules = []
+        if filiere_same:
+            modules = list(
+                Module.objects.filter(filiere=filiere_same)
+                .order_by("name")
+                .values("id", "name")
+            )
+        result.append({
+            "semestre_id": sem.id,
+            "semestre_name": sem.name,
+            "filiere_id": filiere_same.id if filiere_same else None,
+            "modules": modules,
+        })
+
+    return Response({
+        "filiere_name": filiere.name,
+        "niveau": filiere.niveau,
+        "niveau_label": dict(NIVEAU_CHOICES).get(filiere.niveau, filiere.niveau),
+        "semesters": result,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def module_list(request):
     filiere_id = request.query_params.get("filiere_id", "")
     semestre_id = request.query_params.get("semestre_id", "")
