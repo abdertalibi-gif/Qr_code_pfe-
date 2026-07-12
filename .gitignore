@@ -4,5 +4,3 @@ __pycache__/
 .idea/
 db.sqlite3
 logs/
-# Generated reports
-backend/media/reports/
