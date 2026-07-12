@@ -465,7 +465,7 @@ def _process_import_row(
             )
             report.created.append(_student_payload(student))
         else:
-            if student.classe_id and module.filiere_id != student.classe.filiere_id:
+            if student.classe_id and module.filiere.name != student.classe.filiere.name:
                 report.errors.append({
                     "line": row.line_number,
                     "code": row.code,

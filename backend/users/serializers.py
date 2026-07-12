@@ -661,7 +661,7 @@ class StudentSerializer(serializers.ModelSerializer):
         if existing_student:
             if module_id and existing_student.classe_id:
                 mod = Module.objects.get(pk=module_id)
-                if existing_student.classe.filiere_id != mod.filiere_id:
+                if existing_student.classe.filiere.name != mod.filiere.name:
                     raise serializers.ValidationError(
                         "Ce module n'appartient pas à la filière de cet étudiant."
                     )
