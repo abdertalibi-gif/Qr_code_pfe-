@@ -1213,8 +1213,8 @@ def teacher_workload(request):
         info = teacher_info.get(tid, {})
         result.append({
             "id": tid,
-            "first_name": w["teacher_first_name"],
-            "last_name": w["teacher_last_name"],
+            "first_name": w["teacher__first_name"],
+            "last_name": w["teacher__last_name"],
             "department": info.get("department"),
             "filiere": info.get("filiere"),
             "session_count": w["session_count"],
