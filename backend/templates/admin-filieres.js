@@ -65,9 +65,9 @@ function renderFilieres() {
     '<td>' + esc(f.manager_name || '—') + '</td>' +
     '<td>' + (f.module_count ?? '—') + '</td>' +
     '<td class="actions-cell">' +
-      '<button class="btn sm outline" onclick="openManageModules(' + f.id + ')">📦 Modules</button>' +
-      '<button class="btn sm outline" onclick="openEditFiliere(' + f.id + ')">Modifier</button>' +
-      '<button class="btn sm outline" style="color:var(--red)" onclick="deleteFiliere(' + f.id + ')">Supprimer</button>' +
+      '<button class="btn sm outline admin-only" onclick="openManageModules(' + f.id + ')">📦 Modules</button>' +
+      '<button class="btn sm outline admin-only" onclick="openEditFiliere(' + f.id + ')">Modifier</button>' +
+      '<button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteFiliere(' + f.id + ')">Supprimer</button>' +
     '</td>' +
   '</tr>').join('');
 }
