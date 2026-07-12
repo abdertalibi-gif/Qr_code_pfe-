@@ -228,6 +228,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"filiere_id": "La filière est obligatoire pour le responsable de filière."}
             )
+        if role == "teacher" and not department:
+            raise serializers.ValidationError(
+                {"department_id": "Le département est obligatoire pour l'enseignant."}
+            )
         if role != "teacher":
             data.pop("is_also_teacher", None)
         return data
@@ -243,7 +247,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-        if assigned_classes:
+        if department and role == "teacher":
+            if assigned_classes:
+                user.assigned_classes.set(assigned_classes)
+            else:
+                dept_classes = Classe.objects.filter(department=department)
+                user.assigned_classes.set(list(dept_classes))
+        elif assigned_classes:
             user.assigned_classes.set(assigned_classes)
         if department and role == "department_head":
             if department.head and department.head != user:
@@ -320,6 +330,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"assigned_class_ids": "Seuls les enseignants, chefs de département et responsables de filière peuvent avoir des classes."}
             )
+        if role == "teacher" and "department" in data and not data.get("department") and not self.instance:
+            raise serializers.ValidationError(
+                {"department_id": "Le département est obligatoire pour l'enseignant."}
+            )
         if role != "teacher":
             data.pop("is_also_teacher", None)
         return data
@@ -338,7 +352,13 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
         instance.save()
-        if assigned_classes is not None:
+        if department is not None and role == "teacher":
+            if assigned_classes:
+                instance.assigned_classes.set(assigned_classes)
+            else:
+                dept_classes = Classe.objects.filter(department=department)
+                instance.assigned_classes.set(list(dept_classes))
+        elif assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
         if department is not None and role == "department_head":
             if department.head and department.head != instance:

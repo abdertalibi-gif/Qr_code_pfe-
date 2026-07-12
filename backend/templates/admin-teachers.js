@@ -184,6 +184,15 @@ async function openEditTeacher(userId) {
   document.getElementById('euCin').value = user.cin || '';
   document.getElementById('euGrade').value = user.grade || '';
   document.getElementById('euSpeciality').value = user.speciality || '';
+  var deptSel = document.getElementById('euDepartment');
+  if (deptSel && typeof allClasses !== 'undefined' && user.assigned_class_ids && user.assigned_class_ids.length) {
+    var deptIds = {};
+    allClasses.forEach(function(c) {
+      if (user.assigned_class_ids.indexOf(c.id) >= 0 && c.department_id) deptIds[c.department_id] = true;
+    });
+    var deptKeys = Object.keys(deptIds);
+    if (deptKeys.length === 1) deptSel.value = deptKeys[0];
+  }
   if (typeof showFieldsForRole === 'function') showFieldsForRole('teacher', 'eu');
   openModal('modalEditUser');
 }
