@@ -1471,13 +1471,13 @@
   function isAdminOnly() { return currentUser.role === 'admin'; }
 
   async function loadAll() {
-    var promises = [loadDepartments(), loadDashboardCounts(), loadSessions()];
+    var promises = [loadDepartments(), loadDashboardCounts(), loadSessions(), loadClasses()];
     if (isAdminOnly()) {
       promises.push(loadUsers());
     } else {
+      promises.push(loadStudents(), loadCurriculum());
       promises.push(loadDepartmentTeachers());
     }
-    promises.push(loadClasses(), loadStudents(), loadCurriculum());
     await Promise.all(promises);
     if (isAdminOnly()) {
       await loadAttendance();
@@ -1489,6 +1489,7 @@
     if (typeof initTeachersTab === 'function') await initTeachersTab(currentUser?.role || 'admin');
     setupRoomsEventListeners();
     if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
+    setupAbsenceSubTabNavigation();
     populateAbsenceFilters();
     loadAbsenceStats();
     try {
@@ -2557,12 +2558,19 @@
   });
 
   /* ── Tabs ── */
+  var _tabLoaded = {};
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      var tab = btn.dataset.tab;
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (!_tabLoaded[tab]) {
+        _tabLoaded[tab] = true;
+        if (tab === 'classes') loadClasses();
+        else if (tab === 'absence-stats') loadAbsenceStats();
+      }
     });
   });
 
@@ -4282,34 +4290,47 @@ tbody.innerHTML = list.map(function (d) {
   var _absLoadingSemestre = false;
   var _absLoadingFiliere = false;
 
+  function _absHideField(id) { var el = document.getElementById(id); if (el) { var g = el.closest('.field'); if (g) g.style.display = 'none'; } }
+  function _absSetOpts(selId, arr, labelFn) {
+    var sel = document.getElementById(selId); if (!sel) return;
+    sel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    arr.forEach(function(item) {
+      var opt = document.createElement('option'); opt.value = item.id; opt.textContent = labelFn(item); sel.appendChild(opt);
+    });
+  }
+
   function populateAbsenceFilters() {
-    // Load departments (first level)
+    var role = currentUser.role;
+
     var deptSel = document.getElementById('absDept');
     if (!deptSel) return;
-    deptSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    API.apiFetch('/departments/').then(function(depts) {
-      depts.forEach(function(d) {
-        var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name || d.label; deptSel.appendChild(opt);
-      });
-      // Pre-select department for department_head
-      if (currentUser.role === 'department_head' && currentUser.managed_department) {
-        deptSel.value = currentUser.managed_department.id;
-        absOnDeptChange();
+
+    if (role === 'department_head' && currentUser.managed_department) {
+      var dept = currentUser.managed_department;
+      // Show cascade normally but pre-set department
+      deptSel.innerHTML = '<option value="' + dept.id + '">' + esc(dept.name) + '</option>';
+      deptSel.disabled = true;
+      absOnDeptChange(); // cascade → semestre → filiere → module → classe
+    } else if (role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length) {
+      // Hide department/semestre cascade; show filiere select with managed filieres
+      _absHideField('absDept'); _absHideField('absSemestre');
+      var filSel = document.getElementById('absFiliere');
+      if (filSel) {
+        filSel.disabled = false;
+        _absSetOpts('absFiliere', currentUser.managed_filieres, function(f) { return f.name; });
+        // Show filiere field
+        var filGroup = filSel.closest('.field');
+        if (filGroup) filGroup.style.display = '';
       }
-      // For program_manager: find the first managed filiere's department+semestre
-      if (currentUser.role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length > 0) {
-        var fmId = currentUser.managed_filieres[0].id;
-        API.apiFetch('/curriculum/filieres/' + fmId + '/').then(function(f) {
-          if (f.department_id) {
-            deptSel.value = f.department_id;
-            absOnDeptChange();
-            // After dept change & semestres loaded, pick the right semestre + filiere
-            _absAutoSemestreId = f.semestre_id;
-            _absAutoFiliereId = fmId;
-          }
-        }).catch(function() {});
-      }
-    }).catch(function() {});
+    } else {
+      // Admin: load all departments
+      deptSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+      API.apiFetch('/departments/').then(function(depts) {
+        depts.forEach(function(d) {
+          var opt = document.createElement('option'); opt.value = d.id; opt.textContent = d.name || d.label; deptSel.appendChild(opt);
+        });
+      }).catch(function() {});
+    }
     // Load teachers (independent, always available)
     var tSel = document.getElementById('absTeacher');
     if (tSel) {
@@ -4321,9 +4342,6 @@ tbody.innerHTML = list.map(function (d) {
       }).catch(function() {});
     }
   }
-
-  var _absAutoSemestreId = null;
-  var _absAutoFiliereId = null;
 
   function absOnDeptChange() {
     if (_absLoadingDept) return;
@@ -4354,16 +4372,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name || 'Semestre ' + s.name; semSel.appendChild(opt);
       });
       if (semestres.length === 0) { semSel.disabled = true; semSel.innerHTML = '<option value="">Aucun semestre</option>'; }
-      if (_absAutoSemestreId) {
-        var autoOpt = semSel.querySelector('option[value="' + _absAutoSemestreId + '"]');
-        if (autoOpt) {
-          semSel.value = _absAutoSemestreId;
-          _absAutoSemestreId = null;
-          absOnSemestreChange();
-          return;
-        }
-      }
-      applyAbsenceFilters();
     }).catch(function() { semSel.disabled = true; semSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingDept = false; });
   }
 
@@ -4394,16 +4402,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = f.id; opt.textContent = f.name || f.filiere_name; fSel.appendChild(opt);
       });
       if (filieres.length === 0) { fSel.disabled = true; fSel.innerHTML = '<option value="">Aucune filière</option>'; }
-      if (_absAutoFiliereId) {
-        var autoOpt = fSel.querySelector('option[value="' + _absAutoFiliereId + '"]');
-        if (autoOpt) {
-          fSel.value = _absAutoFiliereId;
-          _absAutoFiliereId = null;
-          absOnFiliereChange();
-          return;
-        }
-      }
-      applyAbsenceFilters();
     }).catch(function() { fSel.disabled = true; fSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingSemestre = false; });
   }
 
@@ -4430,8 +4428,6 @@ tbody.innerHTML = list.map(function (d) {
         var opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name || m.module_name; mSel.appendChild(opt);
       });
       if (modules.length === 0) { mSel.disabled = true; mSel.innerHTML = '<option value="">Aucun module</option>'; }
-      // Trigger stats refresh at end of cascade (program_manager auto-selection)
-      applyAbsenceFilters();
     }).catch(function() { mSel.disabled = true; mSel.innerHTML = '<option value="">Erreur</option>'; }).finally(function() { _absLoadingFiliere = false; });
   }
 
@@ -4497,7 +4493,7 @@ function absOnModuleChange() {
     set('absStatTeachers', s.total_teachers);
     set('absStatModules', s.total_modules);
 
-    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student__first_name', 'student__last_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Nom', 'Prénom', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Étudiant', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absTeacherBody', d.by_teacher, ['teacher_name', 'total', 'absent_count', 'rate'], ['Enseignant', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absModuleBody', d.by_module, ['module_name', 'total', 'absent_count', 'rate'], ['Module', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absFiliereBody', d.by_filiere, ['filiere_name', 'total', 'absent_count', 'rate'], ['Filière', 'Total', 'Absences', 'Taux']);
@@ -4533,7 +4529,7 @@ function absOnModuleChange() {
   }
 
   function resetAbsenceFilters() {
-    var ids = ['absDept','absSemestre','absFiliere','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
+    var ids = ['absSemestre','absFiliere','absModule','absClasse','absTeacher','absStudentSearch','absDateFrom','absDateTo'];
     ids.forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
@@ -4549,6 +4545,25 @@ function absOnModuleChange() {
     document.getElementById('absModule').innerHTML = '<option value="">-- Sélectionner --</option>';
     document.getElementById('absClasse').disabled = true;
     document.getElementById('absClasse').innerHTML = '<option value="">Toutes</option>';
+    // Re-apply role scoping (department_head / program_manager)
+    if (currentUser.role === 'department_head' && currentUser.managed_department) {
+      var dept = currentUser.managed_department;
+      var deptSel = document.getElementById('absDept');
+      if (deptSel) {
+        deptSel.innerHTML = '<option value="' + dept.id + '">' + esc(dept.name) + '</option>';
+        deptSel.disabled = true;
+        absOnDeptChange();
+      }
+    } else if (currentUser.role === 'program_manager' && currentUser.managed_filieres && currentUser.managed_filieres.length) {
+      _absHideField('absDept'); _absHideField('absSemestre');
+      var filSel = document.getElementById('absFiliere');
+      if (filSel) {
+        filSel.disabled = false;
+        _absSetOpts('absFiliere', currentUser.managed_filieres, function(f) { return f.name; });
+        var filGroup = filSel.closest('.field');
+        if (filGroup) filGroup.style.display = '';
+      }
+    }
     loadAbsenceStats();
   }
 

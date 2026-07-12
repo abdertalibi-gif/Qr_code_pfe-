@@ -851,6 +851,12 @@ def admin_statistics(request):
             student_qs = User.objects.filter(
                 role="student", student_profile__classe__filiere_id__in=filiere_ids
             )
+    elif request.user.role == "teacher":
+        attend_qs = attend_qs.filter(session__teacher=request.user)
+        session_qs = session_qs.filter(teacher=request.user)
+        student_qs = User.objects.filter(
+            role="student", student_profile__classe__teachers=request.user
+        )
 
     total_present = attend_qs.filter(attendance_status="confirmed").count()
     total_attendance = attend_qs.count()
@@ -982,6 +988,8 @@ def absence_statistics(request):
             qs = qs.filter(student__classe__filiere_id__in=filiere_ids)
         else:
             qs = qs.none()
+    elif request.user.role == "teacher":
+        qs = qs.filter(session__teacher=request.user)
 
     # Combine all aggregate counts into a single query
     agg = qs.aggregate(
