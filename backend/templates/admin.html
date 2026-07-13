@@ -698,9 +698,82 @@
         <div class="stat-card"><div class="stat-icon blue">📅</div><div><div class="label">Séances</div><div class="value" id="wlSessionCount">—</div></div></div>
         <div class="stat-card"><div class="stat-icon orange">⏱</div><div><div class="label">Total heures</div><div class="value" id="wlTotalHours">—</div></div></div>
       </div>
-      <div class="absence-actions" style="margin:1rem 0">
-        <button class="btn btn-primary" onclick="loadTeacherWorkload()">🔄 Actualiser</button>
+
+      <div class="absence-filters" style="margin-top:.75rem">
+        <div class="field">
+          <label>Département</label>
+          <select id="wlDepartment" class="form-control" onchange="wlOnFilterChange()">
+            <option value="">Tous les départements</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Semestre</label>
+          <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()">
+            <option value="">Tous les semestres</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="wlFiliere" class="form-control" onchange="wlOnFiliereChange()" disabled>
+            <option value="">Toutes les filières</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Enseignant</label>
+          <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()">
+            <option value="">Tous les enseignants</option>
+          </select>
+        </div>
       </div>
+
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-top:.5rem">
+        <div class="field" style="min-width:130px">
+          <label>Période</label>
+          <select id="wlPeriodMode" class="form-control" onchange="wlOnPeriodModeChange()">
+            <option value="month">Mois / Année</option>
+            <option value="range">Intervalle de dates</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:120px" id="wlMonthGroup">
+          <label>Mois</label>
+          <select id="wlMonth" class="form-control" onchange="wlOnFilterChange()">
+            <option value="">—</option>
+            <option value="1">Janvier</option>
+            <option value="2">Février</option>
+            <option value="3">Mars</option>
+            <option value="4">Avril</option>
+            <option value="5">Mai</option>
+            <option value="6">Juin</option>
+            <option value="7">Juillet</option>
+            <option value="8">Août</option>
+            <option value="9">Septembre</option>
+            <option value="10">Octobre</option>
+            <option value="11">Novembre</option>
+            <option value="12">Décembre</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:100px" id="wlYearGroup">
+          <label>Année</label>
+          <select id="wlYear" class="form-control" onchange="wlOnFilterChange()">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:150px;display:none" id="wlDateStartGroup">
+          <label>Du</label>
+          <input type="date" id="wlDateStart" class="form-control" onchange="wlOnFilterChange()" />
+        </div>
+        <div class="field" style="min-width:150px;display:none" id="wlDateEndGroup">
+          <label>Au</label>
+          <input type="date" id="wlDateEnd" class="form-control" onchange="wlOnFilterChange()" />
+        </div>
+      </div>
+
+      <div class="absence-actions" style="margin:1rem 0;flex-wrap:wrap;gap:.5rem">
+        <button class="btn btn-primary" onclick="loadTeacherWorkload()">🔄 Actualiser</button>
+        <button class="btn btn-success" id="btnWlExport">📥 Générer Excel</button>
+        <span id="wlExportSpinner" class="spinner" style="display:none"></span>
+      </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead>
@@ -2604,7 +2677,7 @@
         _tabLoaded[tab] = true;
         if (tab === 'classes') loadClasses();
         else if (tab === 'absence-stats') loadAbsenceStats();
-        else if (tab === 'workload') loadTeacherWorkload();
+        else if (tab === 'workload') { wlPopulateFilters(); loadTeacherWorkload(); }
       }
     });
   });
@@ -4610,6 +4683,150 @@ tbody.innerHTML = list.map(function (d) {
       }).join('');
     } catch (e) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+  };
+
+  /* ── Workload Filters & Excel Export ── */
+  window.wlSemestres = [];
+
+  window.wlPopulateFilters = function () {
+    var deptSel = document.getElementById('wlDepartment');
+    if (deptSel && allDepartments) {
+      deptSel.innerHTML = '<option value="">Tous les départements</option>' +
+        allDepartments.map(function (d) { return '<option value="' + d.id + '">' + esc(d.name) + '</option>'; }).join('');
+    }
+    var yearSel = document.getElementById('wlYear');
+    if (yearSel) {
+      var cur = new Date().getFullYear();
+      var yHtml = '<option value="">—</option>';
+      for (var y = cur; y >= cur - 5; y--) { yHtml += '<option value="' + y + '">' + y + '</option>'; }
+      yearSel.innerHTML = yHtml;
+      yearSel.value = String(cur);
+    }
+    var monthSel = document.getElementById('wlMonth');
+    if (monthSel) monthSel.value = String(new Date().getMonth() + 1);
+    wlLoadSemestres();
+    wlLoadTeachers();
+  };
+
+  window.wlLoadSemestres = function () {
+    var sel = document.getElementById('wlSemestre');
+    if (!sel) return;
+    API.apiFetch('/curriculum/semestres/').then(function (data) {
+      window.wlSemestres = Array.isArray(data) ? data : (data.results || []);
+      sel.innerHTML = '<option value="">Tous les semestres</option>';
+      window.wlSemestres.forEach(function (s) {
+        sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+      });
+    }).catch(function () {});
+  };
+
+  window.wlLoadTeachers = function () {
+    var sel = document.getElementById('wlTeacher');
+    if (!sel) return;
+    API.apiFetch('/teachers/').then(function (data) {
+      window.wlAllTeachers = Array.isArray(data) ? data : (data.results || []);
+      wlUpdateTeacherOptions();
+    }).catch(function () {});
+  };
+
+  window.wlUpdateTeacherOptions = function () {
+    var sel = document.getElementById('wlTeacher');
+    if (!sel || !window.wlAllTeachers) return;
+    var deptId = document.getElementById('wlDepartment').value;
+    var filId = document.getElementById('wlFiliere').value;
+    var filtered = window.wlAllTeachers;
+    if (filId) {
+      var filiere = (allFilieres || []).find(function (f) { return String(f.id) === filId; });
+      if (filiere) {
+        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(filiere.department_id || filiere.department); });
+      }
+    } else if (deptId) {
+      filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === deptId; });
+    }
+    sel.innerHTML = '<option value="">Tous les enseignants</option>' +
+      filtered.map(function (t) {
+        return '<option value="' + t.id + '">' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</option>';
+      }).join('');
+  };
+
+  window.wlOnPeriodModeChange = function () {
+    var mode = document.getElementById('wlPeriodMode').value;
+    document.getElementById('wlMonthGroup').style.display = mode === 'month' ? '' : 'none';
+    document.getElementById('wlYearGroup').style.display = mode === 'month' ? '' : 'none';
+    document.getElementById('wlDateStartGroup').style.display = mode === 'range' ? '' : 'none';
+    document.getElementById('wlDateEndGroup').style.display = mode === 'range' ? '' : 'none';
+  };
+
+  window.wlOnSemestreChange = function () {
+    var semId = document.getElementById('wlSemestre').value;
+    var fSel = document.getElementById('wlFiliere');
+    var html = '<option value="">Toutes les filières</option>';
+    var list = allFilieres || [];
+    if (semId) {
+      list = list.filter(function (f) { return String(f.semestre_id || f.semestre) === semId; });
+    }
+    list.forEach(function (f) { html += '<option value="' + f.id + '">' + esc(f.name) + '</option>'; });
+    fSel.innerHTML = html;
+    fSel.disabled = false;
+    wlOnFiliereChange();
+  };
+
+  window.wlOnFiliereChange = function () {
+    wlUpdateTeacherOptions();
+  };
+
+  window.wlOnFilterChange = function () {};
+
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'btnWlExport') {
+      wlExportExcel();
+    }
+  });
+
+  window.wlExportExcel = async function () {
+    var spinner = document.getElementById('wlExportSpinner');
+    if (spinner) spinner.style.display = 'inline-block';
+    try {
+      var params = new URLSearchParams();
+      var deptId = document.getElementById('wlDepartment').value;
+      var semId = document.getElementById('wlSemestre').value;
+      var filId = document.getElementById('wlFiliere').value;
+      var teacherId = document.getElementById('wlTeacher').value;
+      var mode = document.getElementById('wlPeriodMode').value;
+      if (deptId) params.set('department_id', deptId);
+      if (semId) params.set('semestre_id', semId);
+      if (filId) params.set('filiere_id', filId);
+      if (teacherId) params.set('teacher_id', teacherId);
+      if (mode === 'month') {
+        params.set('month', document.getElementById('wlMonth').value);
+        params.set('year', document.getElementById('wlYear').value);
+      } else {
+        var ds = document.getElementById('wlDateStart').value;
+        var de = document.getElementById('wlDateEnd').value;
+        if (ds) params.set('start_date', ds);
+        if (de) params.set('end_date', de);
+      }
+      var token = localStorage.getItem('access_token') || '';
+      var resp = await fetch('/api/v1/teacher-monthly-report/?' + params.toString(), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        var err = await resp.json().catch(function () { return { detail: 'Erreur inconnue' }; });
+        showToast('Erreur: ' + (err.detail || resp.statusText), 'error');
+        return;
+      }
+      var blob = await resp.blob();
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'Charge_Horaire_Enseignants_' + (document.getElementById('wlMonth').value || 'MM') + '_' + (document.getElementById('wlYear').value || 'YYYY') + '.xlsx';
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showToast('Rapport généré avec succès !', 'success');
+    } catch (e) {
+      showToast('Erreur réseau: ' + e.message, 'error');
+    } finally {
+      if (spinner) spinner.style.display = 'none';
     }
   };
 
