@@ -1,0 +1,114 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Charge Horaire Enseignants{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Rapport mensuel — Charge horaire des enseignants</h1>
+    <p>Générez un fichier Excel détaillant la charge horaire par enseignant sur une période donnée.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Filtres</h2>
+  <div class="section-actions">
+    <button class="btn" id="btnGenerateReport" disabled>📥 Générer le rapport Excel</button>
+  </div>
+</div>
+
+<div class="absence-filters">
+  <div class="field">
+    <label>Département</label>
+    <select id="wlDepartment" class="form-control" onchange="onFilterChange()">
+      <option value="">Tous les départements</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Semestre</label>
+    <select id="wlSemestre" class="form-control" onchange="onSemestreChange()">
+      <option value="">Tous les semestres</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Filière</label>
+    <select id="wlFiliere" class="form-control" onchange="onFiliereChange()" disabled>
+      <option value="">Toutes les filières</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Enseignant</label>
+    <select id="wlTeacher" class="form-control" onchange="onFilterChange()">
+      <option value="">Tous les enseignants</option>
+    </select>
+  </div>
+</div>
+
+<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; margin-top:.75rem">
+  <div class="field" style="min-width:140px">
+    <label>Période par</label>
+    <select id="wlPeriodMode" class="form-control" onchange="onPeriodModeChange()">
+      <option value="month">Mois / Année</option>
+      <option value="range">Intervalle de dates</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:140px" id="wlMonthGroup">
+    <label>Mois</label>
+    <select id="wlMonth" class="form-control" onchange="onFilterChange()">
+      <option value="">—</option>
+      <option value="1">Janvier</option>
+      <option value="2">Février</option>
+      <option value="3">Mars</option>
+      <option value="4">Avril</option>
+      <option value="5">Mai</option>
+      <option value="6">Juin</option>
+      <option value="7">Juillet</option>
+      <option value="8">Août</option>
+      <option value="9">Septembre</option>
+      <option value="10">Octobre</option>
+      <option value="11">Novembre</option>
+      <option value="12">Décembre</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:120px" id="wlYearGroup">
+    <label>Année</label>
+    <select id="wlYear" class="form-control" onchange="onFilterChange()">
+      <option value="">—</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:160px;display:none" id="wlDateStartGroup">
+    <label>Du</label>
+    <input type="date" id="wlDateStart" class="form-control" onchange="onFilterChange()" />
+  </div>
+  <div class="field" style="min-width:160px;display:none" id="wlDateEndGroup">
+    <label>Au</label>
+    <input type="date" id="wlDateEnd" class="form-control" onchange="onFilterChange()" />
+  </div>
+</div>
+
+<div class="table-wrap" style="margin-top:1.5rem">
+  <table>
+    <thead>
+      <tr>
+        <th>Enseignant</th>
+        <th>Département</th>
+        <th>Filière</th>
+        <th>Séances CM</th>
+        <th>Séances TD</th>
+        <th>Séances TP</th>
+        <th>Heures CM</th>
+        <th>Heures TD</th>
+        <th>Heures TP</th>
+        <th>Total heures</th>
+        <th>Total séances</th>
+      </tr>
+    </thead>
+    <tbody id="wlPreviewBody">
+      <tr class="empty-row"><td colspan="11">Sélectionnez des filtres puis cliquez sur "Générer le rapport".</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-workload.js"></script>
+{% endblock %}

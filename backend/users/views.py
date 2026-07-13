@@ -1550,3 +1550,222 @@ class PasswordResetConfirmView(APIView):
         logger.info(f"Password reset successful for {user.email}")
 
         return Response({"detail": "Mot de passe reinitialise avec succes."})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_monthly_report(request):
+    """Generate an Excel report of teacher monthly workload with role-based scoping."""
+    from django.db.models import Count, Sum, F, ExpressionWrapper, DurationField, FloatField
+    from django.db.models.functions import Extract
+    from courses.models import Session
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+    from openpyxl.utils import get_column_letter
+
+    qs = Session.objects.filter(teacher__is_active=True, is_active=True)
+    qs = qs.select_related("teacher", "classe", "classe__filiere")
+
+    # Role-based scoping
+    if request.user.role == "department_head":
+        dept = get_user_department(request.user)
+        if dept:
+            qs = qs.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
+            )
+        else:
+            qs = qs.none()
+    elif request.user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(request.user)
+        if filiere_ids:
+            qs = qs.filter(classe__filiere_id__in=filiere_ids)
+        else:
+            qs = qs.none()
+    elif request.user.role != "admin":
+        return Response({"detail": "Permission refusée."}, status=403)
+
+    # Query-param filters
+    department_id = request.query_params.get("department_id")
+    semestre_id = request.query_params.get("semestre_id")
+    filiere_id = request.query_params.get("filiere_id")
+    teacher_id = request.query_params.get("teacher_id")
+    month = request.query_params.get("month")
+    year = request.query_params.get("year")
+    start_date = request.query_params.get("start_date")
+    end_date = request.query_params.get("end_date")
+
+    if department_id:
+        qs = qs.filter(
+            Q(classe__department_id=department_id) |
+            Q(classe__filiere__department_id=department_id)
+        )
+    if semestre_id:
+        qs = qs.filter(classe__semestre_id=semestre_id)
+    if filiere_id:
+        qs = qs.filter(classe__filiere_id=filiere_id)
+    if teacher_id:
+        qs = qs.filter(teacher_id=teacher_id)
+    if month and year:
+        qs = qs.filter(date__month=month, date__year=year)
+    elif start_date:
+        qs = qs.filter(date__gte=start_date)
+        if end_date:
+            qs = qs.filter(date__lte=end_date)
+
+    # Duration in seconds
+    duration_seconds = Extract(
+        ExpressionWrapper(F("end_time") - F("start_time"), output_field=DurationField()),
+        "epoch",
+    )
+
+    # Aggregate by teacher + session_type
+    stats = (
+        qs
+        .values("teacher_id", "teacher__first_name", "teacher__last_name", "teacher__email",
+                "session_type")
+        .annotate(
+            session_count=Count("id"),
+            total_seconds=Sum(duration_seconds),
+        )
+        .order_by("teacher__last_name", "teacher__first_name", "session_type")
+    )
+
+    # Build per-teacher summary
+    teacher_rows: dict[int, dict] = {}
+    teacher_order: list[int] = []
+    for row in stats:
+        tid = row["teacher_id"]
+        if tid not in teacher_rows:
+            teacher_rows[tid] = {
+                "first_name": row["teacher__first_name"],
+                "last_name": row["teacher__last_name"],
+                "email": row["teacher__email"],
+                "cm_count": 0, "td_count": 0, "tp_count": 0,
+                "cm_hours": 0.0, "td_hours": 0.0, "tp_hours": 0.0,
+                "total_hours": 0.0, "total_sessions": 0,
+            }
+            teacher_order.append(tid)
+
+        hours = (row["total_seconds"] or 0) / 3600.0
+        st = row["session_type"]
+        info = teacher_rows[tid]
+        if st == "Cours":
+            info["cm_count"] = row["session_count"]
+            info["cm_hours"] = round(hours, 2)
+            info["total_hours"] += hours
+        elif st == "TD":
+            info["td_count"] = row["session_count"]
+            info["td_hours"] = round(hours / 1.5, 2)
+            info["total_hours"] += hours / 1.5
+        elif st == "TP":
+            info["tp_count"] = row["session_count"]
+            info["tp_hours"] = round(hours / 1.5, 2)
+            info["total_hours"] += hours / 1.5
+        info["total_sessions"] += row["session_count"]
+
+    # Resolve department / filiere for each teacher
+    if teacher_order:
+        teachers_qs = User.objects.filter(id__in=teacher_order).prefetch_related(
+            Prefetch(
+                "assigned_classes",
+                queryset=Classe.objects.select_related("department", "filiere"),
+            )
+        )
+        for t in teachers_qs:
+            info = teacher_rows[t.id]
+            dept_name = None
+            filiere_name = None
+            ac = list(t.assigned_classes.all())
+            if ac:
+                c = ac[0]
+                if c.department:
+                    dept_name = c.department.name
+                if c.filiere:
+                    filiere_name = c.filiere.name
+            info["department"] = dept_name
+            info["filiere"] = filiere_name
+
+    # ── Generate Excel ──
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Charge Horaire"
+
+    bold = Font(bold=True)
+    header_align = Alignment(horizontal="center", vertical="center")
+
+    headers = [
+        "Enseignant", "Département", "Filière",
+        "Nb séances CM", "Nb séances TD", "Nb séances TP",
+        "Total heures CM", "Total heures TD", "Total heures TP",
+        "Charge horaire totale", "Nombre total de séances",
+    ]
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = bold
+        cell.alignment = header_align
+
+    totals = {
+        "cm_count": 0, "td_count": 0, "tp_count": 0,
+        "cm_hours": 0.0, "td_hours": 0.0, "tp_hours": 0.0,
+        "total_hours": 0.0, "total_sessions": 0,
+    }
+
+    for row_idx, tid in enumerate(teacher_order, 2):
+        info = teacher_rows[tid]
+        full_name = f"{info['last_name']} {info['first_name']}"
+        ws.cell(row=row_idx, column=1, value=full_name)
+        ws.cell(row=row_idx, column=2, value=info.get("department") or "—")
+        ws.cell(row=row_idx, column=3, value=info.get("filiere") or "—")
+        ws.cell(row=row_idx, column=4, value=info["cm_count"])
+        ws.cell(row=row_idx, column=5, value=info["td_count"])
+        ws.cell(row=row_idx, column=6, value=info["tp_count"])
+        ws.cell(row=row_idx, column=7, value=info["cm_hours"])
+        ws.cell(row=row_idx, column=8, value=info["td_hours"])
+        ws.cell(row=row_idx, column=9, value=info["tp_hours"])
+        ws.cell(row=row_idx, column=10, value=round(info["total_hours"], 2))
+        ws.cell(row=row_idx, column=11, value=info["total_sessions"])
+
+        totals["cm_count"] += info["cm_count"]
+        totals["td_count"] += info["td_count"]
+        totals["tp_count"] += info["tp_count"]
+        totals["cm_hours"] += info["cm_hours"]
+        totals["td_hours"] += info["td_hours"]
+        totals["tp_hours"] += info["tp_hours"]
+        totals["total_hours"] += info["total_hours"]
+        totals["total_sessions"] += info["total_sessions"]
+
+    # Total row
+    total_row = len(teacher_order) + 2
+    ws.cell(row=total_row, column=1, value="TOTAL GÉNÉRAL").font = bold
+    ws.cell(row=total_row, column=4, value=totals["cm_count"]).font = bold
+    ws.cell(row=total_row, column=5, value=totals["td_count"]).font = bold
+    ws.cell(row=total_row, column=6, value=totals["tp_count"]).font = bold
+    ws.cell(row=total_row, column=7, value=round(totals["cm_hours"], 2)).font = bold
+    ws.cell(row=total_row, column=8, value=round(totals["td_hours"], 2)).font = bold
+    ws.cell(row=total_row, column=9, value=round(totals["tp_hours"], 2)).font = bold
+    ws.cell(row=total_row, column=10, value=round(totals["total_hours"], 2)).font = bold
+    ws.cell(row=total_row, column=11, value=totals["total_sessions"]).font = bold
+
+    # Auto-adjust column widths
+    for col_idx in range(1, len(headers) + 1):
+        max_len = len(str(headers[col_idx - 1]))
+        for row_idx in range(2, total_row + 1):
+            val = ws.cell(row=row_idx, column=col_idx).value
+            if val is not None:
+                max_len = max(max_len, len(str(val)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 4
+
+    filename = None
+    if month and year:
+        filename = f"Charge_Horaire_Enseignants_{month}_{year}.xlsx"
+    else:
+        from datetime import date
+        filename = f"Charge_Horaire_Enseignants_{date.today().strftime('%m_%Y')}.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response

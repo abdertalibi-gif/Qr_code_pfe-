@@ -55,6 +55,37 @@
 - **7 tests d'import étudiant** : tous OK
 - **9 tests d'import teacher** : échecs préexistants (`relation "departments" does not exist` dans la DB de test, non lié aux changements)
 
+## Feature: Rapport Excel mensuel — Charge horaire enseignants
+
+### Endpoint
+- `GET /api/v1/teacher-monthly-report/` → `teacher_monthly_report` dans `backend/users/views.py`
+- Génère un fichier `.xlsx` avec openpyxl
+
+### Filtres (query params)
+- `department_id`, `semestre_id`, `filiere_id`, `teacher_id`
+- `month` + `year` (ex: month=7, year=2026) **OU** `start_date` + `end_date`
+
+### Calcul
+- CM (Cours) = durée réelle (end_time - start_time)
+- TD = durée ÷ 1,5
+- TP = durée ÷ 1,5
+- Seules les séances actives (`is_active=True`) sont comptées
+
+### Colonnes Excel
+Enseignant, Département, Filière, Nb séances CM/TD/TP, Total heures CM/TD/TP, Charge horaire totale, Total séances
+- Ligne `TOTAL GÉNÉRAL` à la fin
+- En-têtes en gras, colonnes ajustées automatiquement
+- Nom fichier : `Charge_Horaire_Enseignants_MM_YYYY.xlsx`
+
+### Permissions
+- **admin** : tous les enseignants
+- **department_head** : enseignants de son département (via `classe.department` ou `classe.filiere.department`)
+- **program_manager** : enseignants de sa filière
+
+### Frontend
+- `/admin/workload/` → `admin_workload.html` (extends `admin_base.html`)
+- `admin-workload.js` : chargement en cascade (semestre → filière, filtre par département), sélecteurs mois/année ou intervalle de dates
+
 ## Known Bugs
 - Missing teachers import template endpoint: `GET /teachers/import-excel/template/` returns 404.
 - Standalone pages (`admin_teachers.html`, `admin_absences.html`, etc.) have broken template blocks (`page_title`, `modals`, `extra_js` not defined in `admin_base.html`).
