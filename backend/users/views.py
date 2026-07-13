@@ -1585,8 +1585,10 @@ def teacher_monthly_report(request):
 
     # Query-param filters
     department_id = request.query_params.get("department_id")
+    niveau = request.query_params.get("niveau")
     semestre_id = request.query_params.get("semestre_id")
     filiere_id = request.query_params.get("filiere_id")
+    module_id = request.query_params.get("module_id")
     teacher_id = request.query_params.get("teacher_id")
     month = request.query_params.get("month")
     year = request.query_params.get("year")
@@ -1598,10 +1600,14 @@ def teacher_monthly_report(request):
             Q(classe__department_id=department_id) |
             Q(classe__filiere__department_id=department_id)
         )
+    if niveau:
+        qs = qs.filter(classe__filiere__niveau=niveau)
     if semestre_id:
-        qs = qs.filter(classe__semestre_id=semestre_id)
+        qs = qs.filter(classe__filiere__semestre_id=semestre_id)
     if filiere_id:
         qs = qs.filter(classe__filiere_id=filiere_id)
+    if module_id:
+        qs = qs.filter(module_id=module_id)
     if teacher_id:
         qs = qs.filter(teacher_id=teacher_id)
     if month and year:

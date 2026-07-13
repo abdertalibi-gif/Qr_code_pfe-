@@ -701,26 +701,32 @@
 
       <div class="absence-filters" style="margin-top:.75rem">
         <div class="field">
-          <label>Département</label>
-          <select id="wlDepartment" class="form-control" onchange="wlOnFilterChange()">
-            <option value="">Tous les départements</option>
+          <label>Niveau</label>
+          <select id="wlNiveau" class="form-control" onchange="wlOnNiveauChange()">
+            <option value="">Tous les niveaux</option>
           </select>
         </div>
         <div class="field">
           <label>Semestre</label>
-          <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()">
-            <option value="">Tous les semestres</option>
+          <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()" disabled>
+            <option value="">— Sélectionnez d'abord le niveau —</option>
           </select>
         </div>
         <div class="field">
           <label>Filière</label>
           <select id="wlFiliere" class="form-control" onchange="wlOnFiliereChange()" disabled>
-            <option value="">Toutes les filières</option>
+            <option value="">— Sélectionnez d'abord le semestre —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Module</label>
+          <select id="wlModule" class="form-control" onchange="wlOnModuleChange()" disabled>
+            <option value="">— Sélectionnez d'abord la filière —</option>
           </select>
         </div>
         <div class="field">
           <label>Enseignant</label>
-          <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()">
+          <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()" disabled>
             <option value="">Tous les enseignants</option>
           </select>
         </div>
@@ -4686,15 +4692,14 @@ tbody.innerHTML = list.map(function (d) {
     }
   };
 
-  /* ── Workload Filters & Excel Export ── */
+  /* ── Workload Filters & Excel Export (cascade: Niveau → Semestre → Filière → Module → Enseignant) ── */
+  window.wlNiveaux = [];
   window.wlSemestres = [];
+  window.wlFilieres = [];
+  window.wlModules = [];
+  window.wlAllTeachers = [];
 
   window.wlPopulateFilters = function () {
-    var deptSel = document.getElementById('wlDepartment');
-    if (deptSel && allDepartments) {
-      deptSel.innerHTML = '<option value="">Tous les départements</option>' +
-        allDepartments.map(function (d) { return '<option value="' + d.id + '">' + esc(d.name) + '</option>'; }).join('');
-    }
     var yearSel = document.getElementById('wlYear');
     if (yearSel) {
       var cur = new Date().getFullYear();
@@ -4705,20 +4710,117 @@ tbody.innerHTML = list.map(function (d) {
     }
     var monthSel = document.getElementById('wlMonth');
     if (monthSel) monthSel.value = String(new Date().getMonth() + 1);
-    wlLoadSemestres();
-    wlLoadTeachers();
+    wlLoadNiveaux();
   };
 
-  window.wlLoadSemestres = function () {
-    var sel = document.getElementById('wlSemestre');
+  window.wlLoadNiveaux = function () {
+    var sel = document.getElementById('wlNiveau');
     if (!sel) return;
-    API.apiFetch('/curriculum/semestres/').then(function (data) {
-      window.wlSemestres = Array.isArray(data) ? data : (data.results || []);
-      sel.innerHTML = '<option value="">Tous les semestres</option>';
-      window.wlSemestres.forEach(function (s) {
-        sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    API.apiFetch('/curriculum/niveaux/').then(function (data) {
+      window.wlNiveaux = Array.isArray(data) ? data : (data.results || []);
+      sel.innerHTML = '<option value="">Tous les niveaux</option>';
+      window.wlNiveaux.forEach(function (n) {
+        sel.innerHTML += '<option value="' + esc(n.value || n.id || n) + '">' + esc(n.label || n.name || n.display || n) + '</option>';
       });
     }).catch(function () {});
+  };
+
+  window.wlOnNiveauChange = function () {
+    var niveau = document.getElementById('wlNiveau').value;
+    var semSel = document.getElementById('wlSemestre');
+    var filSel = document.getElementById('wlFiliere');
+    var modSel = document.getElementById('wlModule');
+    var teaSel = document.getElementById('wlTeacher');
+
+    semSel.innerHTML = '<option value="">Chargement…</option>';
+    semSel.disabled = true;
+    filSel.innerHTML = '<option value="">— Sélectionnez d\'abord le semestre —</option>';
+    filSel.disabled = true;
+    modSel.innerHTML = '<option value="">— Sélectionnez d\'abord la filière —</option>';
+    modSel.disabled = true;
+    teaSel.innerHTML = '<option value="">Tous les enseignants</option>';
+    teaSel.disabled = true;
+
+    var url = niveau
+      ? '/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau)
+      : '/curriculum/semestres/';
+    API.apiFetch(url).then(function (data) {
+      window.wlSemestres = Array.isArray(data) ? data : (data.results || []);
+      semSel.innerHTML = '<option value="">Tous les semestres</option>';
+      window.wlSemestres.forEach(function (s) {
+        semSel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+      });
+      semSel.disabled = window.wlSemestres.length === 0;
+      if (window.wlSemestres.length === 0) semSel.innerHTML = '<option value="">Aucun semestre</option>';
+    }).catch(function () {
+      semSel.innerHTML = '<option value="">— Erreur —</option>';
+    });
+  };
+
+  window.wlOnSemestreChange = function () {
+    var niveau = document.getElementById('wlNiveau').value;
+    var semId = document.getElementById('wlSemestre').value;
+    var filSel = document.getElementById('wlFiliere');
+    var modSel = document.getElementById('wlModule');
+    var teaSel = document.getElementById('wlTeacher');
+
+    filSel.innerHTML = '<option value="">Chargement…</option>';
+    filSel.disabled = true;
+    modSel.innerHTML = '<option value="">— Sélectionnez d\'abord la filière —</option>';
+    modSel.disabled = true;
+    teaSel.innerHTML = '<option value="">Tous les enseignants</option>';
+    teaSel.disabled = true;
+
+    var url = '/curriculum/filieres/?';
+    if (semId) url += 'semestre_id=' + semId + '&';
+    if (niveau) url += 'niveau=' + encodeURIComponent(niveau) + '&';
+    API.apiFetch(url).then(function (data) {
+      window.wlFilieres = Array.isArray(data) ? data : (data.results || []);
+      filSel.innerHTML = '<option value="">Toutes les filières</option>';
+      window.wlFilieres.forEach(function (f) {
+        filSel.innerHTML += '<option value="' + f.id + '">' + esc(f.name) + '</option>';
+      });
+      filSel.disabled = window.wlFilieres.length === 0;
+      if (window.wlFilieres.length === 0) filSel.innerHTML = '<option value="">Aucune filière</option>';
+    }).catch(function () {
+      filSel.innerHTML = '<option value="">— Erreur —</option>';
+    });
+  };
+
+  window.wlOnFiliereChange = function () {
+    var filId = document.getElementById('wlFiliere').value;
+    var modSel = document.getElementById('wlModule');
+    var teaSel = document.getElementById('wlTeacher');
+
+    modSel.innerHTML = '<option value="">Chargement…</option>';
+    modSel.disabled = true;
+    teaSel.innerHTML = '<option value="">Tous les enseignants</option>';
+    teaSel.disabled = true;
+
+    if (!filId) {
+      modSel.innerHTML = '<option value="">Tous les modules</option>';
+      modSel.disabled = false;
+      window.wlModules = [];
+      wlLoadTeachers();
+      return;
+    }
+
+    API.apiFetch('/curriculum/modules/?filiere_id=' + filId).then(function (data) {
+      window.wlModules = Array.isArray(data) ? data : (data.results || []);
+      modSel.innerHTML = '<option value="">Tous les modules</option>';
+      window.wlModules.forEach(function (m) {
+        modSel.innerHTML += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
+      });
+      modSel.disabled = window.wlModules.length === 0;
+      if (window.wlModules.length === 0) modSel.innerHTML = '<option value="">Aucun module</option>';
+      wlLoadTeachers();
+    }).catch(function () {
+      modSel.innerHTML = '<option value="">— Erreur —</option>';
+    });
+  };
+
+  window.wlOnModuleChange = function () {
+    wlLoadTeachers();
   };
 
   window.wlLoadTeachers = function () {
@@ -4732,22 +4834,26 @@ tbody.innerHTML = list.map(function (d) {
 
   window.wlUpdateTeacherOptions = function () {
     var sel = document.getElementById('wlTeacher');
-    if (!sel || !window.wlAllTeachers) return;
-    var deptId = document.getElementById('wlDepartment').value;
+    if (!sel) return;
     var filId = document.getElementById('wlFiliere').value;
+    var modId = document.getElementById('wlModule').value;
     var filtered = window.wlAllTeachers;
-    if (filId) {
-      var filiere = (allFilieres || []).find(function (f) { return String(f.id) === filId; });
-      if (filiere) {
-        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(filiere.department_id || filiere.department); });
+    if (modId && window.wlModules.length) {
+      var mod = window.wlModules.find(function (m) { return String(m.id) === modId; });
+      if (mod && mod.filiere_id) {
+        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(mod.department_id || mod.department); });
       }
-    } else if (deptId) {
-      filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === deptId; });
+    } else if (filId && window.wlFilieres.length) {
+      var fil = window.wlFilieres.find(function (f) { return String(f.id) === filId; });
+      if (fil) {
+        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(fil.department_id || fil.department); });
+      }
     }
     sel.innerHTML = '<option value="">Tous les enseignants</option>' +
       filtered.map(function (t) {
         return '<option value="' + t.id + '">' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</option>';
       }).join('');
+    sel.disabled = false;
   };
 
   window.wlOnPeriodModeChange = function () {
@@ -4758,25 +4864,13 @@ tbody.innerHTML = list.map(function (d) {
     document.getElementById('wlDateEndGroup').style.display = mode === 'range' ? '' : 'none';
   };
 
-  window.wlOnSemestreChange = function () {
-    var semId = document.getElementById('wlSemestre').value;
-    var fSel = document.getElementById('wlFiliere');
-    var html = '<option value="">Toutes les filières</option>';
-    var list = allFilieres || [];
-    if (semId) {
-      list = list.filter(function (f) { return String(f.semestre_id || f.semestre) === semId; });
-    }
-    list.forEach(function (f) { html += '<option value="' + f.id + '">' + esc(f.name) + '</option>'; });
-    fSel.innerHTML = html;
-    fSel.disabled = false;
-    wlOnFiliereChange();
+  window.wlOnFilterChange = function () {
+    var mode = document.getElementById('wlPeriodMode').value;
+    var month = document.getElementById('wlMonth').value;
+    var year = document.getElementById('wlYear').value;
+    var dateStart = document.getElementById('wlDateStart').value;
+    document.getElementById('btnWlExport').disabled = !(mode === 'month' && month && year || mode === 'range' && dateStart);
   };
-
-  window.wlOnFiliereChange = function () {
-    wlUpdateTeacherOptions();
-  };
-
-  window.wlOnFilterChange = function () {};
 
   document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'btnWlExport') {
@@ -4789,14 +4883,16 @@ tbody.innerHTML = list.map(function (d) {
     if (spinner) spinner.style.display = 'inline-block';
     try {
       var params = new URLSearchParams();
-      var deptId = document.getElementById('wlDepartment').value;
+      var niveau = document.getElementById('wlNiveau').value;
       var semId = document.getElementById('wlSemestre').value;
       var filId = document.getElementById('wlFiliere').value;
+      var modId = document.getElementById('wlModule').value;
       var teacherId = document.getElementById('wlTeacher').value;
       var mode = document.getElementById('wlPeriodMode').value;
-      if (deptId) params.set('department_id', deptId);
+      if (niveau) params.set('niveau', niveau);
       if (semId) params.set('semestre_id', semId);
       if (filId) params.set('filiere_id', filId);
+      if (modId) params.set('module_id', modId);
       if (teacherId) params.set('teacher_id', teacherId);
       if (mode === 'month') {
         params.set('month', document.getElementById('wlMonth').value);

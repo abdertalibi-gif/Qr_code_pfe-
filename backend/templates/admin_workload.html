@@ -5,7 +5,7 @@
 <div class="page-hero">
   <div class="page-hero-text">
     <h1>Rapport mensuel — Charge horaire des enseignants</h1>
-    <p>Générez un fichier Excel détaillant la charge horaire par enseignant sur une période donnée.</p>
+    <p>Générez un fichier Excel détaillant la charge horaire par enseignant et par module.</p>
   </div>
 </div>
 
@@ -18,26 +18,32 @@
 
 <div class="absence-filters">
   <div class="field">
-    <label>Département</label>
-    <select id="wlDepartment" class="form-control" onchange="onFilterChange()">
-      <option value="">Tous les départements</option>
+    <label>Niveau</label>
+    <select id="wlNiveau" class="form-control" onchange="wlOnNiveauChange()">
+      <option value="">Tous les niveaux</option>
     </select>
   </div>
   <div class="field">
     <label>Semestre</label>
-    <select id="wlSemestre" class="form-control" onchange="onSemestreChange()">
-      <option value="">Tous les semestres</option>
+    <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()" disabled>
+      <option value="">— Sélectionnez d'abord le niveau —</option>
     </select>
   </div>
   <div class="field">
     <label>Filière</label>
-    <select id="wlFiliere" class="form-control" onchange="onFiliereChange()" disabled>
-      <option value="">Toutes les filières</option>
+    <select id="wlFiliere" class="form-control" onchange="wlOnFiliereChange()" disabled>
+      <option value="">— Sélectionnez d'abord le semestre —</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Module</label>
+    <select id="wlModule" class="form-control" onchange="wlOnModuleChange()" disabled>
+      <option value="">— Sélectionnez d'abord la filière —</option>
     </select>
   </div>
   <div class="field">
     <label>Enseignant</label>
-    <select id="wlTeacher" class="form-control" onchange="onFilterChange()">
+    <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()" disabled>
       <option value="">Tous les enseignants</option>
     </select>
   </div>
@@ -46,14 +52,14 @@
 <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; margin-top:.75rem">
   <div class="field" style="min-width:140px">
     <label>Période par</label>
-    <select id="wlPeriodMode" class="form-control" onchange="onPeriodModeChange()">
+    <select id="wlPeriodMode" class="form-control" onchange="wlOnPeriodModeChange()">
       <option value="month">Mois / Année</option>
       <option value="range">Intervalle de dates</option>
     </select>
   </div>
   <div class="field" style="min-width:140px" id="wlMonthGroup">
     <label>Mois</label>
-    <select id="wlMonth" class="form-control" onchange="onFilterChange()">
+    <select id="wlMonth" class="form-control" onchange="wlOnFilterChange()">
       <option value="">—</option>
       <option value="1">Janvier</option>
       <option value="2">Février</option>
@@ -71,17 +77,17 @@
   </div>
   <div class="field" style="min-width:120px" id="wlYearGroup">
     <label>Année</label>
-    <select id="wlYear" class="form-control" onchange="onFilterChange()">
+    <select id="wlYear" class="form-control" onchange="wlOnFilterChange()">
       <option value="">—</option>
     </select>
   </div>
   <div class="field" style="min-width:160px;display:none" id="wlDateStartGroup">
     <label>Du</label>
-    <input type="date" id="wlDateStart" class="form-control" onchange="onFilterChange()" />
+    <input type="date" id="wlDateStart" class="form-control" onchange="wlOnFilterChange()" />
   </div>
   <div class="field" style="min-width:160px;display:none" id="wlDateEndGroup">
     <label>Au</label>
-    <input type="date" id="wlDateEnd" class="form-control" onchange="onFilterChange()" />
+    <input type="date" id="wlDateEnd" class="form-control" onchange="wlOnFilterChange()" />
   </div>
 </div>
 
