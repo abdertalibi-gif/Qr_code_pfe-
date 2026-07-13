@@ -1563,7 +1563,7 @@ def teacher_monthly_report(request):
     from openpyxl.styles import Font, Alignment
     from openpyxl.utils import get_column_letter
 
-    qs = Session.objects.filter(teacher__is_active=True, is_active=True)
+    qs = Session.objects.filter(teacher__is_active=True)
 
     # Role-based scoping
     if request.user.role == "department_head":
@@ -1601,9 +1601,13 @@ def teacher_monthly_report(request):
             Q(classe__filiere__department_id=department_id)
         )
     if niveau:
-        qs = qs.filter(classe__filiere__niveau=niveau)
+        qs = qs.filter(
+            Q(classe__niveau=niveau) | Q(classe__filiere__niveau=niveau)
+        )
     if semestre_id:
-        qs = qs.filter(classe__filiere__semestre_id=semestre_id)
+        qs = qs.filter(
+            Q(classe__semestre_id=semestre_id) | Q(classe__filiere__semestre_id=semestre_id)
+        )
     if filiere_id:
         qs = qs.filter(classe__filiere_id=filiere_id)
     if module_id:
