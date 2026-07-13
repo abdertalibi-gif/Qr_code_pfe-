@@ -777,7 +777,6 @@
       <div class="absence-actions" style="margin:1rem 0;flex-wrap:wrap;gap:.5rem">
         <button class="btn btn-primary" onclick="loadTeacherWorkload()">🔄 Actualiser</button>
         <button class="btn btn-success" id="btnWlExport">📥 Générer Excel</button>
-        <button class="btn btn-danger" id="btnWlExportPdf">📄 Générer PDF</button>
         <span id="wlExportSpinner" class="spinner" style="display:none"></span>
       </div>
 
@@ -4875,13 +4874,11 @@ tbody.innerHTML = list.map(function (d) {
 
   document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'btnWlExport') {
-      wlExportWorkload('xlsx');
-    } else if (e.target && e.target.id === 'btnWlExportPdf') {
-      wlExportWorkload('pdf');
+      wlExportExcel();
     }
   });
 
-  window.wlExportWorkload = async function (format) {
+  window.wlExportExcel = async function () {
     var spinner = document.getElementById('wlExportSpinner');
     if (spinner) spinner.style.display = 'inline-block';
     try {
@@ -4906,7 +4903,6 @@ tbody.innerHTML = list.map(function (d) {
         if (ds) params.set('start_date', ds);
         if (de) params.set('end_date', de);
       }
-      params.set('format', format);
       var token = localStorage.getItem('access_token') || '';
       var resp = await fetch('/api/v1/teacher-monthly-report/?' + params.toString(), {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -4919,8 +4915,7 @@ tbody.innerHTML = list.map(function (d) {
       var blob = await resp.blob();
       var link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      var ext = format === 'pdf' ? 'pdf' : 'xlsx';
-      link.download = 'Charge_Horaire_Enseignants_' + (document.getElementById('wlMonth').value || 'MM') + '_' + (document.getElementById('wlYear').value || 'YYYY') + '.' + ext;
+      link.download = 'Charge_Horaire_Enseignants_' + (document.getElementById('wlMonth').value || 'MM') + '_' + (document.getElementById('wlYear').value || 'YYYY') + '.xlsx';
       link.click();
       URL.revokeObjectURL(link.href);
       showToast('Rapport généré avec succès !', 'success');

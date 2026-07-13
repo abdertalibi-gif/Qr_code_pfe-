@@ -214,14 +214,14 @@ function wlOnFilterChange() {
   const month = document.getElementById('wlMonth').value;
   const year = document.getElementById('wlYear').value;
   const dateStart = document.getElementById('wlDateStart').value;
-  const hasPeriod = (mode === 'month' && month && year) || (mode === 'range' && dateStart);
-  document.getElementById('btnGenerateReport').disabled = !hasPeriod;
-  document.getElementById('btnGenerateReportPdf').disabled = !hasPeriod;
+  const hasMonth = mode === 'month' && month && year;
+  const hasRange = mode === 'range' && dateStart;
+  document.getElementById('btnGenerateReport').disabled = !(hasMonth || hasRange);
 }
 
-/* ── Export helpers ── */
+/* ── Excel generation ── */
 
-async function wlExport(format) {
+async function buildQueryString() {
   const params = new URLSearchParams();
   const niveau = document.getElementById('wlNiveau').value;
   const semId = document.getElementById('wlSemestre').value;
@@ -235,6 +235,7 @@ async function wlExport(format) {
   if (filId) params.set('filiere_id', filId);
   if (modId) params.set('module_id', modId);
   if (teacherId) params.set('teacher_id', teacherId);
+
   if (mode === 'month') {
     const m = document.getElementById('wlMonth').value;
     const y = document.getElementById('wlYear').value;
@@ -246,37 +247,36 @@ async function wlExport(format) {
     if (ds) params.set('start_date', ds);
     if (de) params.set('end_date', de);
   }
-  params.set('format', format);
-
-  const token = API.getToken();
-  const url = '/api/v1/teacher-monthly-report/?' + params.toString();
-  try {
-    const resp = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!resp.ok) {
-      const err = await resp.json().catch(function () { return { detail: 'Erreur inconnue' }; });
-      showToast('Erreur: ' + (err.detail || resp.statusText), 'error');
-      return;
-    }
-    const blob = await resp.blob();
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const month = document.getElementById('wlMonth').value;
-    const year = document.getElementById('wlYear').value;
-    const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-    link.download = 'Charge_Horaire_Enseignants_' + (month || 'MM') + '_' + (year || 'YYYY') + '.' + ext;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    showToast('Rapport généré avec succès !', 'success');
-  } catch (e) {
-    showToast('Erreur réseau: ' + e.message, 'error');
-  }
+  return params.toString();
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  document.getElementById('btnGenerateReport').addEventListener('click', function () { wlExport('xlsx'); });
-  document.getElementById('btnGenerateReportPdf').addEventListener('click', function () { wlExport('pdf'); });
+  document.getElementById('btnGenerateReport').addEventListener('click', async function () {
+    const qs = await buildQueryString();
+    const token = API.getToken();
+    const url = '/api/v1/teacher-monthly-report/?' + qs;
+    try {
+      const resp = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(function () { return { detail: 'Erreur inconnue' }; });
+        showToast('Erreur: ' + (err.detail || resp.statusText), 'error');
+        return;
+      }
+      const blob = await resp.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const month = document.getElementById('wlMonth').value;
+      const year = document.getElementById('wlYear').value;
+      link.download = 'Charge_Horaire_Enseignants_' + (month || 'MM') + '_' + (year || 'YYYY') + '.xlsx';
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showToast('Rapport généré avec succès !', 'success');
+    } catch (e) {
+      showToast('Erreur réseau: ' + e.message, 'error');
+    }
+  });
 });
 
 if (typeof initPage === 'function') window.initPage = initPage;

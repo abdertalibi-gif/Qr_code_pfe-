@@ -1692,7 +1692,14 @@ def teacher_monthly_report(request):
     def _fmt_set(s: set) -> str:
         return ", ".join(sorted(s)) if s else "—"
 
-    # Build table data rows
+    # ── Generate Excel ──
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Charge Horaire"
+
+    bold = Font(bold=True)
+    header_align = Alignment(horizontal="center", vertical="center")
+
     headers = [
         "Enseignant",
         "Département", "Niveau", "Semestre", "Filière", "Module",
@@ -1700,25 +1707,35 @@ def teacher_monthly_report(request):
         "Total heures CM", "Total heures TD", "Total heures TP",
         "Charge horaire totale", "Nombre total de séances",
     ]
-    data_rows = []
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = bold
+        cell.alignment = header_align
+
     totals = {
         "cm_count": 0, "td_count": 0, "tp_count": 0,
         "cm_hours": 0.0, "td_hours": 0.0, "tp_hours": 0.0,
         "total_hours": 0.0, "total_sessions": 0,
     }
-    for key in key_order:
+
+    for row_idx, key in enumerate(key_order, 2):
         r = rows[key]
-        data_rows.append([
-            r["teacher_name"],
-            _fmt_set(r["department"]),
-            _fmt_set(r["niveau"]),
-            _fmt_set(r["semestre"]),
-            _fmt_set(r["filiere"]),
-            r["module_name"] or "—",
-            r["cm_count"], r["td_count"], r["tp_count"],
-            round(r["cm_hours"], 2), round(r["td_hours"], 2), round(r["tp_hours"], 2),
-            round(r["total_hours"], 2), r["total_sessions"],
-        ])
+        ws.cell(row=row_idx, column=1, value=r["teacher_name"])
+        ws.cell(row=row_idx, column=2, value=_fmt_set(r["department"]))
+        ws.cell(row=row_idx, column=3, value=_fmt_set(r["niveau"]))
+        ws.cell(row=row_idx, column=4, value=_fmt_set(r["semestre"]))
+        ws.cell(row=row_idx, column=5, value=_fmt_set(r["filiere"]))
+        ws.cell(row=row_idx, column=6, value=r["module_name"] or "—")
+        ws.cell(row=row_idx, column=7, value=r["cm_count"])
+        ws.cell(row=row_idx, column=8, value=r["td_count"])
+        ws.cell(row=row_idx, column=9, value=r["tp_count"])
+        ws.cell(row=row_idx, column=10, value=round(r["cm_hours"], 2))
+        ws.cell(row=row_idx, column=11, value=round(r["td_hours"], 2))
+        ws.cell(row=row_idx, column=12, value=round(r["tp_hours"], 2))
+        ws.cell(row=row_idx, column=13, value=round(r["total_hours"], 2))
+        ws.cell(row=row_idx, column=14, value=r["total_sessions"])
+
         totals["cm_count"] += r["cm_count"]
         totals["td_count"] += r["td_count"]
         totals["tp_count"] += r["tp_count"]
@@ -1728,48 +1745,22 @@ def teacher_monthly_report(request):
         totals["total_hours"] += r["total_hours"]
         totals["total_sessions"] += r["total_sessions"]
 
-    export_format = request.query_params.get("format", "xlsx").lower()
-
-    if export_format == "pdf":
-        return _generate_workload_pdf(headers, data_rows, totals, month, year)
-    return _generate_workload_xlsx(headers, data_rows, totals, month, year)
-
-
-def _generate_workload_xlsx(headers, data_rows, totals, month, year):
-    """Generate an XLSX workbook for the workload report."""
-    from datetime import date as date_module
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment
-    from openpyxl.utils import get_column_letter
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Charge Horaire"
-
-    bold = Font(bold=True)
-    header_align = Alignment(horizontal="center", vertical="center")
-
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.font = bold
-        cell.alignment = header_align
-
-    for row_idx, row_data in enumerate(data_rows, 2):
-        for col_idx, val in enumerate(row_data, 1):
-            ws.cell(row=row_idx, column=col_idx, value=val)
-
-    total_row = len(data_rows) + 2
-    total_vals = [
-        "TOTAL GÉNÉRAL", "", "", "", "", "",
-        totals["cm_count"], totals["td_count"], totals["tp_count"],
-        round(totals["cm_hours"], 2), round(totals["td_hours"], 2),
-        round(totals["tp_hours"], 2), round(totals["total_hours"], 2),
-        totals["total_sessions"],
+    # Total row
+    total_row = len(key_order) + 2
+    total_cells = [
+        (1, "TOTAL GÉNÉRAL"),
+        (7, totals["cm_count"]), (8, totals["td_count"]), (9, totals["tp_count"]),
+        (10, round(totals["cm_hours"], 2)),
+        (11, round(totals["td_hours"], 2)),
+        (12, round(totals["tp_hours"], 2)),
+        (13, round(totals["total_hours"], 2)),
+        (14, totals["total_sessions"]),
     ]
-    for col_idx, val in enumerate(total_vals, 1):
-        c = ws.cell(row=total_row, column=col_idx, value=val)
+    for col, val in total_cells:
+        c = ws.cell(row=total_row, column=col, value=val)
         c.font = bold
 
+    # Auto-adjust column widths
     for col_idx in range(1, len(headers) + 1):
         max_len = len(str(headers[col_idx - 1]))
         for r_idx in range(2, total_row + 1):
@@ -1788,82 +1779,4 @@ def _generate_workload_xlsx(headers, data_rows, totals, month, year):
     )
     response["Content-Disposition"] = f'attachment; filename="{fn}"'
     wb.save(response)
-    return response
-
-
-def _generate_workload_pdf(headers, data_rows, totals, month, year):
-    """Generate a PDF for the workload report using ReportLab."""
-    from datetime import date as date_module
-    from io import BytesIO
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import landscape, A3
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        Paragraph, Spacer, Table, TableStyle, SimpleDocTemplate,
-    )
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=landscape(A3),
-        leftMargin=10 * mm,
-        rightMargin=10 * mm,
-        topMargin=15 * mm,
-        bottomMargin=15 * mm,
-    )
-
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "Title2", parent=styles["Title"], fontSize=14, spaceAfter=10
-    )
-
-    elements = []
-    period_str = f"{month}/{year}" if month and year else date_module.today().strftime("%m/%Y")
-    elements.append(Paragraph(f"Charge Horaire Enseignants — {period_str}", title_style))
-    elements.append(Spacer(1, 6 * mm))
-
-    # Table data with header
-    table_data = [headers]
-    table_data.extend(data_rows)
-
-    # Total row
-    table_data.append([
-        "TOTAL GÉNÉRAL", "", "", "", "", "",
-        totals["cm_count"], totals["td_count"], totals["tp_count"],
-        round(totals["cm_hours"], 2), round(totals["td_hours"], 2),
-        round(totals["tp_hours"], 2), round(totals["total_hours"], 2),
-        totals["total_sessions"],
-    ])
-
-    # Column widths (14 columns)
-    col_count = len(headers)
-    page_width = landscape(A3)[0] - 20 * mm
-    col_widths = [max(page_width / col_count, 22 * mm)] * col_count
-
-    t = Table(table_data, colWidths=col_widths, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 7),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F0F4F8")]),
-        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#E8EEF5")),
-    ]))
-    elements.append(t)
-    elements.append(Spacer(1, 6 * mm))
-
-    doc.build(elements)
-
-    if month and year:
-        fn = f"Charge_Horaire_Enseignants_{month}_{year}.pdf"
-    else:
-        fn = f"Charge_Horaire_Enseignants_{date_module.today().strftime('%m_%Y')}.pdf"
-
-    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{fn}"'
     return response
