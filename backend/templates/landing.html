@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrésenceQR — Gestion des présences universitaires</title>
+  <meta name="description" content="Plateforme intelligente de gestion des présences universitaires par QR Code. Simplifiez le suivi des étudiants avec une solution moderne et sécurisée.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/dashboard.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); color: var(--text); background: var(--bg); overflow-x: hidden; }
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .lp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 0 2rem; height: 68px; display: flex; align-items: center; justify-content: space-between; transition: all var(--transition-smooth); }
+    .lp-nav.scrolled { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); box-shadow: 0 1px 0 var(--border); }
+    .lp-nav-inner { max-width: 1280px; width: 100%; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .lp-brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 800; font-size: 1.15rem; color: var(--text); }
+    .lp-brand-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0F7DB8 0%, #2196D3 50%, #42A5F5 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(15,125,184,0.3); }
+    .lp-nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+    .lp-nav-links a { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); transition: color var(--transition); position: relative; }
+    .lp-nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: var(--primary); transition: width var(--transition); }
+    .lp-nav-links a:hover { color: var(--text); }
+    .lp-nav-links a:hover::after { width: 100%; }
+    .lp-nav-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .lp-nav-actions a { font-size: 0.85rem; font-weight: 600; }
+    .lp-mobile-toggle { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .lp-mobile-toggle span { width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: all var(--transition); }
+
+    .lp-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.5rem; border-radius: var(--radius); font-weight: 600; font-size: 0.88rem; font-family: var(--font); border: none; cursor: pointer; transition: all var(--transition); }
+    .lp-btn-primary { background: linear-gradient(135deg, var(--primary) 0%, #2196D3 100%); color: #fff; box-shadow: 0 4px 14px rgba(15,125,184,0.35); }
+    .lp-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(15,125,184,0.4); }
+    .lp-btn-outline { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+    .lp-btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+
+    .lp-section { padding: 6rem 2rem; max-width: 1280px; margin: 0 auto; }
+    .lp-section-wide { padding: 6rem 2rem; }
+    .lp-section-dark { background: var(--bg-section); }
+    .lp-section-label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem; }
+    .lp-section-title { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; line-height: 1.2; margin-bottom: 1rem; color: var(--text); }
+    .lp-section-sub { font-size: 1.05rem; color: var(--text-secondary); max-width: 600px; line-height: 1.6; }
+
+    /* Hero */
+    .lp-hero { min-height: 100vh; display: flex; align-items: center; padding: 6rem 2rem 4rem; position: relative; overflow: hidden; background: linear-gradient(180deg, #F0F7FC 0%, #fff 100%); }
+    .lp-hero-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .lp-hero-circle { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.3; }
+    .lp-hero-circle:nth-child(1) { width: 500px; height: 500px; background: var(--primary); top: -150px; right: -100px; animation: float 8s ease-in-out infinite; }
+    .lp-hero-circle:nth-child(2) { width: 350px; height: 350px; background: var(--accent); bottom: -80px; left: -80px; animation: float 10s ease-in-out infinite reverse; }
+    .lp-hero-circle:nth-child(3) { width: 200px; height: 200px; background: #42A5F5; top: 50%; left: 50%; animation: float 12s ease-in-out infinite 2s; }
+    @keyframes float { 0%,100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-30px) translateX(15px); } }
+    .lp-hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; max-width: 1280px; margin: 0 auto; width: 100%; position: relative; z-index: 1; }
+    .lp-hero-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 1rem; border-radius: 100px; background: var(--primary-soft); color: var(--primary); font-size: 0.78rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .lp-hero-title { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; line-height: 1.08; margin-bottom: 1.2rem; letter-spacing: -0.03em; }
+    .lp-hero-title em { font-style: normal; background: linear-gradient(135deg, var(--primary), #42A5F5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .lp-hero-desc { font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7; max-width: 540px; margin-bottom: 2rem; }
+    .lp-hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .lp-hero-visual { position: relative; display: flex; align-items: center; justify-content: center; }
+    .lp-hero-card { background: rgba(255,255,255,0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.5); border-radius: var(--radius-2xl); padding: 1.5rem; box-shadow: var(--shadow-xl); width: 100%; max-width: 520px; position: relative; }
+    .lp-hero-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .lp-hero-card-dots { display: flex; gap: 6px; }
+    .lp-hero-card-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .lp-hero-card-dots span:nth-child(1) { background: #EF4444; }
+    .lp-hero-card-dots span:nth-child(2) { background: #F59E0B; }
+    .lp-hero-card-dots span:nth-child(3) { background: #10B981; }
+    .lp-hero-card-title { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+    .lp-hero-chart { height: 120px; display: flex; align-items: flex-end; gap: 6px; margin-bottom: 1rem; }
+    .lp-hero-chart-bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 8px; background: linear-gradient(180deg, var(--primary), #42A5F5); animation: chartGrow 1.5s ease-out forwards; transform-origin: bottom; transform: scaleY(0); }
+    .lp-hero-chart-bar:nth-child(1) { height: 60%; animation-delay: 0.1s; }
+    .lp-hero-chart-bar:nth-child(2) { height: 85%; animation-delay: 0.2s; }
+    .lp-hero-chart-bar:nth-child(3) { height: 45%; animation-delay: 0.3s; }
+    .lp-hero-chart-bar:nth-child(4) { height: 95%; animation-delay: 0.4s; }
+    .lp-hero-chart-bar:nth-child(5) { height: 70%; animation-delay: 0.5s; }
+    .lp-hero-chart-bar:nth-child(6) { height: 55%; animation-delay: 0.6s; background: linear-gradient(180deg, var(--accent), #FFA94D); }
+    .lp-hero-chart-bar:nth-child(7) { height: 80%; animation-delay: 0.7s; }
+    .lp-hero-chart-bar:nth-child(8) { height: 40%; animation-delay: 0.8s; }
+    @keyframes chartGrow { to { transform: scaleY(1); } }
+    .lp-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    .lp-hero-stat { text-align: center; padding: 0.6rem; border-radius: var(--radius); background: var(--bg-section); }
+    .lp-hero-stat-value { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+    .lp-hero-stat-label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    .lp-hero-float { position: absolute; border-radius: var(--radius-lg); background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); box-shadow: var(--shadow-lg); padding: 0.7rem 1rem; display: flex; align-items: center; gap: 0.6rem; font-size: 0.78rem; font-weight: 500; animation: floatItem 6s ease-in-out infinite; }
+    .lp-hero-float:nth-child(2) { top: -10px; right: -20px; animation-delay: 0s; }
+    .lp-hero-float:nth-child(3) { bottom: 30px; left: -40px; animation-delay: 2s; }
+    .lp-hero-float:nth-child(4) { bottom: -10px; right: 10px; animation-delay: 4s; }
+    @keyframes floatItem { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    .lp-hero-float-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .lp-hero-float-icon.blue { background: var(--primary-soft); }
+    .lp-hero-float-icon.orange { background: var(--accent-soft); }
+    .lp-hero-float-icon.green { background: #D1FAE5; }
+
+    /* Counters */
+    .lp-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1.5rem; }
+    .lp-counter { text-align: center; padding: 1.5rem 0.8rem; border-radius: var(--radius-xl); background: var(--bg); border: 1px solid var(--border); transition: all var(--transition-smooth); }
+    .lp-counter:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-border); }
+    .lp-counter-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .lp-counter-num { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1.2; }
+    .lp-counter-label { font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+    /* Features */
+    .lp-features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.2rem; }
+    .lp-feature-card { padding: 1.5rem; border-radius: var(--radius-xl); background: var(--bg); border: 1px solid var(--border); transition: all var(--transition-smooth); position: relative; overflow: hidden; cursor: default; }
+    .lp-feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary), var(--accent)); opacity: 0; transition: opacity var(--transition-smooth); }
+    .lp-feature-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: transparent; }
+    .lp-feature-card:hover::before { opacity: 1; }
+    .lp-feature-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; background: var(--primary-soft); }
+    .lp-feature-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .lp-feature-card p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+
+    /* Timeline */
+    .lp-timeline { position: relative; max-width: 800px; margin: 0 auto; }
+    .lp-timeline::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--primary), var(--accent), var(--primary)); transform: translateX(-50%); }
+    .lp-timeline-item { display: flex; align-items: flex-start; gap: 2rem; margin-bottom: 2.5rem; position: relative; }
+    .lp-timeline-item:nth-child(odd) { flex-direction: row-reverse; }
+    .lp-timeline-dot { position: absolute; left: 50%; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); border: 3px solid var(--bg); transform: translateX(-50%); z-index: 1; box-shadow: 0 0 0 4px var(--primary-soft); }
+    .lp-timeline-content { width: calc(50% - 2.5rem); padding: 1.2rem 1.5rem; border-radius: var(--radius-lg); background: var(--bg); border: 1px solid var(--border); transition: all var(--transition-smooth); }
+    .lp-timeline-content:hover { box-shadow: var(--shadow-md); border-color: var(--primary-border); }
+    .lp-timeline-content h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .lp-timeline-content p { font-size: 0.82rem; color: var(--text-secondary); }
+    .lp-timeline-step { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+
+    /* Dashboard showcase */
+    .lp-dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+    .lp-dash-card { padding: 1.5rem; border-radius: var(--radius-xl); background: var(--bg); border: 1px solid var(--border); transition: all var(--transition-smooth); cursor: pointer; position: relative; overflow: hidden; }
+    .lp-dash-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .lp-dash-card.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-border), var(--shadow-md); }
+    .lp-dash-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .lp-dash-card p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; }
+    .lp-dash-card .lp-dash-preview { margin-top: 1rem; height: 80px; border-radius: var(--radius); background: var(--bg-section); display: flex; align-items: flex-end; padding: 0.6rem; gap: 3px; }
+    .lp-dash-card .lp-dash-preview span { flex: 1; border-radius: 3px 3px 0 0; min-height: 6px; background: linear-gradient(180deg, var(--primary), #42A5F5); }
+    .lp-dash-card .lp-dash-preview span:nth-child(even) { background: linear-gradient(180deg, var(--accent), #FFA94D); }
+    .lp-dash-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 0.8rem; }
+    .lp-dash-icon.admin { background: linear-gradient(135deg, var(--primary), #42A5F5); color: #fff; }
+    .lp-dash-icon.teacher { background: linear-gradient(135deg, var(--accent), #FFA94D); color: #fff; }
+    .lp-dash-icon.student { background: linear-gradient(135deg, #10B981, #34D399); color: #fff; }
+    .lp-dash-icon.dept { background: linear-gradient(135deg, #8B5CF6, #A78BFA); color: #fff; }
+    .lp-dash-icon.prog { background: linear-gradient(135deg, #2196D3, #64B5F6); color: #fff; }
+    .lp-dash-icon.workload { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: #fff; }
+
+    /* Showcase Slider */
+    .lp-showcase { overflow: hidden; position: relative; }
+    .lp-showcase-track { display: flex; gap: 1.5rem; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .lp-showcase-item { flex: 0 0 340px; border-radius: var(--radius-xl); background: var(--bg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-md); }
+    .lp-showcase-item.active { flex: 0 0 380px; box-shadow: var(--shadow-xl); border-color: var(--primary); }
+    .lp-showcase-item-img { height: 200px; background: linear-gradient(135deg, var(--primary-soft), #E6F2F9); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+    .lp-showcase-item-body { padding: 1rem 1.2rem; }
+    .lp-showcase-item-body h4 { font-size: 0.9rem; font-weight: 700; }
+    .lp-showcase-item-body p { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem; }
+    .lp-showcase-nav { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; }
+    .lp-showcase-nav button { width: 10px; height: 10px; border-radius: 50%; border: none; background: var(--border); cursor: pointer; transition: all var(--transition); }
+    .lp-showcase-nav button.active { width: 28px; border-radius: 5px; background: var(--primary); }
+
+    /* QR Section */
+    .lp-qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+    .lp-qr-visual { display: flex; align-items: center; justify-content: center; }
+    .lp-qr-box { width: 220px; height: 220px; background: #fff; border-radius: var(--radius-2xl); padding: 1.2rem; box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: center; position: relative; }
+    .lp-qr-box-inner { width: 100%; height: 100%; background: repeating-conic-gradient(var(--text) 0% 25%, #fff 0% 50%) 0 0 / 20px 20px; border-radius: 8px; position: relative; overflow: hidden; }
+    .lp-qr-box-inner::before { content: ''; position: absolute; inset: 30%; background: var(--bg); border-radius: 4px; }
+    .lp-qr-box-inner::after { content: '📱'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; }
+    .lp-qr-steps { display: flex; flex-direction: column; gap: 1rem; }
+    .lp-qr-step { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-radius: var(--radius); transition: background var(--transition); }
+    .lp-qr-step:hover { background: var(--bg-section); }
+    .lp-qr-step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .lp-qr-step h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .lp-qr-step p { font-size: 0.82rem; color: var(--text-secondary); }
+
+    /* Why */
+    .lp-why-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+    .lp-why-item { padding: 1.2rem; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border); text-align: center; transition: all var(--transition-smooth); }
+    .lp-why-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .lp-why-item-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .lp-why-item h4 { font-size: 0.88rem; font-weight: 700; }
+    .lp-why-item p { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem; }
+
+    /* Tech badges */
+    .lp-tech { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; }
+    .lp-tech-badge { padding: 0.5rem 1.2rem; border-radius: 100px; background: var(--bg); border: 1px solid var(--border); font-size: 0.82rem; font-weight: 500; color: var(--text); transition: all var(--transition); }
+    .lp-tech-badge:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 3px var(--primary-border); }
+
+    /* Testimonials */
+    .lp-testimonials { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    .lp-testimonial { padding: 1.5rem; border-radius: var(--radius-xl); background: var(--bg); border: 1px solid var(--border); transition: all var(--transition-smooth); }
+    .lp-testimonial:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); }
+    .lp-testimonial-stars { color: #F59E0B; font-size: 0.85rem; margin-bottom: 0.8rem; }
+    .lp-testimonial-text { font-size: 0.88rem; line-height: 1.6; color: var(--text); margin-bottom: 1rem; font-style: italic; }
+    .lp-testimonial-author { display: flex; align-items: center; gap: 0.8rem; }
+    .lp-testimonial-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #42A5F5); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.85rem; }
+    .lp-testimonial-name { font-size: 0.85rem; font-weight: 600; }
+    .lp-testimonial-role { font-size: 0.75rem; color: var(--muted); }
+
+    /* FAQ */
+    .lp-faq { max-width: 720px; margin: 0 auto; }
+    .lp-faq-item { border-bottom: 1px solid var(--border); padding: 1rem 0; }
+    .lp-faq-q { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 600; font-size: 0.95rem; padding: 0.5rem 0; user-select: none; }
+    .lp-faq-q .lp-faq-toggle { font-size: 1.2rem; color: var(--muted); transition: transform var(--transition); }
+    .lp-faq-item.open .lp-faq-toggle { transform: rotate(45deg); }
+    .lp-faq-a { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6; }
+    .lp-faq-item.open .lp-faq-a { max-height: 300px; padding: 0.5rem 0 1rem; }
+
+    /* Contact */
+    .lp-contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    .lp-contact-info { display: flex; flex-direction: column; gap: 1.2rem; }
+    .lp-contact-item { display: flex; align-items: center; gap: 1rem; }
+    .lp-contact-item-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .lp-contact-item h4 { font-size: 0.88rem; font-weight: 600; }
+    .lp-contact-item p { font-size: 0.82rem; color: var(--text-secondary); }
+    .lp-contact-form { display: flex; flex-direction: column; gap: 1rem; }
+    .lp-contact-form input, .lp-contact-form textarea { padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: var(--font); font-size: 0.88rem; outline: none; transition: border-color var(--transition); background: var(--bg); color: var(--text); }
+    .lp-contact-form input:focus, .lp-contact-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .lp-contact-form textarea { min-height: 120px; resize: vertical; }
+
+    /* Footer */
+    .lp-footer { background: var(--text); color: rgba(255,255,255,0.7); padding: 4rem 2rem 2rem; }
+    .lp-footer-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 2rem; }
+    .lp-footer-brand .lp-brand { color: #fff; margin-bottom: 1rem; }
+    .lp-footer-brand p { font-size: 0.85rem; line-height: 1.6; max-width: 300px; }
+    .lp-footer h4 { color: #fff; font-size: 0.88rem; font-weight: 700; margin-bottom: 1rem; }
+    .lp-footer ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .lp-footer ul a { font-size: 0.82rem; transition: color var(--transition); }
+    .lp-footer ul a:hover { color: #fff; }
+    .lp-footer-bottom { max-width: 1280px; margin: 0 auto; padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: 0.8rem; }
+    .lp-footer-socials { display: flex; gap: 0.8rem; }
+    .lp-footer-socials a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: background var(--transition); }
+    .lp-footer-socials a:hover { background: rgba(255,255,255,0.2); }
+
+    /* Scroll reveal */
+    .lp-reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.8s ease, transform 0.8s ease; }
+    .lp-reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .lp-hero-grid { grid-template-columns: 1fr; gap: 2.5rem; text-align: center; }
+      .lp-hero-desc { margin-left: auto; margin-right: auto; }
+      .lp-hero-actions { justify-content: center; }
+      .lp-qr-grid { grid-template-columns: 1fr; }
+      .lp-contact-grid { grid-template-columns: 1fr; }
+      .lp-footer-inner { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 768px) {
+      .lp-nav-links { display: none; }
+      .lp-mobile-toggle { display: flex; }
+      .lp-nav-links.open { display: flex; flex-direction: column; position: absolute; top: 68px; left: 0; right: 0; background: rgba(255,255,255,0.98); backdrop-filter: blur(16px); padding: 1rem 2rem; box-shadow: var(--shadow-lg); gap: 1rem; }
+      .lp-section { padding: 4rem 1.2rem; }
+      .lp-counters { grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
+      .lp-features-grid { grid-template-columns: 1fr; }
+      .lp-timeline::before { left: 24px; }
+      .lp-timeline-item, .lp-timeline-item:nth-child(odd) { flex-direction: row; gap: 1rem; }
+      .lp-timeline-dot { left: 24px; }
+      .lp-timeline-content { width: calc(100% - 3rem); margin-left: 3rem; }
+      .lp-testimonials { grid-template-columns: 1fr; }
+      .lp-hero-float { display: none; }
+      .lp-footer-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+    }
+    @media (max-width: 480px) {
+      .lp-counters { grid-template-columns: repeat(2, 1fr); }
+      .lp-hero-title { font-size: 2rem; }
+      .lp-nav-actions a:not(.lp-btn-primary) { display: none; }
+    }
+
+    /* Gradient text variants */
+    .gradient-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gradient-blue { background: linear-gradient(135deg, var(--primary), #42A5F5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gradient-orange { background: linear-gradient(135deg, var(--accent), #FFA94D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    /* Smooth pulse on the CTA */
+    .lp-pulse { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 4px 14px rgba(15,125,184,0.35); } 50% { box-shadow: 0 4px 24px rgba(15,125,184,0.55); } }
+
+    /* Decorative divider */
+    .lp-divider { width: 60px; height: 3px; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 2px; margin: 1.5rem 0; }
+    .lp-divider.center { margin-left: auto; margin-right: auto; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════ NAVBAR ════════════ -->
+<nav class="lp-nav" id="lpNav">
+  <div class="lp-nav-inner">
+    <a href="#" class="lp-brand">
+      <span class="lp-brand-icon">📋</span>
+      PrésenceQR
+    </a>
+    <ul class="lp-nav-links" id="lpNavLinks">
+      <li><a href="#features">Fonctionnalités</a></li>
+      <li><a href="#why">Pourquoi nous</a></li>
+      <li><a href="#showcase">Captures</a></li>
+      <li><a href="#stats">Statistiques</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="lp-nav-actions">
+      <a href="/login/" class="lp-btn lp-btn-outline" style="padding:0.55rem 1.2rem">Se connecter</a>
+      <a href="/login/" class="lp-btn lp-btn-primary lp-pulse" style="padding:0.55rem 1.2rem">Commencer</a>
+      <button class="lp-mobile-toggle" id="lpMobileToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════════ HERO ════════════ -->
+<section class="lp-hero" id="hero">
+  <div class="lp-hero-bg">
+    <div class="lp-hero-circle"></div>
+    <div class="lp-hero-circle"></div>
+    <div class="lp-hero-circle"></div>
+  </div>
+  <div class="lp-hero-grid">
+    <div class="lp-hero-content">
+      <div class="lp-hero-badge">✨ Plateforme nouvelle génération</div>
+      <h1 class="lp-hero-title">La présence<br>universitaire <em>simplifiée</em></h1>
+      <p class="lp-hero-desc">PrésenceQR est une plateforme intelligente de gestion des présences par QR Code. Créez des séances, générez des QR codes, scannez et obtenez des rapports en temps réel.</p>
+      <div class="lp-hero-actions">
+        <a href="/login/" class="lp-btn lp-btn-primary lp-pulse" style="padding:0.85rem 2rem;font-size:0.95rem">🚀 Commencer</a>
+        <a href="#features" class="lp-btn lp-btn-outline" style="padding:0.85rem 2rem;font-size:0.95rem">En savoir plus</a>
+      </div>
+    </div>
+    <div class="lp-hero-visual">
+      <div class="lp-hero-card">
+        <div class="lp-hero-card-top">
+          <div class="lp-hero-card-dots"><span></span><span></span><span></span></div>
+          <span class="lp-hero-card-title">Dashboard</span>
+          <span style="font-size:0.75rem;color:var(--muted)">📊 Aujourd'hui</span>
+        </div>
+        <div class="lp-hero-chart">
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+          <div class="lp-hero-chart-bar"></div>
+        </div>
+        <div class="lp-hero-stats">
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" data-count-to="96">0</div><div class="lp-hero-stat-label">Présents</div></div>
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--accent)" data-count-to="12">0</div><div class="lp-hero-stat-label">Absents</div></div>
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--green)" data-count-to="89">0</div><div class="lp-hero-stat-label">Taux %</div></div>
+        </div>
+      </div>
+      <div class="lp-hero-float" style="top:-10px;right:-20px">
+        <span class="lp-hero-float-icon blue">📱</span>
+        <span>Scan en direct</span>
+      </div>
+      <div class="lp-hero-float" style="bottom:30px;left:-40px">
+        <span class="lp-hero-float-icon orange">📋</span>
+        <span>QR Code actif</span>
+      </div>
+      <div class="lp-hero-float" style="bottom:-10px;right:10px">
+        <span class="lp-hero-float-icon green">✅</span>
+        <span>Présence validée</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ COUNTERS ════════════ -->
+<section class="lp-section-wide lp-section-dark" id="stats">
+  <div class="lp-section" style="padding-top:0;padding-bottom:0">
+    <div class="lp-counters" style="margin:-3rem 0 0">
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🎓</div><div class="lp-counter-num"><span data-count-to="12500">0</span>+</div><div class="lp-counter-label">Étudiants</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🏫</div><div class="lp-counter-num"><span data-count-to="320">0</span>+</div><div class="lp-counter-label">Enseignants</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">🏫</div><div class="lp-counter-num"><span data-count-to="85">0</span>+</div><div class="lp-counter-label">Classes</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📚</div><div class="lp-counter-num"><span data-count-to="240">0</span>+</div><div class="lp-counter-label">Modules</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📅</div><div class="lp-counter-num"><span data-count-to="5800">0</span>+</div><div class="lp-counter-label">Séances</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📈</div><div class="lp-counter-num"><span data-count-to="1240">0</span>+</div><div class="lp-counter-label">Rapports</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">⚡</div><div class="lp-counter-num"><span data-count-to="45200">0</span>+</div><div class="lp-counter-label">QR générés</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📊</div><div class="lp-counter-num"><span data-count-to="98">0</span>%</div><div class="lp-counter-label">Satisfaction</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FEATURES ════════════ -->
+<section class="lp-section" id="features">
+  <div style="text-align:center;margin-bottom:3rem">
+    <div class="lp-section-label">✨ Fonctionnalités</div>
+    <h2 class="lp-section-title">Tout ce dont vous avez besoin</h2>
+    <p class="lp-section-sub" style="margin:0 auto">Une plateforme complète pour gérer l'ensemble du cycle de présence universitaire.</p>
+    <div class="lp-divider center"></div>
+  </div>
+  <div class="lp-features-grid">
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🎓</div><h3>Gestion des étudiants</h3><p>Importez, organisez et suivez tous vos étudiants avec leurs codes Massar uniques.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">👨‍🏫</div><h3>Gestion des enseignants</h3><p>Affectez les enseignants aux classes et modules avec une interface intuitive.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🏛️</div><h3>Départements</h3><p>Structurez votre université par départements avec des chefs dédiés.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🏢</div><h3>Filières</h3><p>Gérez les filières et les niveaux (LIC, MAS, etc.) avec responsables.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📚</div><h3>Modules</h3><p>Créez et organisez les modules par semestre et par filière.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🏫</div><h3>Classes</h3><p>Gérez les classes avec niveaux, filières, semestres et années universitaires.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📅</div><h3>Séances</h3><p>Planifiez et gérez les séances avec date, heure, salle et enseignant.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📱</div><h3>QR Code</h3><p>Générez des QR codes uniques par séance avec expiration automatique.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📍</div><h3>Géolocalisation</h3><p>Limitez le scan par géolocalisation pour éviter les fraudes.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🔔</div><h3>Notifications</h3><p>Recevez des alertes en temps réel sur les présences et absences.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📊</div><h3>Dashboard</h3><p>Visualisez les statistiques avec des graphiques interactifs en temps réel.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">⏱</div><h3>Charge horaire</h3><p>Calculez automatiquement la charge horaire des enseignants par type.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📄</div><h3>Rapports PDF</h3><p>Exportez les présences et absences en PDF pour archivage.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📗</div><h3>Rapports Excel</h3><p>Générez des rapports Excel détaillés de la charge horaire.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📈</div><h3>Statistiques</h3><p>Analysez les tendances de présence avec des graphiques avancés.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📋</div><h3>Historique</h3><p>Consultez l'historique complet des présences par étudiant et par séance.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🔒</div><h3>Sécurité</h3><p>Authentification JWT, chiffrement et protection des données.</p></div>
+    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">👥</div><h3>Multi-rôles</h3><p>Administrateur, enseignant, étudiant, chef département, responsable filière.</p></div>
+  </div>
+</section>
+
+<!-- ════════════ WORKFLOW ════════════ -->
+<section class="lp-section-wide lp-section-dark">
+  <div class="lp-section">
+    <div style="text-align:center;margin-bottom:3rem">
+      <div class="lp-section-label">🔄 Workflow</div>
+      <h2 class="lp-section-title">Comment ça fonctionne</h2>
+      <p class="lp-section-sub" style="margin:0 auto">Du début à la fin, PrésenceQR automatise entièrement le processus de gestion des présences.</p>
+      <div class="lp-divider center"></div>
+    </div>
+    <div class="lp-timeline">
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">1</div><h4>Connexion sécurisée</h4><p>Connectez-vous avec votre compte selon votre rôle (admin, enseignant, etc.).</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">2</div><h4>Création d'une séance</h4><p>L'enseignant crée une séance avec la date, l'heure et le module concerné.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">3</div><h4>Génération du QR Code</h4><p>Un QR code unique est généré avec une expiration automatique pour la séance.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">4</div><h4>Scan par l'étudiant</h4><p>Chaque étudiant scanne le QR code avec son smartphone pour valider sa présence.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">5</div><h4>Validation automatique</h4><p>La présence est automatiquement validée avec horodatage et géolocalisation.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">6</div><h4>Génération des rapports</h4><p>Les rapports de présence sont générés en PDF/Excel à la clôture de la séance.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">7</div><h4>Statistiques et analyses</h4><p>Consultez les tableaux de bord, taux de présence et charge horaire en temps réel.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ DASHBOARD SHOWCASE ════════════ -->
+<section class="lp-section" id="showcase">
+  <div style="text-align:center;margin-bottom:3rem">
+    <div class="lp-section-label">🖥️ Aperçu</div>
+    <h2 class="lp-section-title">Découvrez les dashboards</h2>
+    <p class="lp-section-sub" style="margin:0 auto">Une interface adaptée à chaque rôle avec des fonctionnalités sur mesure.</p>
+    <div class="lp-divider center"></div>
+  </div>
+  <div class="lp-dash-grid">
+    <div class="lp-dash-card lp-reveal active"><div class="lp-dash-icon admin">👤</div><h3>Dashboard Admin</h3><p>Gestion complète de l'université : utilisateurs, classes, séances, statistiques globales.</p><div class="lp-dash-preview"><span style="height:65%"></span><span style="height:85%"></span><span style="height:45%"></span><span style="height:90%"></span><span style="height:55%"></span><span style="height:75%"></span></div></div>
+    <div class="lp-dash-card lp-reveal"><div class="lp-dash-icon teacher">👨‍🏫</div><h3>Dashboard Enseignant</h3><p>Créez vos séances, générez des QR codes et suivez la présence de vos étudiants.</p><div class="lp-dash-preview"><span style="height:50%"></span><span style="height:70%"></span><span style="height:80%"></span><span style="height:40%"></span><span style="height:60%"></span></div></div>
+    <div class="lp-dash-card lp-reveal"><div class="lp-dash-icon student">🎓</div><h3>Dashboard Étudiant</h3><p>Consultez votre historique de présence, absences et statistiques personnelles.</p><div class="lp-dash-preview"><span style="height:75%"></span><span style="height:90%"></span><span style="height:60%"></span><span style="height:80%"></span></div></div>
+    <div class="lp-dash-card lp-reveal"><div class="lp-dash-icon dept">🏛️</div><h3>Chef Département</h3><p>Supervisez les enseignants et les séances de votre département.</p><div class="lp-dash-preview"><span style="height:70%"></span><span style="height:55%"></span><span style="height:85%"></span><span style="height:65%"></span><span style="height:45%"></span></div></div>
+    <div class="lp-dash-card lp-reveal"><div class="lp-dash-icon prog">🏢</div><h3>Responsable Filière</h3><p>Gérez les modules, enseignants et étudiants de votre filière.</p><div class="lp-dash-preview"><span style="height:60%"></span><span style="height:80%"></span><span style="height:50%"></span><span style="height:70%"></span></div></div>
+    <div class="lp-dash-card lp-reveal"><div class="lp-dash-icon workload">⏱</div><h3>Charge Horaire</h3><p>Visualisez et exportez la charge horaire des enseignants par type (CM/TD/TP).</p><div class="lp-dash-preview"><span style="height:90%"></span><span style="height:60%"></span><span style="height:75%"></span><span style="height:40%"></span><span style="height:80%"></span></div></div>
+  </div>
+</section>
+
+<!-- ════════════ QR CODE SECTION ════════════ -->
+<section class="lp-section-wide lp-section-dark">
+  <div class="lp-section">
+    <div style="text-align:center;margin-bottom:3rem">
+      <div class="lp-section-label">📱 QR Code</div>
+      <h2 class="lp-section-title">La puissance du QR Code</h2>
+      <p class="lp-section-sub" style="margin:0 auto">Une solution simple, rapide et sécurisée pour valider les présences.</p>
+      <div class="lp-divider center"></div>
+    </div>
+    <div class="lp-qr-grid">
+      <div class="lp-qr-visual lp-reveal">
+        <div class="lp-qr-box">
+          <div class="lp-qr-box-inner"></div>
+        </div>
+      </div>
+      <div class="lp-qr-steps lp-reveal">
+        <div class="lp-qr-step"><span class="lp-qr-step-num">1</span><div><h4>Création</h4><p>Un QR code unique est généré automatiquement pour chaque séance avec une durée de validité configurable.</p></div></div>
+        <div class="lp-qr-step"><span class="lp-qr-step-num">2</span><div><h4>Partage</h4><p>Le QR code est affiché sur l'écran de l'enseignant et peut être projeté ou partagé aux étudiants.</p></div></div>
+        <div class="lp-qr-step"><span class="lp-qr-step-num">3</span><div><h4>Scan</h4><p>Les étudiants scannent le QR code avec leur smartphone. Aucune application nécessaire.</p></div></div>
+        <div class="lp-qr-step"><span class="lp-qr-step-num">4</span><div><h4>Validation</h4><p>La présence est enregistrée instantanément avec horodatage, géolocalisation et statut confirmé.</p></div></div>
+        <div class="lp-qr-step"><span class="lp-qr-step-num">5</span><div><h4>Historique</h4><p>Consultez l'historique complet de toutes les validations par étudiant, séance et période.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ CHARGE HORAIRE ════════════ -->
+<section class="lp-section" id="workload">
+  <div style="text-align:center;margin-bottom:3rem">
+    <div class="lp-section-label">⏱ Charge Horaire</div>
+    <h2 class="lp-section-title">Calcul automatique</h2>
+    <p class="lp-section-sub" style="margin:0 auto">La charge horaire des enseignants est calculée automatiquement selon le type de séance.</p>
+    <div class="lp-divider center"></div>
+  </div>
+  <div class="lp-qr-grid" style="gap:2rem">
+    <div class="lp-reveal">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+        <div class="lp-counter" style="border-color:var(--primary-border);background:var(--primary-soft)"><div style="font-size:0.78rem;font-weight:600;color:var(--primary)">📚 Cours</div><div style="font-size:1.6rem;font-weight:800;color:var(--primary);margin:0.3rem 0">1h = 1h</div><div style="font-size:0.75rem;color:var(--muted)">Durée réelle</div></div>
+        <div class="lp-counter" style="border-color:var(--accent-border);background:var(--accent-soft)"><div style="font-size:0.78rem;font-weight:600;color:var(--accent)">📝 TD</div><div style="font-size:1.6rem;font-weight:800;color:var(--accent);margin:0.3rem 0">÷ 1,5</div><div style="font-size:0.75rem;color:var(--muted)">Durée ajustée</div></div>
+        <div class="lp-counter" style="border-color:rgba(16,185,129,0.2);background:#D1FAE5"><div style="font-size:0.78rem;font-weight:600;color:var(--green)">🔬 TP</div><div style="font-size:1.6rem;font-weight:800;color:var(--green);margin:0.3rem 0">÷ 1,5</div><div style="font-size:0.75rem;color:var(--muted)">Durée ajustée</div></div>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6">Le système calcule automatiquement la charge horaire équivalente de chaque enseignant en fonction du type de séance (CM, TD, TP) avec les coefficients appropriés. Les résultats sont visibles dans un tableau de classement et des graphiques interactifs.</p>
+    </div>
+    <div class="lp-reveal">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-xl);padding:1.5rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:1rem;font-size:0.82rem;font-weight:600;color:var(--text-secondary)"><span>Enseignant</span><span>Charge</span></div>
+        <div style="display:flex;flex-direction:column;gap:0.6rem">
+          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. El Allaly</span><span style="font-weight:700;color:var(--primary)">37,3h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards;transform-origin:left;transform:scaleX(0)"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. Bekri</span><span style="font-weight:700;color:var(--primary)">20,0h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:54%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards 0.2s;transform-origin:left;transform:scaleX(0)"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. Hajji</span><span style="font-weight:700;color:var(--primary)">13,2h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:35%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards 0.4s;transform-origin:left;transform:scaleX(0)"></div></div></div>
+        </div>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.85rem"><span style="font-weight:600">Total</span><span style="font-weight:800;color:var(--accent)">74,5h</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ WHY ════════════ -->
+<section class="lp-section-wide lp-section-dark" id="why">
+  <div class="lp-section">
+    <div style="text-align:center;margin-bottom:3rem">
+      <div class="lp-section-label">⭐ Pourquoi choisir PrésenceQR ?</div>
+      <h2 class="lp-section-title">La solution complète</h2>
+      <p class="lp-section-sub" style="margin:0 auto">Des fonctionnalités pensées pour les universités modernes.</p>
+      <div class="lp-divider center"></div>
+    </div>
+    <div class="lp-why-grid">
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">⚡</div><h4>Rapide</h4><p>Création et scan en quelques secondes</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">🔒</div><h4>Sécurisé</h4><p>Authentification JWT et données chiffrées</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📱</div><h4>QR Code</h4><p>Validation instantanée par scan</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">🕐</div><h4>Temps réel</h4><p>Données mises à jour en direct</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📱</div><h4>Responsive</h4><p>Fonctionne sur tous les écrans</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📄</div><h4>Export PDF</h4><p>Rapports prêts à imprimer</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📗</div><h4>Export Excel</h4><p>Données exploitables dans Excel</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">🔔</div><h4>Notifications</h4><p>Alertes en temps réel</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">⏱</div><h4>Charge horaire</h4><p>Calcul automatique CM/TD/TP</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📊</div><h4>Statistiques</h4><p>Graphiques et analyses avancées</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">👥</div><h4>Multi-rôles</h4><p>5 rôles avec accès différenciés</p></div>
+      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📱</div><h4>Mobile</h4><p>Interface adaptée aux smartphones</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ TECHNOLOGIES ════════════ -->
+<section class="lp-section">
+  <div style="text-align:center;margin-bottom:2.5rem">
+    <div class="lp-section-label">🛠️ Technologies</div>
+    <h2 class="lp-section-title">Une stack moderne</h2>
+    <div class="lp-divider center"></div>
+  </div>
+  <div class="lp-tech lp-reveal">
+    <span class="lp-tech-badge">Django</span>
+    <span class="lp-tech-badge">Django REST Framework</span>
+    <span class="lp-tech-badge">Flutter</span>
+    <span class="lp-tech-badge">PostgreSQL</span>
+    <span class="lp-tech-badge">HTML5</span>
+    <span class="lp-tech-badge">CSS3</span>
+    <span class="lp-tech-badge">JavaScript</span>
+    <span class="lp-tech-badge">Chart.js</span>
+    <span class="lp-tech-badge">Leaflet</span>
+    <span class="lp-tech-badge">REST API</span>
+    <span class="lp-tech-badge">JWT</span>
+    <span class="lp-tech-badge">QR Code</span>
+    <span class="lp-tech-badge">GitHub</span>
+  </div>
+</section>
+
+<!-- ════════════ TESTIMONIALS ════════════ -->
+<section class="lp-section-wide lp-section-dark">
+  <div class="lp-section">
+    <div style="text-align:center;margin-bottom:3rem">
+      <div class="lp-section-label">💬 Témoignages</div>
+      <h2 class="lp-section-title">Ils nous font confiance</h2>
+      <p class="lp-section-sub" style="margin:0 auto">Découvrez ce que pensent les utilisateurs de PrésenceQR.</p>
+      <div class="lp-divider center"></div>
+    </div>
+    <div class="lp-testimonials">
+      <div class="lp-testimonial lp-reveal">
+        <div class="lp-testimonial-stars">★★★★★</div>
+        <div class="lp-testimonial-text">"PrésenceQR a révolutionné la gestion des présences dans notre département. Le scan par QR code est d'une simplicité déconcertante et les rapports automatiques nous font gagner des heures."</div>
+        <div class="lp-testimonial-author"><div class="lp-testimonial-avatar">AE</div><div><div class="lp-testimonial-name">Pr. Ahmed El Amrani</div><div class="lp-testimonial-role">Chef de département</div></div></div>
+      </div>
+      <div class="lp-testimonial lp-reveal">
+        <div class="lp-testimonial-stars">★★★★★</div>
+        <div class="lp-testimonial-text">"En tant qu'enseignant, je peux créer une séance en 30 secondes et générer le QR code immédiatement. Les étudiants scannent et c'est fini. Fini les listes papier!"</div>
+        <div class="lp-testimonial-author"><div class="lp-testimonial-avatar">FB</div><div><div class="lp-testimonial-name">Dr. Fatima Benali</div><div class="lp-testimonial-role">Enseignante</div></div></div>
+      </div>
+      <div class="lp-testimonial lp-reveal">
+        <div class="lp-testimonial-stars">★★★★★</div>
+        <div class="lp-testimonial-text">"Le dashboard admin est très complet. Je peux voir en un coup d'œil toutes les statistiques de présence, la charge horaire des enseignants et générer des rapports Excel."</div>
+        <div class="lp-testimonial-author"><div class="lp-testimonial-avatar">OK</div><div><div class="lp-testimonial-name">Omar Kadiri</div><div class="lp-testimonial-role">Administrateur</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FAQ ════════════ -->
+<section class="lp-section" id="faq">
+  <div style="text-align:center;margin-bottom:3rem">
+    <div class="lp-section-label">❓ FAQ</div>
+    <h2 class="lp-section-title">Questions fréquentes</h2>
+    <p class="lp-section-sub" style="margin:0 auto">Tout ce que vous devez savoir sur PrésenceQR.</p>
+    <div class="lp-divider center"></div>
+  </div>
+  <div class="lp-faq">
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Comment sont générés les QR codes ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Chaque séance génère un QR code unique avec une durée d'expiration configurable (20 minutes par défaut). Le QR code est lié à la séance et ne peut pas être réutilisé.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Que se passe-t-il si un étudiant n'a pas de smartphone ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">L'enseignant peut marquer manuellement la présence des étudiants depuis son dashboard. Le système prend en charge les deux modes de validation.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Les données sont-elles sécurisées ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, toutes les données sont chiffrées et transmises via HTTPS. L'authentification utilise JWT (JSON Web Tokens) et les rôles utilisateur limitent l'accès aux données.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Peut-on exporter les rapports ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, les rapports de présence peuvent être exportés en PDF et en Excel. Les rapports de charge horaire sont exportables en Excel avec calculs automatiques.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Comment est calculée la charge horaire ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">La charge horaire est calculée automatiquement : les Cours (CM) comptent pour leur durée réelle, les TD et TP sont ajustés avec un coefficient de 1,5. Le tableau de classement affiche les enseignants par charge équivalente.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>L'application est-elle accessible sur mobile ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, l'interface est entièrement responsive et fonctionne sur tous les appareils. Une application Flutter est également disponible pour une expérience mobile native.</div></div>
+  </div>
+</section>
+
+<!-- ════════════ CONTACT ════════════ -->
+<section class="lp-section-wide lp-section-dark" id="contact">
+  <div class="lp-section">
+    <div style="text-align:center;margin-bottom:3rem">
+      <div class="lp-section-label">📬 Contact</div>
+      <h2 class="lp-section-title">Restons en contact</h2>
+      <p class="lp-section-sub" style="margin:0 auto">Une question ? Une suggestion ? Notre équipe est là pour vous.</p>
+      <div class="lp-divider center"></div>
+    </div>
+    <div class="lp-contact-grid">
+      <div class="lp-contact-info lp-reveal">
+        <div class="lp-contact-item"><div class="lp-contact-item-icon">📧</div><div><h4>Email</h4><p>contact@presenceqr.umi.ac.ma</p></div></div>
+        <div class="lp-contact-item"><div class="lp-contact-item-icon">📍</div><div><h4>Université</h4><p>Université Moulay Ismaïl, Meknès, Maroc</p></div></div>
+        <div class="lp-contact-item"><div class="lp-contact-item-icon">📞</div><div><h4>Téléphone</h4><p>+212 5 35 50 00 00</p></div></div>
+      </div>
+      <form class="lp-contact-form lp-reveal" onsubmit="event.preventDefault();alert('Merci pour votre message ! Nous vous répondrons rapidement.')">
+        <input type="text" placeholder="Nom complet" required>
+        <input type="email" placeholder="Email universitaire" required>
+        <input type="text" placeholder="Sujet">
+        <textarea placeholder="Votre message..." required></textarea>
+        <button type="submit" class="lp-btn lp-btn-primary" style="justify-content:center">Envoyer le message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FOOTER ════════════ -->
+<footer class="lp-footer">
+  <div class="lp-footer-inner">
+    <div class="lp-footer-brand">
+      <a href="#" class="lp-brand"><span class="lp-brand-icon">📋</span>PrésenceQR</a>
+      <p>Plateforme intelligente de gestion des présences universitaires par QR Code. Simplifiez le suivi de vos étudiants avec une solution moderne, sécurisée et fiable.</p>
+    </div>
+    <div><h4>Navigation</h4><ul><li><a href="#features">Fonctionnalités</a></li><li><a href="#why">Pourquoi nous</a></li><li><a href="#showcase">Captures</a></li><li><a href="#faq">FAQ</a></li><li><a href="#contact">Contact</a></li></ul></div>
+    <div><h4>Liens utiles</h4><ul><li><a href="/login/">Connexion</a></li><li><a href="/login/">Créer un compte</a></li><li><a href="#">Documentation</a></li><li><a href="#">Support</a></li></ul></div>
+    <div><h4>Légal</h4><ul><li><a href="#">Confidentialité</a></li><li><a href="#">CGU</a></li><li><a href="#">Cookies</a></li></ul></div>
+  </div>
+  <div class="lp-footer-bottom">
+    <span>© 2026 PrésenceQR — Université Moulay Ismaïl. Tous droits réservés.</span>
+    <div class="lp-footer-socials">
+      <a href="#" aria-label="GitHub">🐙</a>
+      <a href="#" aria-label="Email">📧</a>
+      <a href="#" aria-label="LinkedIn">💼</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Navbar scroll ──
+  var nav = document.getElementById('lpNav');
+  function onScroll() {
+    if (window.scrollY > 40) { nav.classList.add('scrolled'); }
+    else { nav.classList.remove('scrolled'); }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // ── Mobile toggle ──
+  var toggle = document.getElementById('lpMobileToggle');
+  var links = document.getElementById('lpNavLinks');
+  if (toggle && links) {
+    toggle.addEventListener('click', function() { links.classList.toggle('open'); });
+    links.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', function() { links.classList.remove('open'); }); });
+  }
+
+  // ── Scroll Reveal ──
+  var revealEls = document.querySelectorAll('.lp-reveal');
+  if (revealEls.length) {
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    revealEls.forEach(function(el) { revealObserver.observe(el); });
+  }
+
+  // ── Animated Counters ──
+  var counterEls = document.querySelectorAll('[data-count-to]');
+  if (counterEls.length) {
+    var counterObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var target = parseInt(el.getAttribute('data-count-to'), 10);
+          if (!isNaN(target)) {
+            var duration = 2000;
+            var start = performance.now();
+            function step(now) {
+              var progress = Math.min((now - start) / duration, 1);
+              var eased = 1 - Math.pow(1 - progress, 3);
+              el.textContent = Math.floor(eased * target).toLocaleString('fr-FR');
+              if (progress < 1) { requestAnimationFrame(step); }
+            }
+            requestAnimationFrame(step);
+          }
+          counterObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+    counterEls.forEach(function(el) { counterObserver.observe(el); });
+  }
+
+  // ── FAQ Accordion ──
+  var faqItems = document.querySelectorAll('.lp-faq-item');
+  faqItems.forEach(function(item) {
+    var q = item.querySelector('.lp-faq-q');
+    if (q) {
+      q.addEventListener('click', function() {
+        var isOpen = item.classList.contains('open');
+        faqItems.forEach(function(i) { i.classList.remove('open'); });
+        if (!isOpen) { item.classList.add('open'); }
+      });
+    }
+  });
+
+  // ── Anchor scroll offset ──
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var id = this.getAttribute('href');
+      if (id && id.length > 1) {
+        var target = document.querySelector(id);
+        if (target) {
+          e.preventDefault();
+          var offset = 80;
+          var top = target.getBoundingClientRect().top + window.scrollY - offset;
+          window.scrollTo({ top: top, behavior: 'smooth' });
+        }
+      }
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

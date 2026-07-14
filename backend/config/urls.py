@@ -195,7 +195,7 @@ api_v1_urlpatterns = [
 # Root URL patterns
 # ---------------------------------------------------------------------------
 urlpatterns = [
-    path("", RedirectView.as_view(url="/login/", permanent=False)),
+    path("", serve_template("landing.html"), name="landing-page"),
     path("login/", serve_template("login.html"), name="login-page"),
     path("password-reset/<str:uidb64>/<str:token>/", password_reset_page, name="password-reset-page"),
     path("admin-ui/", serve_template("admin.html"), name="admin-page"),
