@@ -189,5 +189,5 @@
 
 {% block extra_js %}
 <script src="/admin-workload.js"></script>
-<script>wld.bindEvents(); wld.init();</script>
+<script>try { wld.bindEvents(); wld.init().catch(function(e) { console.error('Workload init error:', e); }); } catch(e) { console.error('Workload bind error:', e); }</script>
 {% endblock %}

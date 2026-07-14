@@ -2722,10 +2722,16 @@
       btn.classList.add('active');
       document.getElementById('tab-' + tab).classList.add('active');
       if (!_tabLoaded[tab]) {
-        _tabLoaded[tab] = true;
-        if (tab === 'classes') loadClasses();
-        else if (tab === 'absence-stats') loadAbsenceStats();
-        else if (tab === 'workload') { wld.bindEvents(); setTimeout(function () { wld.init().catch(function(e) { console.error('Workload init error:', e); }); }, 100); }
+        if (tab === 'classes') { _tabLoaded[tab] = true; loadClasses(); }
+        else if (tab === 'absence-stats') { _tabLoaded[tab] = true; loadAbsenceStats(); }
+        else if (tab === 'workload') {
+          try {
+            wld.bindEvents();
+            setTimeout(function () {
+              wld.init().then(function () { _tabLoaded[tab] = true; }).catch(function(e) { console.error('Workload init error:', e); _tabLoaded[tab] = false; });
+            }, 100);
+          } catch(e) { console.error('Workload bind error:', e); _tabLoaded[tab] = false; }
+        }
       }
     });
   });
