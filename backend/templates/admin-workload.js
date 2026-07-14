@@ -10,7 +10,6 @@ var wld = {
   sortDir: -1,
   page: 0,
   pageSize: 15,
-  barChart: null,
   pieChart: null,
   deptChart: null,
   filiereChart: null,
@@ -380,57 +379,11 @@ var wld = {
   /* ── Charts ── */
 
   _renderCharts() {
-    this._renderBarChart();
     this._renderPieChart();
     this._renderStackedChart();
     this._renderDeptChart();
     this._renderFiliereChart();
     this._renderMonthlyChart();
-  },
-
-  _renderBarChart() {
-    var labels = this.chartData.labels || [];
-    var eqData = this.chartData.equivalent_hours || [];
-
-    if (this.barChart) { this.barChart.destroy(); this.barChart = null; }
-    var ctx = document.getElementById('wldBarChart');
-    if (!ctx || !labels.length) return;
-
-    // Use all teachers but short labels if too many
-    var displayLabels = labels;
-    var displayData = eqData;
-    if (labels.length > 30) {
-      displayLabels = labels.slice(0, 30);
-      displayData = eqData.slice(0, 30);
-    }
-
-    this.barChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: displayLabels,
-        datasets: [{
-          label: 'Charge équivalente (h)',
-          data: displayData,
-          backgroundColor: 'rgba(242, 140, 40, 0.75)',
-          borderColor: '#F28C28',
-          borderWidth: 1,
-          borderRadius: 4,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: function (ctx) { return ctx.parsed.x.toFixed(1) + 'h'; } } }
-        },
-        scales: {
-          x: { beginAtZero: true, title: { display: true, text: 'Heures équivalentes' } },
-          y: { ticks: { font: { size: 9 } } }
-        }
-      }
-    });
   },
 
   _renderPieChart() {
