@@ -3,23 +3,29 @@
 var wld = {
   data: null,
   teachers: [],
+  totals: {},
+  chartData: {},
   filtered: [],
   sortKey: 'equivalent',
   sortDir: -1,
   barChart: null,
   pieChart: null,
+  deptChart: null,
+  filiereChart: null,
 
   async init() {
     await Promise.all([
       this._loadDepts(),
       this._loadFilieres(),
       this._loadAcademicYears(),
+      this._loadTeachers(),
     ]);
+    this._loadSemestres();
     this._initPeriod();
     await this.loadData();
   },
 
-  /* ── Filter helpers ── */
+  /* ── Load filter options ── */
 
   async _loadDepts() {
     try {
@@ -35,15 +41,19 @@ var wld = {
     } catch (e) { /* silent */ }
   },
 
-  async _loadFilieres() {
+  async _loadFilieres(filiereId) {
     try {
-      var data = await API.apiFetch('/curriculum/filieres/');
+      var deptId = document.getElementById('wldDept').value;
+      var url = '/curriculum/filieres/' + (deptId ? '?department_id=' + deptId : '');
+      var data = await API.apiFetch(url);
       var fils = Array.isArray(data) ? data : (data.results || []);
       var sel = document.getElementById('wldFiliere');
+      sel.innerHTML = '<option value="">Toutes</option>';
       fils.forEach(function (f) {
         var o = document.createElement('option');
         o.value = f.id;
         o.textContent = f.name;
+        if (filiereId && String(f.id) === String(filiereId)) o.selected = true;
         sel.appendChild(o);
       });
     } catch (e) { /* silent */ }
@@ -66,6 +76,51 @@ var wld = {
     } catch (e) { /* silent */ }
   },
 
+  async _loadSemestres() {
+    try {
+      var data = await API.apiFetch('/curriculum/semestres/');
+      var sems = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldSemestre');
+      sems.forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.nom || s.name || ('Semestre ' + s.id);
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadModules(semestreId) {
+    try {
+      var url = '/curriculum/modules/' + (semestreId ? '?semestre_id=' + semestreId : '');
+      var data = await API.apiFetch(url);
+      var mods = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldModule');
+      sel.innerHTML = '<option value="">Tous</option>';
+      mods.forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.name || m.nom || ('Module ' + m.id);
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadTeachers() {
+    try {
+      var data = await API.apiFetch('/users/?role=teacher');
+      var users = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldTeacher');
+      sel.innerHTML = '<option value="">Tous</option>';
+      users.forEach(function (u) {
+        var o = document.createElement('option');
+        o.value = u.id;
+        o.textContent = (u.first_name || '') + ' ' + (u.last_name || '') + ' (' + (u.email || '') + ')';
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
+
   _initPeriod() {
     var now = new Date();
     document.getElementById('wldMonth').value = String(now.getMonth() + 1);
@@ -82,21 +137,34 @@ var wld = {
   },
 
   onFilterChange() {
-    this._applyFilters();
-    this._renderTable();
-    this._renderCharts();
-    this._updateStats();
+    this.loadData();
+  },
+
+  async onDeptChange() {
+    await this._loadFilieres();
+    this.onFilterChange();
+  },
+
+  async onSemestreChange() {
+    await this._loadModules(document.getElementById('wldSemestre').value);
+    this.onFilterChange();
   },
 
   _buildParams() {
     var params = {};
     var dept = document.getElementById('wldDept').value;
     var filiere = document.getElementById('wldFiliere').value;
+    var semestre = document.getElementById('wldSemestre').value;
+    var module = document.getElementById('wldModule').value;
+    var teacher = document.getElementById('wldTeacher').value;
     var year = document.getElementById('wldYear').value;
     var period = document.getElementById('wldPeriod').value;
 
     if (dept) params.department_id = dept;
     if (filiere) params.filiere_id = filiere;
+    if (semestre) params.semestre_id = semestre;
+    if (module) params.module_id = module;
+    if (teacher) params.teacher_id = teacher;
     if (year) params.academic_year = year;
 
     if (period === 'month') {
@@ -121,7 +189,7 @@ var wld = {
       this.teachers = resp.teachers || [];
       this.totals = resp.totals || {};
       this.chartData = resp.chart_data || {};
-      this.filtered = this.teachers.slice();
+      this._applyFilters();
       this._renderTable();
       this._renderCharts();
       this._updateStats();
@@ -133,17 +201,7 @@ var wld = {
   /* ── Table ── */
 
   _applyFilters() {
-    var dept = document.getElementById('wldDept').value;
-    var filiere = document.getElementById('wldFiliere').value;
-    var year = document.getElementById('wldYear').value;
-    var period = document.getElementById('wldPeriod').value;
-
-    this.filtered = this.teachers.filter(function (t) {
-      if (dept && t.department && !t.department.toLowerCase().includes(dept)) return false;
-      if (filiere && t.filieres && !t.filieres.toLowerCase().includes(filiere)) return false;
-      return true;
-    });
-
+    this.filtered = this.teachers.slice();
     this._sort();
   },
 
@@ -195,7 +253,6 @@ var wld = {
       '</tr>';
     }).join('');
 
-    // Update sort indicators
     document.querySelectorAll('.sortable').forEach(function (th) {
       th.classList.remove('sorted-asc', 'sorted-desc');
       if (th.dataset.sort === wld.sortKey) {
@@ -208,11 +265,13 @@ var wld = {
     var filtered = this.filtered;
     var cm = 0, td = 0, tp = 0, eq = 0, sess = 0;
     filtered.forEach(function (t) { cm += t.cm_hours; td += t.td_hours; tp += t.tp_hours; eq += t.equivalent_hours; sess += t.total_sessions; });
+    var avg = filtered.length > 0 ? eq / filtered.length : 0;
     document.getElementById('statTeacherCount').textContent = filtered.length;
     document.getElementById('statCM').textContent = cm.toFixed(1);
     document.getElementById('statTD').textContent = td.toFixed(1);
     document.getElementById('statTP').textContent = tp.toFixed(1);
     document.getElementById('statEquivalent').textContent = eq.toFixed(1);
+    document.getElementById('statAvgEquivalent').textContent = avg.toFixed(1);
     document.getElementById('statSessions').textContent = sess;
   },
 
@@ -221,6 +280,8 @@ var wld = {
   _renderCharts() {
     this._renderBarChart();
     this._renderPieChart();
+    this._renderDeptChart();
+    this._renderFiliereChart();
   },
 
   _renderBarChart() {
@@ -301,6 +362,78 @@ var wld = {
     });
   },
 
+  _renderDeptChart() {
+    if (this.deptChart) { this.deptChart.destroy(); this.deptChart = null; }
+
+    var ctx = document.getElementById('wldDeptChart');
+    if (!ctx) return;
+
+    var labels = this.chartData.dept_labels || [];
+    var eqData = this.chartData.dept_eq || [];
+    if (!labels.length) return;
+
+    this.deptChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Charge équivalente (h)',
+          data: eqData,
+          backgroundColor: 'rgba(15, 125, 184, 0.7)',
+          borderColor: '#0F7DB8',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, title: { display: true, text: 'Heures équivalentes' } },
+          y: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  },
+
+  _renderFiliereChart() {
+    if (this.filiereChart) { this.filiereChart.destroy(); this.filiereChart = null; }
+
+    var ctx = document.getElementById('wldFiliereChart');
+    if (!ctx) return;
+
+    var labels = this.chartData.filiere_labels || [];
+    var eqData = this.chartData.filiere_eq || [];
+    if (!labels.length) return;
+
+    this.filiereChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Charge équivalente (h)',
+          data: eqData,
+          backgroundColor: 'rgba(14, 165, 233, 0.7)',
+          borderColor: '#0ea5e9',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, title: { display: true, text: 'Heures équivalentes' } },
+          y: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  },
+
   /* ── Export Excel ── */
 
   async exportExcel() {
@@ -324,14 +457,24 @@ var wld = {
 
 /* ── Init ── */
 (function () {
-  // Bind sort clicks
   document.addEventListener('click', function (e) {
     var th = e.target.closest('.sortable');
     if (th) wld.setSort(th.dataset.sort);
   });
 
-  // Bind export button
   document.getElementById('btnExportExcel')?.addEventListener('click', function () { wld.exportExcel(); });
+
+  // Bind cascading filter changes
+  document.getElementById('wldDept')?.addEventListener('change', function () { wld.onDeptChange(); });
+  document.getElementById('wldSemestre')?.addEventListener('change', function () { wld.onSemestreChange(); });
+  document.getElementById('wldFiliere')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldModule')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldTeacher')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldYear')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldPeriod')?.addEventListener('change', function () { wld.onPeriodChange(); });
+  document.getElementById('wldMonth')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldDateStart')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldDateEnd')?.addEventListener('change', function () { wld.onFilterChange(); });
 
   wld.init();
 })();

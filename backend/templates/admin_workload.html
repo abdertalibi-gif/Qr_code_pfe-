@@ -13,7 +13,7 @@
 </div>
 
 <!-- Stats cards -->
-<div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin-bottom:1.5rem">
+<div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1.5rem">
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700" id="statTeacherCount">—</div>
     <div style="font-size:.8rem;color:var(--muted)">Enseignants</div>
@@ -35,6 +35,10 @@
     <div style="font-size:.8rem;opacity:.85">Charge équivalente</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
+    <div style="font-size:1.6rem;font-weight:700" id="statAvgEquivalent">—</div>
+    <div style="font-size:.8rem;color:var(--muted)">Moyenne / enseignant</div>
+  </div>
+  <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700" id="statSessions">—</div>
     <div style="font-size:.8rem;color:var(--muted)">Total séances</div>
   </div>
@@ -45,35 +49,53 @@
   <h2>Filtres</h2>
 </div>
 <div class="absence-filters" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end">
-  <div class="field" style="min-width:180px">
+  <div class="field" style="min-width:170px">
     <label>Département</label>
-    <select id="wldDept" class="form-control" onchange="wld.onFilterChange()">
-      <option value="">Tous les départements</option>
+    <select id="wldDept" class="form-control">
+      <option value="">Tous</option>
     </select>
   </div>
-  <div class="field" style="min-width:180px">
+  <div class="field" style="min-width:170px">
     <label>Filière</label>
-    <select id="wldFiliere" class="form-control" onchange="wld.onFilterChange()">
-      <option value="">Toutes les filières</option>
-    </select>
-  </div>
-  <div class="field" style="min-width:160px">
-    <label>Année universitaire</label>
-    <select id="wldYear" class="form-control" onchange="wld.onFilterChange()">
+    <select id="wldFiliere" class="form-control">
       <option value="">Toutes</option>
     </select>
   </div>
-  <div class="field" style="min-width:140px">
-    <label>Période</label>
-    <select id="wldPeriod" class="form-control" onchange="wld.onPeriodChange()">
-      <option value="all">Tout</option>
-      <option value="month">Mois spécifique</option>
-      <option value="range">Intervalle de dates</option>
+  <div class="field" style="min-width:160px">
+    <label>Semestre</label>
+    <select id="wldSemestre" class="form-control">
+      <option value="">Tous</option>
     </select>
   </div>
-  <div class="field" style="min-width:140px;display:none" id="wldMonthGroup">
+  <div class="field" style="min-width:160px">
+    <label>Module</label>
+    <select id="wldModule" class="form-control">
+      <option value="">Tous</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:170px">
+    <label>Enseignant</label>
+    <select id="wldTeacher" class="form-control">
+      <option value="">Tous</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:150px">
+    <label>Année univ.</label>
+    <select id="wldYear" class="form-control">
+      <option value="">Toutes</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:130px">
+    <label>Période</label>
+    <select id="wldPeriod" class="form-control">
+      <option value="all">Tout</option>
+      <option value="month">Mois</option>
+      <option value="range">Intervalle</option>
+    </select>
+  </div>
+  <div class="field" style="min-width:130px;display:none" id="wldMonthGroup">
     <label>Mois</label>
-    <select id="wldMonth" class="form-control" onchange="wld.onFilterChange()">
+    <select id="wldMonth" class="form-control">
       <option value="">—</option>
       <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
       <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
@@ -81,13 +103,13 @@
       <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
     </select>
   </div>
-  <div class="field" style="min-width:160px;display:none" id="wldDateStartGroup">
+  <div class="field" style="min-width:150px;display:none" id="wldDateStartGroup">
     <label>Du</label>
-    <input type="date" id="wldDateStart" class="form-control" onchange="wld.onFilterChange()" />
+    <input type="date" id="wldDateStart" class="form-control" />
   </div>
-  <div class="field" style="min-width:160px;display:none" id="wldDateEndGroup">
+  <div class="field" style="min-width:150px;display:none" id="wldDateEndGroup">
     <label>Au</label>
-    <input type="date" id="wldDateEnd" class="form-control" onchange="wld.onFilterChange()" />
+    <input type="date" id="wldDateEnd" class="form-control" />
   </div>
 </div>
 
@@ -104,7 +126,7 @@
         <th class="sortable" data-sort="td" style="text-align:right">Heures TD</th>
         <th class="sortable" data-sort="tp" style="text-align:right">Heures TP</th>
         <th class="sortable" data-sort="sessions" style="text-align:right">Nb séances</th>
-        <th class="sortable" data-sort="equivalent" style="text-align:right;color:var(--accent)">Charge équivalente</th>
+        <th class="sortable" data-sort="equivalent" style="text-align:right;color:var(--accent)">⏱ Charge horaire</th>
       </tr>
     </thead>
     <tbody id="wldBody">
@@ -113,15 +135,23 @@
   </table>
 </div>
 
-<!-- Charts -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem">
+<!-- Charts: 2x2 grid -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:2rem">
   <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .75rem 0;font-size:.95rem">Top 15 — Charge équivalente par enseignant</h3>
-    <canvas id="wldBarChart" height="280"></canvas>
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Top 15 — Charge équivalente par enseignant</h3>
+    <canvas id="wldBarChart" height="260"></canvas>
   </div>
   <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .75rem 0;font-size:.95rem">Répartition CM / TD / TP</h3>
-    <canvas id="wldPieChart" height="280"></canvas>
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Répartition CM / TD / TP</h3>
+    <canvas id="wldPieChart" height="260"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Charge par département</h3>
+    <canvas id="wldDeptChart" height="220"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Charge par filière</h3>
+    <canvas id="wldFiliereChart" height="220"></canvas>
   </div>
 </div>
 {% endblock %}

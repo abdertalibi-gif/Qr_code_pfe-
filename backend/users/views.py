@@ -1260,6 +1260,9 @@ def teacher_workload_dashboard(request):
     # Query-param filters
     department_id = request.query_params.get("department_id")
     filiere_id = request.query_params.get("filiere_id")
+    semestre_id = request.query_params.get("semestre_id")
+    module_id = request.query_params.get("module_id")
+    teacher_id = request.query_params.get("teacher_id")
     academic_year = request.query_params.get("academic_year")
     month = request.query_params.get("month")
     year = request.query_params.get("year")
@@ -1273,6 +1276,15 @@ def teacher_workload_dashboard(request):
         )
     if filiere_id:
         qs = qs.filter(classe__filiere_id=filiere_id)
+    if semestre_id:
+        qs = qs.filter(
+            Q(classe__semestre_id=semestre_id) |
+            Q(classe__filiere__semestre_id=semestre_id)
+        )
+    if module_id:
+        qs = qs.filter(module_id=module_id)
+    if teacher_id:
+        qs = qs.filter(teacher_id=teacher_id)
     if academic_year:
         qs = qs.filter(classe__academic_year=academic_year)
     if month and year:
@@ -1283,9 +1295,9 @@ def teacher_workload_dashboard(request):
         qs = qs.filter(date__lte=end_date)
 
     # Prefetch all sessions with related data
-    qs = qs.select_related("teacher", "classe", "classe__filiere", "classe__department")
+    qs = qs.select_related("teacher", "classe", "classe__filiere", "classe__department", "module")
 
-    # Aggregate per teacher
+    # Aggregate per teacher + collect distribution data
     rows = defaultdict(lambda: {
         "first_name": "",
         "last_name": "",
@@ -1296,6 +1308,9 @@ def teacher_workload_dashboard(request):
         "tp_hours": 0.0,
         "total_sessions": 0,
     })
+
+    dept_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
+    filiere_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
 
     for s in qs.iterator():
         tid = s.teacher_id
@@ -1309,20 +1324,30 @@ def teacher_workload_dashboard(request):
         end_m = s.end_time.hour * 60 + s.end_time.minute
         duration_h = max((end_m - start_m) / 60.0, 0.0)
 
+        st = s.session_type
+        dept_name = None
+        filiere_name = None
         if s.classe:
             if s.classe.department:
-                row["departments"].add(s.classe.department.name)
+                dept_name = s.classe.department.name
+                row["departments"].add(dept_name)
             if s.classe.filiere:
-                row["filieres"].add(s.classe.filiere.name)
+                filiere_name = s.classe.filiere.name
+                row["filieres"].add(filiere_name)
 
         row["total_sessions"] += 1
-        st = s.session_type
         if st == "Cours":
             row["cm_hours"] += duration_h
+            if dept_name: dept_totals[dept_name]["cm"] += duration_h
+            if filiere_name: filiere_totals[filiere_name]["cm"] += duration_h
         elif st == "TD":
             row["td_hours"] += duration_h
+            if dept_name: dept_totals[dept_name]["td"] += duration_h
+            if filiere_name: filiere_totals[filiere_name]["td"] += duration_h
         elif st == "TP":
             row["tp_hours"] += duration_h
+            if dept_name: dept_totals[dept_name]["tp"] += duration_h
+            if filiere_name: filiere_totals[filiere_name]["tp"] += duration_h
 
     # Compute equivalent hours and build result
     result = []
@@ -1347,14 +1372,25 @@ def teacher_workload_dashboard(request):
     # Sort by equivalent_hours descending
     result.sort(key=lambda x: x["equivalent_hours"], reverse=True)
 
-    # Totals
+    # Compute equivalent for dept/filiere totals
+    for d in dept_totals.values():
+        d["eq"] = d["cm"] + (d["td"] / 1.5) + ((d["tp"] * 2) / 1.5)
+    for f in filiere_totals.values():
+        f["eq"] = f["cm"] + (f["td"] / 1.5) + ((f["tp"] * 2) / 1.5)
+
+    # Sort distribution data by eq descending
+    dept_sorted = sorted(dept_totals.items(), key=lambda x: x[1]["eq"], reverse=True)
+    filiere_sorted = sorted(filiere_totals.items(), key=lambda x: x[1]["eq"], reverse=True)
+
+    total_eq = sum(r["equivalent_hours"] for r in result)
     totals = {
         "cm_hours": round(sum(r["cm_hours"] for r in result), 2),
         "td_hours": round(sum(r["td_hours"] for r in result), 2),
         "tp_hours": round(sum(r["tp_hours"] for r in result), 2),
         "total_sessions": sum(r["total_sessions"] for r in result),
-        "equivalent_hours": round(sum(r["equivalent_hours"] for r in result), 2),
+        "equivalent_hours": round(total_eq, 2),
         "teacher_count": len(result),
+        "average_equivalent": round(total_eq / len(result), 2) if result else 0,
     }
 
     # Chart data (top 15 for bar chart)
@@ -1366,6 +1402,14 @@ def teacher_workload_dashboard(request):
         "td_hours": [r["td_hours"] for r in top15],
         "tp_hours": [r["tp_hours"] for r in top15],
     }
+
+    # Department distribution chart
+    chart_data["dept_labels"] = [d[0] for d in dept_sorted]
+    chart_data["dept_eq"] = [round(d[1]["eq"], 2) for d in dept_sorted]
+
+    # Filiere distribution chart
+    chart_data["filiere_labels"] = [f[0] for f in filiere_sorted]
+    chart_data["filiere_eq"] = [round(f[1]["eq"], 2) for f in filiere_sorted]
 
     return Response({
         "teachers": result,
