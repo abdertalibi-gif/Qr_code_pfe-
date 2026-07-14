@@ -92,7 +92,6 @@
     </button>
     <button class="tab-btn" data-tab="workload">
       ⏱ Charge horaire <span class="tab-count" id="cntWorkload">—</span>
-      <span style="font-size:.65rem;opacity:.6;display:block">→ Dashboard complet</span>
     </button>
   </div>
 
@@ -690,12 +689,185 @@
 
     <!-- ⏱ TEACHER WORKLOAD -->
     <div class="tab-panel" id="tab-workload">
-      <div style="text-align:center;padding:3rem 1rem">
-        <div style="font-size:3rem;margin-bottom:1rem">⏱</div>
-        <h2 style="margin:0 0 .5rem 0">Dashboard — Charge horaire des enseignants</h2>
-        <p style="color:var(--muted);margin-bottom:1.5rem">Tableau de bord complet avec classement, graphiques, filtres avancés et export Excel.</p>
-        <a href="/admin/workload/" class="btn btn-primary" style="font-size:1rem;padding:.6rem 2rem" target="_blank">🚀 Ouvrir le Dashboard complet</a>
+      <div class="page-hero" style="border:none;padding:0 0 .5rem">
+        <div class="section-actions" style="display:flex;gap:.5rem;justify-content:flex-end">
+          <button class="btn outline" id="btnExportExcel">📥 Export Excel</button>
+        </div>
       </div>
+
+      <!-- Stats cards -->
+      <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.6rem;margin-bottom:1rem">
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700" id="statTeacherCount">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">👨‍🏫 Enseignants</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--primary)" id="statCM">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">📚 Heures CM</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9" id="statTD">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">📝 Heures TD</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:#f59e0b" id="statTP">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">🔬 Heures TP</div>
+        </div>
+        <div class="stat-card" style="background:var(--accent);padding:.7rem;border-radius:8px;text-align:center;color:#fff">
+          <div style="font-size:1.4rem;font-weight:700" id="statEquivalent">—</div>
+          <div style="font-size:.75rem;opacity:.85">⏱ Charge équivalente</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700" id="statAvgEquivalent">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">📈 Moyenne / ens.</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface-2);padding:.7rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700" id="statSessions">—</div>
+          <div style="font-size:.75rem;color:var(--muted)">📅 Total séances</div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:.7rem;border-radius:8px;text-align:center;color:#fff">
+          <div style="font-size:.9rem;font-weight:700;line-height:1.3" id="statTopTeacher">—</div>
+          <div style="font-size:.7rem;opacity:.85;margin-top:2px">🏆 Plus chargé</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="absence-filters" style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end">
+        <div class="field" style="min-width:150px">
+          <label>Département</label>
+          <select id="wldDept" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="min-width:150px">
+          <label>Filière</label>
+          <select id="wldFiliere" class="form-control"><option value="">Toutes</option></select>
+        </div>
+        <div class="field" style="min-width:140px">
+          <label>Semestre</label>
+          <select id="wldSemestre" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="min-width:140px">
+          <label>Module</label>
+          <select id="wldModule" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="min-width:150px">
+          <label>Enseignant</label>
+          <select id="wldTeacher" class="form-control"><option value="">Tous</option></select>
+        </div>
+        <div class="field" style="min-width:130px">
+          <label>Année univ.</label>
+          <select id="wldYear" class="form-control"><option value="">Toutes</option></select>
+        </div>
+        <div class="field" style="min-width:110px">
+          <label>Période</label>
+          <select id="wldPeriod" class="form-control">
+            <option value="all">Tout</option>
+            <option value="month">Mois</option>
+            <option value="range">Intervalle</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:110px;display:none" id="wldMonthGroup">
+          <label>Mois</label>
+          <select id="wldMonth" class="form-control">
+            <option value="">—</option>
+            <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+            <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+            <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+            <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:130px;display:none" id="wldDateStartGroup">
+          <label>Du</label>
+          <input type="date" id="wldDateStart" class="form-control" />
+        </div>
+        <div class="field" style="min-width:130px;display:none" id="wldDateEndGroup">
+          <label>Au</label>
+          <input type="date" id="wldDateEnd" class="form-control" />
+        </div>
+      </div>
+
+      <!-- Ranking -->
+      <h3 style="margin:1.2rem 0 .5rem;font-size:.9rem">🏆 Classement des enseignants</h3>
+      <div style="overflow-x:auto">
+        <table class="ranking-table" style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead>
+            <tr><th style="width:36px">Rang</th><th>Enseignant</th><th style="text-align:right">Charge horaire</th><th style="text-align:right">Cours</th><th style="text-align:right">TD</th><th style="text-align:right">TP</th><th style="text-align:right">Séances</th></tr>
+          </thead>
+          <tbody id="wldRankingBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:.8rem">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary bars -->
+      <h3 style="margin:1.2rem 0 .5rem;font-size:.9rem">📊 Synthèse rapide</h3>
+      <div id="wldSummary" style="display:flex;flex-direction:column;gap:4px;margin-bottom:.3rem">
+        <div style="text-align:center;padding:.8rem;color:var(--muted)">Chargement…</div>
+      </div>
+
+      <!-- Detailed table -->
+      <h3 style="margin:1.2rem 0 .5rem;font-size:.9rem">📋 Tableau détaillé</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="rank" style="width:36px">#</th>
+              <th class="sortable" data-sort="name">Enseignant</th>
+              <th class="sortable" data-sort="department">Département</th>
+              <th class="sortable" data-sort="filieres">Filière(s)</th>
+              <th class="sortable" data-sort="cm" style="text-align:right">Heures CM</th>
+              <th class="sortable" data-sort="td" style="text-align:right">Heures TD</th>
+              <th class="sortable" data-sort="tp" style="text-align:right">Heures TP</th>
+              <th class="sortable" data-sort="sessions" style="text-align:right">Nb séances</th>
+              <th class="sortable" data-sort="equivalent" style="text-align:right;color:var(--accent)">⏱ Charge horaire</th>
+            </tr>
+          </thead>
+          <tbody id="wldBody">
+            <tr class="empty-row"><td colspan="9">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem;gap:.4rem;flex-wrap:wrap">
+        <span style="font-size:.78rem;color:var(--muted)" id="wldPaginationInfo">—</span>
+        <div style="display:flex;gap:.3rem">
+          <button class="btn outline" id="wldPagePrev" style="padding:3px 8px;font-size:.78rem">◀ Préc.</button>
+          <button class="btn outline" id="wldPageNext" style="padding:3px 8px;font-size:.78rem">Suiv. ▶</button>
+        </div>
+      </div>
+
+      <!-- Charts: 3x2 grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem">
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px;grid-column:1/3">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">📊 Comparatif — Charge équivalente par enseignant</h3>
+          <canvas id="wldBarChart" height="280"></canvas>
+        </div>
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🥧 Répartition globale CM/TD/TP</h3>
+          <canvas id="wldPieChart" height="220"></canvas>
+        </div>
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">📊 Répartition par enseignant</h3>
+          <canvas id="wldStackedChart" height="220"></canvas>
+        </div>
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🏛️ Charge par département</h3>
+          <canvas id="wldDeptChart" height="180"></canvas>
+        </div>
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🎓 Charge par filière</h3>
+          <canvas id="wldFiliereChart" height="180"></canvas>
+        </div>
+        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px;grid-column:1/3">
+          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">📈 Évolution mensuelle des heures</h3>
+          <canvas id="wldMonthlyChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <style>
+        .ranking-table th { padding:6px 8px; background:var(--surface-2); font-weight:600; font-size:.78rem; color:var(--muted); border-bottom:2px solid var(--border); }
+        .ranking-table td { padding:5px 8px; border-bottom:1px solid var(--border); }
+        .ranking-table tr:hover td { background:var(--surface-2); }
+        .summary-row:hover { background:var(--surface-3) !important; }
+      </style>
     </div>
   </main>
 
@@ -2575,7 +2747,6 @@
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       var tab = btn.dataset.tab;
-      if (tab === 'workload') { window.open('/admin/workload/', '_blank'); return; }
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
@@ -2584,6 +2755,7 @@
         _tabLoaded[tab] = true;
         if (tab === 'classes') loadClasses();
         else if (tab === 'absence-stats') loadAbsenceStats();
+        else if (tab === 'workload') { wld.bindEvents(); setTimeout(function () { wld.init(); }, 100); }
       }
     });
   });
@@ -4977,5 +5149,6 @@ tbody.innerHTML = list.map(function (d) {
     });
   }
 </script>
+<script src="/admin-workload.js"></script>
 </body>
 </html>

@@ -664,8 +664,8 @@ var wld = {
   }
 };
 
-/* ── Init ── */
-(function () {
+/* ── Bind events (call wld.init() to start) ── */
+wld.bindEvents = function () {
   document.addEventListener('click', function (e) {
     var th = e.target.closest('.sortable');
     if (th) wld.setSort(th.dataset.sort);
@@ -686,6 +686,4 @@ var wld = {
   document.getElementById('wldMonth')?.addEventListener('change', function () { wld.onFilterChange(); });
   document.getElementById('wldDateStart')?.addEventListener('change', function () { wld.onFilterChange(); });
   document.getElementById('wldDateEnd')?.addEventListener('change', function () { wld.onFilterChange(); });
-
-  wld.init();
-})();
+};
