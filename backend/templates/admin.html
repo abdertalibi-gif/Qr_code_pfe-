@@ -798,12 +798,6 @@
         </table>
       </div>
 
-      <!-- Summary bars -->
-      <h3 style="margin:1.2rem 0 .5rem;font-size:.9rem">📊 Synthèse rapide</h3>
-      <div id="wldSummary" style="display:flex;flex-direction:column;gap:4px;margin-bottom:.3rem">
-        <div style="text-align:center;padding:.8rem;color:var(--muted)">Chargement…</div>
-      </div>
-
       <!-- Detailed table -->
       <h3 style="margin:1.2rem 0 .5rem;font-size:.9rem">📋 Tableau détaillé</h3>
       <div class="table-wrap">
@@ -834,35 +828,11 @@
         </div>
       </div>
 
-      <!-- Charts: 3x2 grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem">
-        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
-          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🥧 Répartition globale CM/TD/TP</h3>
-          <canvas id="wldPieChart" height="220"></canvas>
-        </div>
-        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
-          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">📊 Répartition par enseignant</h3>
-          <canvas id="wldStackedChart" height="220"></canvas>
-        </div>
-        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
-          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🏛️ Charge par département</h3>
-          <canvas id="wldDeptChart" height="180"></canvas>
-        </div>
-        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px">
-          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">🎓 Charge par filière</h3>
-          <canvas id="wldFiliereChart" height="180"></canvas>
-        </div>
-        <div style="background:var(--surface-2);padding:.8rem;border-radius:10px;grid-column:1/3">
-          <h3 style="margin:0 0 .5rem 0;font-size:.85rem">📈 Évolution mensuelle des heures</h3>
-          <canvas id="wldMonthlyChart" height="200"></canvas>
-        </div>
-      </div>
-
       <style>
         .ranking-table th { padding:6px 8px; background:var(--surface-2); font-weight:600; font-size:.78rem; color:var(--muted); border-bottom:2px solid var(--border); }
         .ranking-table td { padding:5px 8px; border-bottom:1px solid var(--border); }
         .ranking-table tr:hover td { background:var(--surface-2); }
-        .summary-row:hover { background:var(--surface-3) !important; }
+
       </style>
     </div>
   </main>

@@ -140,14 +140,6 @@
   </table>
 </div>
 
-<!-- Summary bars -->
-<div class="section-head" style="margin-top:1.25rem">
-  <h2>📊 Synthèse rapide</h2>
-</div>
-<div id="wldSummary" style="display:flex;flex-direction:column;gap:5px;margin-bottom:0.5rem">
-  <div class="empty-row" style="text-align:center;padding:1rem;color:var(--muted)">Chargement…</div>
-</div>
-
 <!-- Detailed table -->
 <div class="section-head" style="margin-top:1.5rem">
   <h2>📋 Tableau détaillé</h2>
@@ -180,32 +172,7 @@
   </div>
 </div>
 
-<!-- Charts: 3x2 grid -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:2rem">
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🥧 Répartition globale CM / TD / TP</h3>
-    <canvas id="wldPieChart" height="240"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">📊 Répartition par enseignant (CM/TD/TP)</h3>
-    <canvas id="wldStackedChart" height="240"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🏛️ Charge par département</h3>
-    <canvas id="wldDeptChart" height="200"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🎓 Charge par filière</h3>
-    <canvas id="wldFiliereChart" height="200"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px;grid-column:1/3">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">📈 Évolution mensuelle des heures</h3>
-    <canvas id="wldMonthlyChart" height="220"></canvas>
-  </div>
-</div>
-
 <style>
-  .summary-row:hover { background: var(--surface-3) !important; }
   .ranking-table th { padding:8px 10px; background:var(--surface-2); font-weight:600; font-size:.8rem; color:var(--muted); border-bottom:2px solid var(--border); }
   .ranking-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
   .ranking-table tr:hover td { background:var(--surface-2); }
@@ -215,7 +182,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/admin-workload.js"></script>
 <script>wld.bindEvents(); wld.init();</script>
 {% endblock %}
