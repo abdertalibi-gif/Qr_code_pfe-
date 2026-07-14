@@ -3,37 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PrÈsenceQR ? Espace Ètudiant</title>
+  <title>Pr√©senceQR ‚Äî Espace √âtudiant</title>
   <link rel="stylesheet" href="/dashboard.css" />
 </head>
 <body class="dashboard-app student-app">
 
 <nav>
   <div class="nav-brand">
-    <div class="nav-brand-icon">??</div>
-    PrÈsenceQR
+    <div class="nav-brand-icon">üìã</div>
+    Pr√©senceQR
   </div>
   <div class="nav-right">
     <div class="user-pill">
       <div class="user-avatar" id="avatarInitials">?</div>
-      <span id="navUserName">Chargement?</span>
-      <span class="badge badge-student">…tudiant</span>
+      <span id="navUserName">Chargement‚Ä¶</span>
+      <span class="badge badge-student">√âtudiant</span>
     </div>
-    <button class="btn-icon" onclick="API.logout()" title="DÈconnexion">
+    <button class="btn-icon" onclick="API.logout()" title="D√©connexion">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      DÈconnexion
+      D√©connexion
     </button>
   </div>
 </nav>
 
 <main>
   <div class="hero">
-    <div class="hero-icon">??</div>
+    <div class="hero-icon">üì±</div>
     <div class="hero-text">
-      <h1>Marquez votre prÈsence via l'application mobile</h1>
+      <h1>Marquez votre pr√©sence via l'application mobile</h1>
       <p>
-        La prÈsence s'enregistre en scannant le QR code affichÈ par votre enseignant
-        avec l'<strong>application PrÈsenceQR</strong>. Ce portail affiche votre
+        La pr√©sence s'enregistre en scannant le QR code affich√© par votre enseignant
+        avec l'<strong>application Pr√©senceQR</strong>. Ce portail affiche votre
         historique et vos informations de compte.
       </p>
     </div>
@@ -49,34 +49,34 @@
   </div>
 
   <div class="how-section">
-    <h2>Comment marquer votre prÈsence</h2>
+    <h2>Comment marquer votre pr√©sence</h2>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-text">
-          <strong>TÈlÈchargez l'application mobile</strong>
-          <span>Installez PrÈsenceQR sur Android ou iOS.</span>
+          <strong>T√©l√©chargez l'application mobile</strong>
+          <span>Installez Pr√©senceQR sur Android ou iOS.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-text">
           <strong>Connectez-vous</strong>
-          <span>Utilisez les mÍmes identifiants que sur ce portail.</span>
+          <span>Utilisez les m√™mes identifiants que sur ce portail.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-text">
           <strong>Scannez le QR code</strong>
-          <span>Pointez la camÈra vers le code affichÈ en cours.</span>
+          <span>Pointez la cam√©ra vers le code affich√© en cours.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-text">
           <strong>Confirmation</strong>
-          <span>Votre prÈsence est enregistrÈe instantanÈment.</span>
+          <span>Votre pr√©sence est enregistr√©e instantan√©ment.</span>
         </div>
       </div>
     </div>
@@ -84,46 +84,46 @@
 
   <div class="info-grid">
     <div class="info-card">
-      <div class="info-card-icon">??</div>
+      <div class="info-card-icon">‚è±Ô∏è</div>
       <div class="info-card-body">
-        <h3>QR code limitÈ dans le temps</h3>
-        <p>Chaque code est valide 20 minutes. Scannez-le dËs qu'il est affichÈ.</p>
+        <h3>QR code limit√© dans le temps</h3>
+        <p>Chaque code est valide 20 minutes. Scannez-le d√®s qu'il est affich√©.</p>
       </div>
     </div>
     <div class="info-card">
-      <div class="info-card-icon">??</div>
+      <div class="info-card-icon">‚úÖ</div>
       <div class="info-card-body">
-        <h3>Un scan par sÈance</h3>
-        <p>Un seul enregistrement par sÈance. Les doublons sont ignorÈs.</p>
+        <h3>Un scan par s√©ance</h3>
+        <p>Un seul enregistrement par s√©ance. Les doublons sont ignor√©s.</p>
       </div>
     </div>
     <div class="info-card">
-      <div class="info-card-icon">??</div>
+      <div class="info-card-icon">üìä</div>
       <div class="info-card-body">
         <h3>Suivez votre historique</h3>
-        <p>Vos prÈsences apparaissent ci-dessous. Contactez votre enseignant en cas d'erreur.</p>
+        <p>Vos pr√©sences apparaissent ci-dessous. Contactez votre enseignant en cas d'erreur.</p>
       </div>
     </div>
   </div>
 
   <div class="attendance-section">
     <div class="section-header">
-      <h2>Mon historique de prÈsences</h2>
-      <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement?</span>
+      <h2>Mon historique de pr√©sences</h2>
+      <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement‚Ä¶</span>
     </div>
     <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
       <table>
         <thead>
           <tr>
             <th>#</th>
-            <th>MatiËre</th>
-            <th>Date sÈance</th>
-            <th>ScannÈ ‡</th>
+            <th>Mati√®re</th>
+            <th>Date s√©ance</th>
+            <th>Scann√© √†</th>
             <th>Statut</th>
           </tr>
         </thead>
         <tbody id="attBody">
-          <tr class="empty-row"><td colspan="5">Chargement de l'historique?</td></tr>
+          <tr class="empty-row"><td colspan="5">Chargement de l'historique‚Ä¶</td></tr>
         </tbody>
       </table>
     </div>
@@ -131,7 +131,7 @@
 </main>
 
 <footer>
-  PrÈsenceQR © 2025 ? Espace Ètudiant
+  Pr√©senceQR ¬© 2025 ‚Äî Espace √âtudiant
 </footer>
 
 <script src="/api.js"></script>
@@ -162,17 +162,17 @@
       (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
     document.getElementById('profileName').textContent =
       `${user.first_name} ${user.last_name}`;
-    document.getElementById('profileEmail').textContent = user.email || '?';
+    document.getElementById('profileEmail').textContent = user.email || '‚Äî';
 
-    const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: '…tudiant' };
+    const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: '√âtudiant' };
     document.getElementById('profileMeta').innerHTML = `
       <div class="meta-chip">
-        <span class="meta-chip-label">RÙle</span>
-        <span class="meta-chip-value">${roleLabels[user.role] || user.role || '?'}</span>
+        <span class="meta-chip-label">R√¥le</span>
+        <span class="meta-chip-value">${roleLabels[user.role] || user.role || '‚Äî'}</span>
       </div>
       <div class="meta-chip">
         <span class="meta-chip-label">ID</span>
-        <span class="meta-chip-value">#${user.id || '?'}</span>
+        <span class="meta-chip-value">#${user.id || '‚Äî'}</span>
       </div>
     `;
   }
@@ -195,8 +195,8 @@
       if (!records.length) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="5">
           <div class="empty-state-inline">
-            <span class="empty-icon">??</span>
-            <span>Aucune prÈsence. Scannez un QR en cours pour commencer.</span>
+            <span class="empty-icon">üìã</span>
+            <span>Aucune pr√©sence. Scannez un QR en cours pour commencer.</span>
           </div>
         </td></tr>`;
         return;
@@ -208,7 +208,7 @@
           <td><strong>${esc(r.subject || '?')}</strong></td>
           <td style="color:var(--muted)">${formatDate(r.session_date)}</td>
           <td style="color:var(--muted);font-size:.82rem">${formatDateTime(r.validation_time)}</td>
-          <td><span class="badge badge-present">PrÈsent</span></td>
+          <td><span class="badge badge-present">Pr√©sent</span></td>
         </tr>
       `).join('');
     } catch (e) {
@@ -218,7 +218,7 @@
   }
 
   function formatDate(dateStr) {
-    if (!dateStr) return '?';
+    if (!dateStr) return '‚Äî';
     try {
       return new Date(dateStr).toLocaleDateString('fr-FR', {
         day: '2-digit', month: 'short', year: 'numeric'
@@ -227,7 +227,7 @@
   }
 
   function formatDateTime(dt) {
-    if (!dt) return '?';
+    if (!dt) return '‚Äî';
     try {
       return new Date(dt).toLocaleString('fr-FR', {
         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
