@@ -255,13 +255,17 @@ var wld = {
       this.teachers = resp.teachers || [];
       this.totals = resp.totals || {};
       this.chartData = resp.chart_data || {};
-      this._applyFilters();
-      this._renderRanking();
-      this._renderTable();
-      this._updateStats();
     } catch (e) {
-      document.getElementById('wldBody').innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + API.esc(e.message) + '</td></tr>';
+      this.teachers = [];
+      this.totals = {};
+      this.chartData = {};
+      var tbody = document.getElementById('wldBody');
+      if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + API.esc(e.message) + '</td></tr>';
     }
+    this._applyFilters();
+    this._renderRanking();
+    this._renderTable();
+    this._updateStats();
   },
 
   /* ── Ranking table ── */

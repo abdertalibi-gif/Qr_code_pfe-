@@ -1172,11 +1172,12 @@ def teacher_workload(request):
         "epoch",
     )
 
-    # Adjusted hours based on session type
+    # Adjusted hours based on session type (case-insensitive)
     adjusted_hours = Case(
-        When(session_type="Cours", then=duration_seconds / 3600.0),
-        When(session_type="TD", then=duration_seconds / 3600.0 / 1.5),
-        When(session_type="TP", then=duration_seconds / 3600.0 / 1.5),
+        When(Q(session_type__istartswith="Cour") | Q(session_type__istartswith="cour"),
+             then=duration_seconds / 3600.0),
+        When(session_type__iexact="TD", then=duration_seconds / 3600.0 / 1.5),
+        When(session_type__iexact="TP", then=duration_seconds / 3600.0 / 1.5),
         default=Value(0.0),
         output_field=FloatField(),
     )
@@ -1237,7 +1238,7 @@ def teacher_workload_dashboard(request):
     from collections import defaultdict
     from courses.models import Session
 
-    qs = Session.objects.filter(is_active=True, teacher__is_active=True)
+    qs = Session.objects.filter(teacher__is_active=True)
 
     # Role-based scoping
     if request.user.role == "department_head":
@@ -1345,7 +1346,7 @@ def teacher_workload_dashboard(request):
         mk = (s.date.year, s.date.month)
 
         row["total_sessions"] += 1
-        if st == "cours":
+        if st.startswith("cour"):
             row["cm_hours"] += duration_h
             monthly[mk]["cm"] += duration_h
             if dept_name: dept_totals[dept_name]["cm"] += duration_h
@@ -1885,7 +1886,7 @@ def teacher_monthly_report(request):
         row = rows[key]
         row["total_sessions"] += 1
         st = s.session_type.lower()
-        if st == "cours":
+        if st.startswith("cour"):
             row["cm_count"] += 1
             row["cm_hours"] += duration_h
             row["total_hours"] += duration_h

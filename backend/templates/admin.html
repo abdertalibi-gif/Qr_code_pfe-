@@ -2725,7 +2725,7 @@
         _tabLoaded[tab] = true;
         if (tab === 'classes') loadClasses();
         else if (tab === 'absence-stats') loadAbsenceStats();
-        else if (tab === 'workload') { wld.bindEvents(); setTimeout(function () { wld.init(); }, 100); }
+        else if (tab === 'workload') { wld.bindEvents(); setTimeout(function () { wld.init().catch(function(e) { console.error('Workload init error:', e); }); }, 100); }
       }
     });
   });
