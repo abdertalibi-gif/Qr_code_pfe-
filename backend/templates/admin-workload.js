@@ -193,6 +193,7 @@ var wld = {
       this._renderTable();
       this._renderCharts();
       this._updateStats();
+      this._renderSummary();
     } catch (e) {
       document.getElementById('wldBody').innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + API.esc(e.message) + '</td></tr>';
     }
@@ -273,6 +274,47 @@ var wld = {
     document.getElementById('statEquivalent').textContent = eq.toFixed(1);
     document.getElementById('statAvgEquivalent').textContent = avg.toFixed(1);
     document.getElementById('statSessions').textContent = sess;
+  },
+
+  /* ── Summary bars ── */
+
+  _renderSummary() {
+    var el = document.getElementById('wldSummary');
+    if (!el) return;
+    var filtered = this.filtered;
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty-row" style="text-align:center;padding:1.5rem;color:var(--muted)">Aucun enseignant pour les filtres sélectionnés.</div>';
+      return;
+    }
+
+    var maxEq = filtered.reduce(function (m, t) { return Math.max(m, t.equivalent_hours); }, 0) || 1;
+    var color = 'var(--accent)';
+
+    var html = filtered.map(function (t, i) {
+      var pct = Math.round((t.equivalent_hours / maxEq) * 100);
+      var shortName = API.esc(t.first_name) + ' ' + API.esc(t.last_name);
+      var dept = API.esc(t.department || '—');
+
+      return '<div class="summary-row" style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;background:var(--surface-2);font-size:.82rem">' +
+        '<span style="width:28px;text-align:right;color:var(--muted);font-weight:600;flex-shrink:0">' + (i + 1) + '</span>' +
+        '<div style="flex:0 0 180px;min-width:0">' +
+          '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + shortName + '</div>' +
+          '<div style="font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dept + '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:80px;height:26px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;position:relative">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:6px;opacity:.7;transition:width .3s"></div>' +
+          '<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:.72rem;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)">' + t.equivalent_hours.toFixed(1) + 'h</span>' +
+        '</div>' +
+        '<div style="flex:0 0 auto;display:flex;gap:8px;font-size:.72rem;white-space:nowrap">' +
+          '<span style="color:var(--primary)">CM ' + t.cm_hours.toFixed(1) + '</span>' +
+          '<span style="color:#0ea5e9">TD ' + t.td_hours.toFixed(1) + '</span>' +
+          '<span style="color:#f59e0b">TP ' + t.tp_hours.toFixed(1) + '</span>' +
+        '</div>' +
+        '<span style="flex:0 0 40px;text-align:right;color:var(--muted);font-size:.72rem">' + t.total_sessions + ' séances</span>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML = html;
   },
 
   /* ── Charts ── */

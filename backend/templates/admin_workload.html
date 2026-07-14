@@ -113,8 +113,16 @@
   </div>
 </div>
 
+<!-- Summary bars -->
+<div class="section-head" style="margin-top:1.5rem">
+  <h2>Synthèse rapide</h2>
+</div>
+<div id="wldSummary" style="display:flex;flex-direction:column;gap:6px;margin-bottom:0.5rem">
+  <div class="empty-row" style="text-align:center;padding:1.5rem;color:var(--muted)">Chargement…</div>
+</div>
+
 <!-- Table -->
-<div class="table-wrap" style="margin-top:1.5rem">
+<div class="table-wrap" style="margin-top:1rem">
   <table>
     <thead>
       <tr>
@@ -156,6 +164,9 @@
 </div>
 {% endblock %}
 
+<style>
+  .summary-row:hover { background: var(--surface-3) !important; }
+</style>
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/admin-workload.js"></script>
