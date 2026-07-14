@@ -7,15 +7,11 @@
   <link rel="stylesheet" href="/dashboard.css" />
   <script src="/admin-teachers.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <style>
-    .req { color: var(--red, #e74c3c); }
-    .spinner { display:inline-block; width:16px; height:16px; border:2px solid #ccc; border-top-color:var(--primary,#4361ee); border-radius:50%; animation:spin .6s linear infinite; margin-left:8px; vertical-align:middle; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .field .spinner { display:none; }
-    .sub-tabs { display:flex; gap:0; border-bottom:2px solid var(--border,#e2e8f0); margin-bottom:1.5rem; }
-    .sub-tab-btn { padding:.65rem 1.25rem; border:none; background:none; cursor:pointer; font-weight:600; font-size:.85rem; color:var(--muted,#64748b); border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--transition,.18s ease); white-space:nowrap; }
-    .sub-tab-btn:hover { color:var(--text,#0f172a); background:var(--surface2,#f8fafc); }
-    .sub-tab-btn.active { color:var(--accent,#4f46e5); border-bottom-color:var(--accent,#4f46e5); }
+   <style>
+    .sub-tabs { display:flex; gap:0; border-bottom:2px solid var(--border,#e5e7eb); margin-bottom:1.5rem; }
+    .sub-tab-btn { padding:.65rem 1.25rem; border:none; background:none; cursor:pointer; font-weight:600; font-size:.85rem; color:var(--text-secondary,#6b7280); border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--transition,.2s ease); white-space:nowrap; }
+    .sub-tab-btn:hover { color:var(--text,#12324a); background:var(--bg-section,#f8fafc); }
+    .sub-tab-btn.active { color:var(--primary,#0F7DB8); border-bottom-color:var(--primary,#0F7DB8); }
     .sub-tab-panel { display:none; }
     .sub-tab-panel.active { display:block; }
     .stat-icon.red { background:var(--red-soft,#fef2f2); }

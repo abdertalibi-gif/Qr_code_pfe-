@@ -12,56 +12,58 @@
                 align-items: center;
                 justify-content: center;
                 padding: 1.5rem;
-                background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+                background: linear-gradient(135deg, #0B5E8E 0%, #0F7DB8 50%, #2196D3 100%);
             }
             .attend-card {
                 width: 100%;
                 max-width: 480px;
                 background: var(--surface, #fff);
-                border-radius: 16px;
+                border-radius: 24px;
                 padding: 2rem;
                 box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255,255,255,0.08);
             }
             .attend-card h1 {
                 margin: 0 0 0.5rem;
                 font-size: 1.4rem;
             }
             .session-info {
-                background: #f0f7ff;
+                background: var(--primary-soft, #e8f4f8);
                 border-radius: 10px;
                 padding: 1rem;
                 margin-bottom: 1.5rem;
                 font-size: 0.9rem;
+                border: 1px solid var(--primary-border, rgba(45,152,189,0.25));
             }
             .session-info p {
                 margin: 0.25rem 0;
             }
             .status-banner {
                 padding: 0.75rem 1rem;
-                border-radius: 10px;
+                border-radius: 9px;
                 margin-bottom: 1rem;
                 font-size: 0.9rem;
                 line-height: 1.45;
             }
             .status-banner.error {
-                background: #fef2f2;
+                background: var(--red-soft, #fef2f2);
                 color: #b91c1c;
-                border: 1px solid #fecaca;
+                border: 1px solid var(--red-border, rgba(239,68,68,0.15));
             }
             .status-banner.success {
-                background: #f0fdf4;
+                background: var(--green-soft, #f0fdf4);
                 color: #15803d;
-                border: 1px solid #bbf7d0;
+                border: 1px solid var(--green-border, rgba(16,185,129,0.2));
             }
             .status-banner.info {
-                background: #eff6ff;
+                background: var(--blue-soft, #eff6ff);
                 color: #1d4ed8;
-                border: 1px solid #bfdbfe;
+                border: 1px solid var(--blue-border, rgba(59,130,246,0.2));
             }
             .status-banner.warning {
-                background: #fffbeb;
+                background: var(--amber-soft, #fffbeb);
                 color: #92400e;
-                border: 1px solid #fde68a;
+                border: 1px solid var(--amber-border, rgba(245,158,11,0.2));
             }
             .field {
                 margin-bottom: 1rem;
