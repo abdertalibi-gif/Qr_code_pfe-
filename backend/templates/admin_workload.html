@@ -4,62 +4,48 @@
 {% block content %}
 <div class="page-hero">
   <div class="page-hero-text">
-    <h1>Rapport mensuel — Charge horaire des enseignants</h1>
-    <p>Générez un fichier Excel détaillant la charge horaire par enseignant et par module.</p>
+    <h1>📊 Tableau de bord — Charge horaire des enseignants</h1>
+    <p>Volume horaire réel et équivalent (pondéré) pour tous les professeurs.</p>
   </div>
 </div>
 
 <div class="section-head">
   <h2>Filtres</h2>
   <div class="section-actions">
-    <button class="btn" id="btnGenerateReport" disabled>📥 Générer le rapport Excel</button>
+    <button class="btn outline" id="btnResetFilters" onclick="wlResetFilters()">🔄 Réinitialiser</button>
   </div>
 </div>
 
 <div class="absence-filters">
   <div class="field">
-    <label>Niveau</label>
-    <select id="wlNiveau" class="form-control" onchange="wlOnNiveauChange()">
-      <option value="">Tous les niveaux</option>
+    <label>Année universitaire</label>
+    <select id="wlAcYear" class="form-control" onchange="wlLoadData()">
+      <option value="">Toutes</option>
     </select>
   </div>
   <div class="field">
-    <label>Semestre</label>
-    <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()" disabled>
-      <option value="">— Sélectionnez d'abord le niveau —</option>
+    <label>Département</label>
+    <select id="wlDepartment" class="form-control" onchange="wlLoadData()">
+      <option value="">Tous</option>
     </select>
   </div>
   <div class="field">
     <label>Filière</label>
-    <select id="wlFiliere" class="form-control" onchange="wlOnFiliereChange()" disabled>
-      <option value="">— Sélectionnez d'abord le semestre —</option>
+    <select id="wlFiliere" class="form-control" onchange="wlLoadData()">
+      <option value="">Toutes</option>
     </select>
   </div>
   <div class="field">
-    <label>Module</label>
-    <select id="wlModule" class="form-control" onchange="wlOnModuleChange()" disabled>
-      <option value="">— Sélectionnez d'abord la filière —</option>
-    </select>
-  </div>
-  <div class="field">
-    <label>Enseignant</label>
-    <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()" disabled>
-      <option value="">Tous les enseignants</option>
-    </select>
-  </div>
-</div>
-
-<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; margin-top:.75rem">
-  <div class="field" style="min-width:140px">
-    <label>Période par</label>
+    <label>Période</label>
     <select id="wlPeriodMode" class="form-control" onchange="wlOnPeriodModeChange()">
+      <option value="all">Tout l'historique</option>
       <option value="month">Mois / Année</option>
       <option value="range">Intervalle de dates</option>
     </select>
   </div>
-  <div class="field" style="min-width:140px" id="wlMonthGroup">
+  <div class="field" style="min-width:120px;display:none" id="wlMonthGroup">
     <label>Mois</label>
-    <select id="wlMonth" class="form-control" onchange="wlOnFilterChange()">
+    <select id="wlMonth" class="form-control" onchange="wlLoadData()">
       <option value="">—</option>
       <option value="1">Janvier</option>
       <option value="2">Février</option>
@@ -75,49 +61,61 @@
       <option value="12">Décembre</option>
     </select>
   </div>
-  <div class="field" style="min-width:120px" id="wlYearGroup">
+  <div class="field" style="min-width:120px;display:none" id="wlYearGroup">
     <label>Année</label>
-    <select id="wlYear" class="form-control" onchange="wlOnFilterChange()">
+    <select id="wlYear" class="form-control" onchange="wlLoadData()">
       <option value="">—</option>
     </select>
   </div>
   <div class="field" style="min-width:160px;display:none" id="wlDateStartGroup">
     <label>Du</label>
-    <input type="date" id="wlDateStart" class="form-control" onchange="wlOnFilterChange()" />
+    <input type="date" id="wlDateStart" class="form-control" onchange="wlLoadData()" />
   </div>
   <div class="field" style="min-width:160px;display:none" id="wlDateEndGroup">
     <label>Au</label>
-    <input type="date" id="wlDateEnd" class="form-control" onchange="wlOnFilterChange()" />
+    <input type="date" id="wlDateEnd" class="form-control" onchange="wlLoadData()" />
   </div>
 </div>
 
-<div class="table-wrap" style="margin-top:1.5rem">
+<div id="wlStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin:1.25rem 0"></div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+  <div style="background:var(--surface-2);border-radius:12px;padding:1rem">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem">Heures par enseignant</h3>
+    <canvas id="wlChartHours" height="280"></canvas>
+  </div>
+  <div style="background:var(--surface-2);border-radius:12px;padding:1rem">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem">Répartition CM / TD / TP</h3>
+    <canvas id="wlChartPie" height="280"></canvas>
+  </div>
+</div>
+
+<div class="table-wrap">
   <table>
     <thead>
       <tr>
+        <th>#</th>
         <th>Enseignant</th>
         <th>Département</th>
-        <th>Niveau</th>
-        <th>Semestre</th>
-        <th>Filière</th>
-        <th>Module</th>
+        <th>Filière(s)</th>
         <th>Séances CM</th>
         <th>Séances TD</th>
         <th>Séances TP</th>
         <th>Heures CM</th>
         <th>Heures TD</th>
         <th>Heures TP</th>
-        <th>Total heures</th>
         <th>Total séances</th>
+        <th>Charge équivalente</th>
       </tr>
     </thead>
-    <tbody id="wlPreviewBody">
-      <tr class="empty-row"><td colspan="14">Sélectionnez des filtres puis cliquez sur "Générer le rapport".</td></tr>
+    <tbody id="wlBody">
+      <tr class="empty-row"><td colspan="12">Chargement...</td></tr>
     </tbody>
   </table>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="/admin-workload.js"></script>
 {% endblock %}
