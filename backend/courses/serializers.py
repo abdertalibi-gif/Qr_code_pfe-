@@ -163,6 +163,19 @@ class SessionSerializer(serializers.ModelSerializer):
                     {"end_time": "L'heure de fin doit être après l'heure de début."}
                 )
 
+            date_val = data.get("date", getattr(self.instance, "date", None))
+            start_val = data.get("start_time", getattr(self.instance, "start_time", None))
+            now = timezone.now()
+            if date_val:
+                if date_val < now.date():
+                    raise serializers.ValidationError(
+                        {"date": "Impossible de créer une séance avec une date passée."}
+                    )
+                if date_val == now.date() and start_val and start_val <= now.time():
+                    raise serializers.ValidationError(
+                        {"start_time": "L'heure de début ne peut pas être dans le passé."}
+                    )
+
             module = data.get("module")
             subject = data.get("subject")
 

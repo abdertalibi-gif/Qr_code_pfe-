@@ -11,16 +11,14 @@ var wld = {
   page: 0,
   pageSize: 15,
 
-
   async init() {
     await Promise.all([
       this._loadDepts(),
-      this._loadFilieres(),
       this._loadAcademicYears(),
       this._loadTeachers(),
     ]);
-    this._loadSemestres();
     this._initPeriod();
+    await this._loadNiveaux('');
     await this.loadData();
   },
 
@@ -40,21 +38,75 @@ var wld = {
     } catch (e) { /* silent */ }
   },
 
-  async _loadFilieres(filiereId) {
+  async _loadNiveaux(deptId) {
     try {
-      var deptId = document.getElementById('wldDept').value;
       var url = '/curriculum/filieres/' + (deptId ? '?department_id=' + deptId : '');
       var data = await API.apiFetch(url);
       var fils = Array.isArray(data) ? data : (data.results || []);
+      var niveaux = new Set();
+      fils.forEach(function (f) { if (f.niveau) niveaux.add(f.niveau); });
+      var sel = document.getElementById('wldNiveau');
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
+      Array.from(niveaux).sort().forEach(function (n) {
+        var o = document.createElement('option');
+        o.value = n;
+        o.textContent = n;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadSemestres(niveau) {
+    try {
+      var data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
+      var sems = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldSemestre');
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
+      sems.forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadFilieres(deptId, semestreId) {
+    try {
+      var params = [];
+      if (deptId) params.push('department_id=' + deptId);
+      if (semestreId) params.push('semestre_id=' + semestreId);
+      var url = '/curriculum/filieres/' + (params.length ? '?' + params.join('&') : '');
+      var data = await API.apiFetch(url);
+      var fils = Array.isArray(data) ? data : (data.results || []);
       var sel = document.getElementById('wldFiliere');
-      sel.innerHTML = '<option value="">Toutes</option>';
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
       fils.forEach(function (f) {
         var o = document.createElement('option');
         o.value = f.id;
         o.textContent = f.name;
-        if (filiereId && String(f.id) === String(filiereId)) o.selected = true;
         sel.appendChild(o);
       });
+      sel.disabled = false;
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadModules(filiereId) {
+    try {
+      var url = '/curriculum/modules/?filiere_id=' + filiereId;
+      var data = await API.apiFetch(url);
+      var mods = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldModule');
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
+      mods.forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.name || m.nom || ('Module ' + m.id);
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
     } catch (e) { /* silent */ }
   },
 
@@ -70,36 +122,6 @@ var wld = {
         var o = document.createElement('option');
         o.value = y;
         o.textContent = y;
-        sel.appendChild(o);
-      });
-    } catch (e) { /* silent */ }
-  },
-
-  async _loadSemestres() {
-    try {
-      var data = await API.apiFetch('/curriculum/semestres/');
-      var sems = Array.isArray(data) ? data : (data.results || []);
-      var sel = document.getElementById('wldSemestre');
-      sems.forEach(function (s) {
-        var o = document.createElement('option');
-        o.value = s.id;
-        o.textContent = s.nom || s.name || ('Semestre ' + s.id);
-        sel.appendChild(o);
-      });
-    } catch (e) { /* silent */ }
-  },
-
-  async _loadModules(semestreId) {
-    try {
-      var url = '/curriculum/modules/' + (semestreId ? '?semestre_id=' + semestreId : '');
-      var data = await API.apiFetch(url);
-      var mods = Array.isArray(data) ? data : (data.results || []);
-      var sel = document.getElementById('wldModule');
-      sel.innerHTML = '<option value="">Tous</option>';
-      mods.forEach(function (m) {
-        var o = document.createElement('option');
-        o.value = m.id;
-        o.textContent = m.name || m.nom || ('Module ' + m.id);
         sel.appendChild(o);
       });
     } catch (e) { /* silent */ }
@@ -132,7 +154,6 @@ var wld = {
     document.getElementById('wldMonthGroup').style.display = val === 'month' ? 'block' : 'none';
     document.getElementById('wldDateStartGroup').style.display = val === 'range' ? 'block' : 'none';
     document.getElementById('wldDateEndGroup').style.display = val === 'range' ? 'block' : 'none';
-    this.page = 0;
     this.onFilterChange();
   },
 
@@ -141,16 +162,56 @@ var wld = {
     this.loadData();
   },
 
+  /* ── Cascade handlers ── */
+
+  _resetDownstream(from) {
+    var ids = { niveau: 'wldNiveau', semestre: 'wldSemestre', filiere: 'wldFiliere', module: 'wldModule' };
+    var levels = ['niveau', 'semestre', 'filiere', 'module'];
+    var start = levels.indexOf(from);
+    if (start === -1) return;
+    for (var i = start; i < levels.length; i++) {
+      var sel = document.getElementById(ids[levels[i]]);
+      if (sel) {
+        sel.innerHTML = '<option value="">— Sélectionner —</option>';
+        sel.disabled = true;
+      }
+    }
+  },
+
   async onDeptChange() {
-    await this._loadFilieres();
+    this._resetDownstream('niveau');
+    await this._loadNiveaux(document.getElementById('wldDept').value);
     this.page = 0;
-    this.onFilterChange();
+    this.loadData();
+  },
+
+  async onNiveauChange() {
+    this._resetDownstream('semestre');
+    var niveau = document.getElementById('wldNiveau').value;
+    if (niveau) await this._loadSemestres(niveau);
+    this.page = 0;
+    this.loadData();
   },
 
   async onSemestreChange() {
-    await this._loadModules(document.getElementById('wldSemestre').value);
+    this._resetDownstream('filiere');
+    var semestreId = document.getElementById('wldSemestre').value;
+    if (semestreId) {
+      await this._loadFilieres(
+        document.getElementById('wldDept').value,
+        semestreId
+      );
+    }
     this.page = 0;
-    this.onFilterChange();
+    this.loadData();
+  },
+
+  async onFiliereChange() {
+    this._resetDownstream('module');
+    var filiereId = document.getElementById('wldFiliere').value;
+    if (filiereId) await this._loadModules(filiereId);
+    this.page = 0;
+    this.loadData();
   },
 
   _buildParams() {
@@ -159,6 +220,7 @@ var wld = {
     var filiere = document.getElementById('wldFiliere').value;
     var semestre = document.getElementById('wldSemestre').value;
     var module = document.getElementById('wldModule').value;
+    var niveau = document.getElementById('wldNiveau').value;
     var teacher = document.getElementById('wldTeacher').value;
     var year = document.getElementById('wldYear').value;
     var period = document.getElementById('wldPeriod').value;
@@ -167,6 +229,7 @@ var wld = {
     if (filiere) params.filiere_id = filiere;
     if (semestre) params.semestre_id = semestre;
     if (module) params.module_id = module;
+    if (niveau) params.niveau = niveau;
     if (teacher) params.teacher_id = teacher;
     if (year) params.academic_year = year;
 
@@ -211,7 +274,7 @@ var wld = {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem">Aucune donnée</td></tr>';
       return;
     }
-    var medals = ['🥇', '🥈', '🥉'];
+    var medals = ['&#x1F947;', '&#x1F948;', '&#x1F949;'];
     tbody.innerHTML = data.map(function (t, i) {
       var rank = i < 3 ? medals[i] : ('#' + (i + 1));
       return '<tr>' +
@@ -329,8 +392,6 @@ var wld = {
     }
   },
 
-
-
   /* ── Export Excel ── */
 
   async exportExcel() {
@@ -352,7 +413,7 @@ var wld = {
   }
 };
 
-/* ── Bind events (call wld.init() to start) ── */
+/* ── Bind events ── */
 wld.bindEvents = function () {
   document.addEventListener('click', function (e) {
     var th = e.target.closest('.sortable');
@@ -365,8 +426,9 @@ wld.bindEvents = function () {
   document.getElementById('wldPageNext')?.addEventListener('click', function () { wld._goToPage(1); });
 
   document.getElementById('wldDept')?.addEventListener('change', function () { wld.onDeptChange(); });
+  document.getElementById('wldNiveau')?.addEventListener('change', function () { wld.onNiveauChange(); });
   document.getElementById('wldSemestre')?.addEventListener('change', function () { wld.onSemestreChange(); });
-  document.getElementById('wldFiliere')?.addEventListener('change', function () { wld.onFilterChange(); });
+  document.getElementById('wldFiliere')?.addEventListener('change', function () { wld.onFiliereChange(); });
   document.getElementById('wldModule')?.addEventListener('change', function () { wld.onFilterChange(); });
   document.getElementById('wldTeacher')?.addEventListener('change', function () { wld.onFilterChange(); });
   document.getElementById('wldYear')?.addEventListener('change', function () { wld.onFilterChange(); });

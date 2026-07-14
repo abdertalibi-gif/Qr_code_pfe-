@@ -92,7 +92,7 @@ class Session(models.Model):
     session_type = models.CharField(
         max_length=20,
         choices=SESSION_TYPE_CHOICES,
-        default="cours",
+        default="Cours",
         verbose_name="Type de séance",
     )
     report_file = models.FileField(

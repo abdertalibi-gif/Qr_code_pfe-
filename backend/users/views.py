@@ -1263,6 +1263,7 @@ def teacher_workload_dashboard(request):
     semestre_id = request.query_params.get("semestre_id")
     module_id = request.query_params.get("module_id")
     teacher_id = request.query_params.get("teacher_id")
+    niveau = request.query_params.get("niveau")
     academic_year = request.query_params.get("academic_year")
     month = request.query_params.get("month")
     year = request.query_params.get("year")
@@ -1285,6 +1286,10 @@ def teacher_workload_dashboard(request):
         qs = qs.filter(module_id=module_id)
     if teacher_id:
         qs = qs.filter(teacher_id=teacher_id)
+    if niveau:
+        qs = qs.filter(
+            Q(classe__niveau=niveau) | Q(classe__filiere__niveau=niveau)
+        )
     if academic_year:
         qs = qs.filter(classe__academic_year=academic_year)
     if month and year:
@@ -1325,7 +1330,7 @@ def teacher_workload_dashboard(request):
         end_m = s.end_time.hour * 60 + s.end_time.minute
         duration_h = max((end_m - start_m) / 60.0, 0.0)
 
-        st = s.session_type
+        st = s.session_type.lower()
         dept_name = None
         filiere_name = None
         if s.classe:
@@ -1340,17 +1345,17 @@ def teacher_workload_dashboard(request):
         mk = (s.date.year, s.date.month)
 
         row["total_sessions"] += 1
-        if st == "Cours":
+        if st == "cours":
             row["cm_hours"] += duration_h
             monthly[mk]["cm"] += duration_h
             if dept_name: dept_totals[dept_name]["cm"] += duration_h
             if filiere_name: filiere_totals[filiere_name]["cm"] += duration_h
-        elif st == "TD":
+        elif st == "td":
             row["td_hours"] += duration_h
             monthly[mk]["td"] += duration_h
             if dept_name: dept_totals[dept_name]["td"] += duration_h
             if filiere_name: filiere_totals[filiere_name]["td"] += duration_h
-        elif st == "TP":
+        elif st == "tp":
             row["tp_hours"] += duration_h
             monthly[mk]["tp"] += duration_h
             if dept_name: dept_totals[dept_name]["tp"] += duration_h
@@ -1362,7 +1367,7 @@ def teacher_workload_dashboard(request):
         cm = row["cm_hours"]
         td = row["td_hours"]
         tp = row["tp_hours"]
-        equivalent = cm + (td / 1.5) + ((tp * 2) / 1.5)
+        equivalent = cm + (td / 1.5) + (tp / 1.5)
         result.append({
             "id": tid,
             "first_name": row["first_name"],
@@ -1381,9 +1386,9 @@ def teacher_workload_dashboard(request):
 
     # Compute equivalent for dept/filiere totals
     for d in dept_totals.values():
-        d["eq"] = d["cm"] + (d["td"] / 1.5) + ((d["tp"] * 2) / 1.5)
+        d["eq"] = d["cm"] + (d["td"] / 1.5) + (d["tp"] / 1.5)
     for f in filiere_totals.values():
-        f["eq"] = f["cm"] + (f["td"] / 1.5) + ((f["tp"] * 2) / 1.5)
+        f["eq"] = f["cm"] + (f["td"] / 1.5) + (f["tp"] / 1.5)
 
     # Sort distribution data by eq descending
     dept_sorted = sorted(dept_totals.items(), key=lambda x: x[1]["eq"], reverse=True)
@@ -1879,17 +1884,17 @@ def teacher_monthly_report(request):
 
         row = rows[key]
         row["total_sessions"] += 1
-        st = s.session_type
-        if st == "Cours":
+        st = s.session_type.lower()
+        if st == "cours":
             row["cm_count"] += 1
             row["cm_hours"] += duration_h
             row["total_hours"] += duration_h
-        elif st == "TD":
+        elif st == "td":
             row["td_count"] += 1
             adjusted = duration_h / 1.5
             row["td_hours"] += adjusted
             row["total_hours"] += adjusted
-        elif st == "TP":
+        elif st == "tp":
             row["tp_count"] += 1
             adjusted = duration_h / 1.5
             row["tp_hours"] += adjusted
