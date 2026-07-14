@@ -192,7 +192,7 @@ var wld = {
     try {
       var params = this._buildParams();
       var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
-      var url = '/api/v1/teacher-workload-dashboard/' + (qs ? '?' + qs : '');
+      var url = '/teacher-workload-dashboard/' + (qs ? '?' + qs : '');
       var resp = await API.apiFetch(url);
       this.teachers = resp.teachers || [];
       this.totals = resp.totals || {};
@@ -649,7 +649,7 @@ var wld = {
     try {
       var params = this._buildParams();
       var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
-      var url = '/api/v1/teacher-monthly-report/' + (qs ? '?' + qs : '');
+      var url = '/teacher-monthly-report/' + (qs ? '?' + qs : '');
       var blob = await API.apiFetch(url);
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
