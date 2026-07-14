@@ -13,6 +13,7 @@
     _availableAmphis: null,
     _editingId: null,
     _editingData: null,
+    _teacherClasses: [],
 
     /* ── PUBLIC API ── */
 
@@ -33,12 +34,17 @@
       this.classeId = classeId || null;
       this._reset();
       document.getElementById('sfDate').value = new Date().toISOString().split('T')[0];
-      // Reload data if initial load failed or was empty
-      const niveauSel = document.getElementById('sfNiveau');
-      if (niveauSel.options.length <= 1) await this._loadNiveaux();
-      if (!this.blocksData.length || !this.amphiData.length) {
-        await this._loadBlocksAmphis();
-        this._populateLocationSelects();
+
+      if (this.userRole === 'teacher') {
+        await this._openForTeacher();
+      } else {
+        // Reload data if initial load failed or was empty
+        const niveauSel = document.getElementById('sfNiveau');
+        if (niveauSel.options.length <= 1) await this._loadNiveaux();
+        if (!this.blocksData.length || !this.amphiData.length) {
+          await this._loadBlocksAmphis();
+          this._populateLocationSelects();
+        }
       }
       openModal('modalSessionForm');
     },
@@ -64,7 +70,17 @@
         document.getElementById('sfSubmit').textContent = 'Enregistrer';
         openModal('modalSessionForm');
 
-        if (session.classe) {
+        if (this.userRole === 'teacher') {
+          var cFields = document.getElementById('sfCascadeFields');
+          var tcField = document.getElementById('sfTeacherClassField');
+          if (cFields) cFields.style.display = 'none';
+          if (tcField) tcField.style.display = 'none';
+          await this._loadTeacherClasses();
+          if (session.classe) {
+            var cls = this._teacherClasses.find(function (c) { return c.id === session.classe; });
+            if (cls) this._preselectClass(cls);
+          }
+        } else if (session.classe) {
           try {
             var classe = await API.apiFetch('/classes/' + session.classe + '/');
             var niveauId = classe.niveau;
@@ -126,6 +142,7 @@
 
     _ensureModal() {
       if (document.getElementById('modalSessionForm')) return;
+      const isTeacher = this.userRole === 'teacher';
       const html = `
 <div class="modal-backdrop" id="modalSessionForm">
   <div class="modal">
@@ -134,24 +151,30 @@
       <button class="modal-close" data-close="modalSessionForm">✕</button>
     </div>
     <div class="modal-body">
-      <div class="field">
-        <label>Niveau</label>
-        <select id="sfNiveau"><option value="">— Sélectionner —</option></select>
+      <div id="sfCascadeFields"${isTeacher ? ' style="display:none"' : ''}>
+        <div class="field">
+          <label>Niveau</label>
+          <select id="sfNiveau"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Semestre</label>
+          <select id="sfSemestre" disabled><option value="">— Sélectionnez d'abord le niveau —</option></select>
+          <span class="spinner" id="sfSemestreSpinner" style="display:none"></span>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="sfFiliere" disabled><option value="">— Sélectionnez d'abord le semestre —</option></select>
+          <span class="spinner" id="sfFiliereSpinner" style="display:none"></span>
+        </div>
+        <div class="field">
+          <label>Module</label>
+          <select id="sfModule" disabled><option value="">— Sélectionnez d'abord la filière —</option></select>
+          <span class="spinner" id="sfModuleSpinner" style="display:none"></span>
+        </div>
       </div>
-      <div class="field">
-        <label>Semestre</label>
-        <select id="sfSemestre" disabled><option value="">— Sélectionnez d'abord le niveau —</option></select>
-        <span class="spinner" id="sfSemestreSpinner" style="display:none"></span>
-      </div>
-      <div class="field">
-        <label>Filière</label>
-        <select id="sfFiliere" disabled><option value="">— Sélectionnez d'abord le semestre —</option></select>
-        <span class="spinner" id="sfFiliereSpinner" style="display:none"></span>
-      </div>
-      <div class="field">
-        <label>Module</label>
-        <select id="sfModule" disabled><option value="">— Sélectionnez d'abord la filière —</option></select>
-        <span class="spinner" id="sfModuleSpinner" style="display:none"></span>
+      <div class="field" id="sfTeacherClassField"${isTeacher ? '' : ' style="display:none"'}>
+        <label>Classe / Module</label>
+        <select id="sfTeacherClass"><option value="">— Chargement des classes... —</option></select>
       </div>
       <div class="field">
         <label>Type de lieu</label>
@@ -177,7 +200,7 @@
           <select id="sfAmphi"><option value="">— Sélectionner un amphithéâtre —</option></select>
         </div>
       </div>
-      <div class="field" id="sfTeacherField"${this.userRole !== 'teacher' ? '' : ' style="display:none"'}>
+      <div class="field" id="sfTeacherField"${isTeacher ? ' style="display:none"' : ''}>
         <label>Enseignant</label>
         <select id="sfTeacher"><option value="">— Sélectionner —</option></select>
       </div>
@@ -216,6 +239,14 @@
   </div>
 </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
+      // Bind close handlers for this dynamically created modal
+      var modal = document.getElementById('modalSessionForm');
+      modal.querySelectorAll('[data-close="modalSessionForm"]').forEach(function (el) {
+        el.addEventListener('click', function () { closeModal('modalSessionForm'); });
+      });
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeModal('modalSessionForm');
+      });
     },
 
     /* ── DATA LOADING ── */
@@ -389,6 +420,75 @@
       } catch (e) { showToast(e.message, 'error'); }
     },
 
+    /* ── TEACHER MODE HELPERS ── */
+
+    async _openForTeacher() {
+      var _this = this;
+      var cFields = document.getElementById('sfCascadeFields');
+      var tcField = document.getElementById('sfTeacherClassField');
+      if (cFields) cFields.style.display = 'none';
+      if (tcField) tcField.style.display = 'none';
+
+      if (!this.blocksData.length || !this.amphiData.length) {
+        await this._loadBlocksAmphis();
+        this._populateLocationSelects();
+      }
+
+      await this._loadTeacherClasses();
+
+      if (this.classeId) {
+        var cls = this._teacherClasses.find(function (c) { return c.id === _this.classeId; });
+        if (cls) {
+          this._preselectClass(cls);
+          return;
+        }
+        this.classeId = null;
+      }
+
+      if (this._teacherClasses.length === 1) {
+        this.classeId = this._teacherClasses[0].id;
+        this._preselectClass(this._teacherClasses[0]);
+      } else if (this._teacherClasses.length > 1) {
+        if (tcField) tcField.style.display = 'block';
+        this._populateTeacherClassSelect();
+      } else {
+        showToast("Aucune classe assignée. Contactez l'administration.", 'error');
+      }
+    },
+
+    async _loadTeacherClasses() {
+      if (this._teacherClasses.length > 0) return;
+      try {
+        var data = await API.apiFetch('/classes/');
+        this._teacherClasses = Array.isArray(data) ? data : (data.results || []);
+      } catch (e) {
+        this._teacherClasses = [];
+        showToast('Erreur chargement classes: ' + e.message, 'error');
+      }
+    },
+
+    _populateTeacherClassSelect() {
+      var sel = document.getElementById('sfTeacherClass');
+      sel.innerHTML = '<option value="">— Sélectionner une classe —</option>';
+      this._teacherClasses.forEach(function (cls) {
+        var opt = document.createElement('option');
+        opt.value = cls.id;
+        opt.textContent = (cls.module_name || '') + ' — ' + (cls.name || '');
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+    },
+
+    _preselectClass(cls) {
+      this.classeId = cls.id;
+      var moduleEl = document.getElementById('sfModule');
+      if (moduleEl) {
+        moduleEl.innerHTML = '<option value="' + (cls.module_id || '') + '">' + (cls.module_name || 'Module') + '</option>';
+        moduleEl.value = cls.module_id || '';
+        moduleEl.disabled = false;
+      }
+    },
+
     /* ── UI HELPERS ── */
 
     _populateLocationSelects() {
@@ -528,6 +628,11 @@
         });
       });
 
+      document.getElementById('sfTeacherClass').addEventListener('change', function () {
+        var cls = self._teacherClasses.find(function (c) { return c.id === Number(this.value); });
+        if (cls) self._preselectClass(cls);
+      });
+
       document.getElementById('sfBlock').addEventListener('change', function () {
         const blockId = parseInt(this.value);
         const roomSel = document.getElementById('sfRoom');
@@ -569,7 +674,14 @@
       const startTime = document.getElementById('sfStartTime').value;
       const endTime = document.getElementById('sfEndTime').value;
 
-      if (!moduleId) { showToast('Veuillez sélectionner un module.', 'error'); return; }
+      if (!moduleId) {
+        if (this.userRole === 'teacher') {
+          showToast('Veuillez sélectionner une classe.', 'error');
+        } else {
+          showToast('Veuillez sélectionner un module.', 'error');
+        }
+        return;
+      }
       if (!date || !startTime || !endTime) { showToast('Date et horaires obligatoires.', 'error'); return; }
       if (endTime <= startTime) { showToast("L'heure de fin doit être après l'heure de début.", 'error'); return; }
       if (!locType) { showToast('Veuillez sélectionner un type de lieu.', 'error'); return; }

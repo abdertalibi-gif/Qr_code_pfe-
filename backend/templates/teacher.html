@@ -37,7 +37,10 @@
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <h2>🏫 Mes classes</h2>
-                    <button class="btn sm outline" type="button" onclick="showLiveDashboard()">📡 En direct</button>
+                    <div style="display:flex;gap:.4rem">
+                        <button class="btn sm" type="button" onclick="SessionForm.open()">+ Nouvelle séance</button>
+                        <button class="btn sm outline" type="button" onclick="showLiveDashboard()">📡 En direct</button>
+                    </div>
                 </div>
                 <div class="sidebar-content" id="classesContainer">
                     <div class="sidebar-loading">Chargement des classes…</div>
