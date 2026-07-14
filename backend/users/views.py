@@ -1311,6 +1311,7 @@ def teacher_workload_dashboard(request):
 
     dept_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
     filiere_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
+    monthly = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0})
 
     for s in qs.iterator():
         tid = s.teacher_id
@@ -1335,17 +1336,23 @@ def teacher_workload_dashboard(request):
                 filiere_name = s.classe.filiere.name
                 row["filieres"].add(filiere_name)
 
+        # Monthly aggregation key
+        mk = (s.date.year, s.date.month)
+
         row["total_sessions"] += 1
         if st == "Cours":
             row["cm_hours"] += duration_h
+            monthly[mk]["cm"] += duration_h
             if dept_name: dept_totals[dept_name]["cm"] += duration_h
             if filiere_name: filiere_totals[filiere_name]["cm"] += duration_h
         elif st == "TD":
             row["td_hours"] += duration_h
+            monthly[mk]["td"] += duration_h
             if dept_name: dept_totals[dept_name]["td"] += duration_h
             if filiere_name: filiere_totals[filiere_name]["td"] += duration_h
         elif st == "TP":
             row["tp_hours"] += duration_h
+            monthly[mk]["tp"] += duration_h
             if dept_name: dept_totals[dept_name]["tp"] += duration_h
             if filiere_name: filiere_totals[filiere_name]["tp"] += duration_h
 
@@ -1383,6 +1390,7 @@ def teacher_workload_dashboard(request):
     filiere_sorted = sorted(filiere_totals.items(), key=lambda x: x[1]["eq"], reverse=True)
 
     total_eq = sum(r["equivalent_hours"] for r in result)
+    top_teacher = result[0] if result else None
     totals = {
         "cm_hours": round(sum(r["cm_hours"] for r in result), 2),
         "td_hours": round(sum(r["td_hours"] for r in result), 2),
@@ -1391,16 +1399,19 @@ def teacher_workload_dashboard(request):
         "equivalent_hours": round(total_eq, 2),
         "teacher_count": len(result),
         "average_equivalent": round(total_eq / len(result), 2) if result else 0,
+        "top_teacher": {
+            "name": f"{top_teacher['first_name']} {top_teacher['last_name']}",
+            "equivalent_hours": top_teacher["equivalent_hours"],
+        } if top_teacher else None,
     }
 
-    # Chart data (top 15 for bar chart)
-    top15 = result[:15]
+    # Chart data — ALL teachers for the main bar chart
     chart_data = {
-        "labels": [f"{r['first_name']} {r['last_name']}" for r in top15],
-        "equivalent_hours": [r["equivalent_hours"] for r in top15],
-        "cm_hours": [r["cm_hours"] for r in top15],
-        "td_hours": [r["td_hours"] for r in top15],
-        "tp_hours": [r["tp_hours"] for r in top15],
+        "labels": [f"{r['first_name']} {r['last_name']}" for r in result],
+        "equivalent_hours": [r["equivalent_hours"] for r in result],
+        "cm_hours": [r["cm_hours"] for r in result],
+        "td_hours": [r["td_hours"] for r in result],
+        "tp_hours": [r["tp_hours"] for r in result],
     }
 
     # Department distribution chart
@@ -1410,6 +1421,13 @@ def teacher_workload_dashboard(request):
     # Filiere distribution chart
     chart_data["filiere_labels"] = [f[0] for f in filiere_sorted]
     chart_data["filiere_eq"] = [round(f[1]["eq"], 2) for f in filiere_sorted]
+
+    # Monthly trend
+    month_keys = sorted(monthly.keys())
+    chart_data["monthly_labels"] = [f"{m[1]:02d}/{m[0]}" for m in month_keys]
+    chart_data["monthly_cm"] = [round(monthly[m]["cm"], 2) for m in month_keys]
+    chart_data["monthly_td"] = [round(monthly[m]["td"], 2) for m in month_keys]
+    chart_data["monthly_tp"] = [round(monthly[m]["tp"], 2) for m in month_keys]
 
     return Response({
         "teachers": result,

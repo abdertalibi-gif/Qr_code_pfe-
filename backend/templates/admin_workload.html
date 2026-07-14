@@ -13,34 +13,38 @@
 </div>
 
 <!-- Stats cards -->
-<div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1.5rem">
+<div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.5rem">
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700" id="statTeacherCount">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Enseignants</div>
+    <div style="font-size:.8rem;color:var(--muted)">👨‍🏫 Enseignants</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700;color:var(--primary)" id="statCM">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Heures CM</div>
+    <div style="font-size:.8rem;color:var(--muted)">📚 Heures CM</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700;color:#0ea5e9" id="statTD">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Heures TD</div>
+    <div style="font-size:.8rem;color:var(--muted)">📝 Heures TD</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700;color:#f59e0b" id="statTP">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Heures TP</div>
+    <div style="font-size:.8rem;color:var(--muted)">🔬 Heures TP</div>
   </div>
   <div class="stat-card" style="background:var(--accent);padding:1rem;border-radius:10px;text-align:center;color:#fff">
     <div style="font-size:1.6rem;font-weight:700" id="statEquivalent">—</div>
-    <div style="font-size:.8rem;opacity:.85">Charge équivalente</div>
+    <div style="font-size:.8rem;opacity:.85">⏱ Charge équivalente</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700" id="statAvgEquivalent">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Moyenne / enseignant</div>
+    <div style="font-size:.8rem;color:var(--muted)">📈 Moyenne / enseignant</div>
   </div>
   <div class="stat-card" style="background:var(--surface-2);padding:1rem;border-radius:10px;text-align:center">
     <div style="font-size:1.6rem;font-weight:700" id="statSessions">—</div>
-    <div style="font-size:.8rem;color:var(--muted)">Total séances</div>
+    <div style="font-size:.8rem;color:var(--muted)">📅 Total séances</div>
+  </div>
+  <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:1rem;border-radius:10px;text-align:center;color:#fff">
+    <div style="font-size:1rem;font-weight:700;line-height:1.3" id="statTopTeacher">—</div>
+    <div style="font-size:.75rem;opacity:.85;margin-top:2px">🏆 Enseignant le plus chargé</div>
   </div>
 </div>
 
@@ -113,16 +117,42 @@
   </div>
 </div>
 
-<!-- Summary bars -->
+<!-- Ranking table -->
 <div class="section-head" style="margin-top:1.5rem">
-  <h2>Synthèse rapide</h2>
+  <h2>🏆 Classement des enseignants</h2>
 </div>
-<div id="wldSummary" style="display:flex;flex-direction:column;gap:6px;margin-bottom:0.5rem">
-  <div class="empty-row" style="text-align:center;padding:1.5rem;color:var(--muted)">Chargement…</div>
+<div style="overflow-x:auto">
+  <table class="ranking-table" style="width:100%;border-collapse:collapse;font-size:.85rem">
+    <thead>
+      <tr>
+        <th style="width:40px">Rang</th>
+        <th>Enseignant</th>
+        <th style="text-align:right">Charge horaire</th>
+        <th style="text-align:right">Cours</th>
+        <th style="text-align:right">TD</th>
+        <th style="text-align:right">TP</th>
+        <th style="text-align:right">Séances</th>
+      </tr>
+    </thead>
+    <tbody id="wldRankingBody">
+      <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem">Chargement…</td></tr>
+    </tbody>
+  </table>
 </div>
 
-<!-- Table -->
-<div class="table-wrap" style="margin-top:1rem">
+<!-- Summary bars -->
+<div class="section-head" style="margin-top:1.25rem">
+  <h2>📊 Synthèse rapide</h2>
+</div>
+<div id="wldSummary" style="display:flex;flex-direction:column;gap:5px;margin-bottom:0.5rem">
+  <div class="empty-row" style="text-align:center;padding:1rem;color:var(--muted)">Chargement…</div>
+</div>
+
+<!-- Detailed table -->
+<div class="section-head" style="margin-top:1.5rem">
+  <h2>📋 Tableau détaillé</h2>
+</div>
+<div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -142,31 +172,52 @@
     </tbody>
   </table>
 </div>
-
-<!-- Charts: 2x2 grid -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:2rem">
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Top 15 — Charge équivalente par enseignant</h3>
-    <canvas id="wldBarChart" height="260"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Répartition CM / TD / TP</h3>
-    <canvas id="wldPieChart" height="260"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Charge par département</h3>
-    <canvas id="wldDeptChart" height="220"></canvas>
-  </div>
-  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
-    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">Charge par filière</h3>
-    <canvas id="wldFiliereChart" height="220"></canvas>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;gap:.5rem;flex-wrap:wrap">
+  <span style="font-size:.8rem;color:var(--muted)" id="wldPaginationInfo">—</span>
+  <div style="display:flex;gap:.4rem">
+    <button class="btn outline compact" id="wldPagePrev" style="padding:4px 10px;font-size:.8rem">◀ Préc.</button>
+    <button class="btn outline compact" id="wldPageNext" style="padding:4px 10px;font-size:.8rem">Suiv. ▶</button>
   </div>
 </div>
-{% endblock %}
+
+<!-- Charts: 3x2 grid -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:2rem">
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px;grid-column:1/3">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">📊 Comparatif — Charge équivalente par enseignant</h3>
+    <canvas id="wldBarChart" height="320"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🥧 Répartition globale CM / TD / TP</h3>
+    <canvas id="wldPieChart" height="240"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">📊 Répartition par enseignant (CM/TD/TP)</h3>
+    <canvas id="wldStackedChart" height="240"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🏛️ Charge par département</h3>
+    <canvas id="wldDeptChart" height="200"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">🎓 Charge par filière</h3>
+    <canvas id="wldFiliereChart" height="200"></canvas>
+  </div>
+  <div style="background:var(--surface-2);padding:1rem;border-radius:12px;grid-column:1/3">
+    <h3 style="margin:0 0 .6rem 0;font-size:.9rem">📈 Évolution mensuelle des heures</h3>
+    <canvas id="wldMonthlyChart" height="220"></canvas>
+  </div>
+</div>
 
 <style>
   .summary-row:hover { background: var(--surface-3) !important; }
+  .ranking-table th { padding:8px 10px; background:var(--surface-2); font-weight:600; font-size:.8rem; color:var(--muted); border-bottom:2px solid var(--border); }
+  .ranking-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
+  .ranking-table tr:hover td { background:var(--surface-2); }
+  .btn.compact { padding:4px 10px; font-size:.8rem; }
+  .pagination-active { background:var(--accent) !important; color:#fff !important; border-color:var(--accent) !important; }
 </style>
+{% endblock %}
+
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/admin-workload.js"></script>
