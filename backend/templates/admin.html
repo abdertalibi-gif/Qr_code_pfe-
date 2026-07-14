@@ -92,6 +92,7 @@
     </button>
     <button class="tab-btn" data-tab="workload">
       ⏱ Charge horaire <span class="tab-count" id="cntWorkload">—</span>
+      <span style="font-size:.65rem;opacity:.6;display:block">→ Dashboard complet</span>
     </button>
   </div>
 
@@ -689,108 +690,11 @@
 
     <!-- ⏱ TEACHER WORKLOAD -->
     <div class="tab-panel" id="tab-workload">
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon purple">👨‍🏫</div><div><div class="label">Enseignants</div><div class="value" id="wlTeacherCount">—</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📅</div><div><div class="label">Séances</div><div class="value" id="wlSessionCount">—</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">⏱</div><div><div class="label">Total heures</div><div class="value" id="wlTotalHours">—</div></div></div>
-      </div>
-
-      <div class="absence-filters" style="margin-top:.75rem">
-        <div class="field">
-          <label>Niveau</label>
-          <select id="wlNiveau" class="form-control" onchange="wlOnNiveauChange()">
-            <option value="">Tous les niveaux</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Semestre</label>
-          <select id="wlSemestre" class="form-control" onchange="wlOnSemestreChange()" disabled>
-            <option value="">— Sélectionnez d'abord le niveau —</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Filière</label>
-          <select id="wlFiliere" class="form-control" onchange="wlOnFiliereChange()" disabled>
-            <option value="">— Sélectionnez d'abord le semestre —</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Module</label>
-          <select id="wlModule" class="form-control" onchange="wlOnModuleChange()" disabled>
-            <option value="">— Sélectionnez d'abord la filière —</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Enseignant</label>
-          <select id="wlTeacher" class="form-control" onchange="wlOnFilterChange()" disabled>
-            <option value="">Tous les enseignants</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-top:.5rem">
-        <div class="field" style="min-width:130px">
-          <label>Période</label>
-          <select id="wlPeriodMode" class="form-control" onchange="wlOnPeriodModeChange()">
-            <option value="month">Mois / Année</option>
-            <option value="range">Intervalle de dates</option>
-          </select>
-        </div>
-        <div class="field" style="min-width:120px" id="wlMonthGroup">
-          <label>Mois</label>
-          <select id="wlMonth" class="form-control" onchange="wlOnFilterChange()">
-            <option value="">—</option>
-            <option value="1">Janvier</option>
-            <option value="2">Février</option>
-            <option value="3">Mars</option>
-            <option value="4">Avril</option>
-            <option value="5">Mai</option>
-            <option value="6">Juin</option>
-            <option value="7">Juillet</option>
-            <option value="8">Août</option>
-            <option value="9">Septembre</option>
-            <option value="10">Octobre</option>
-            <option value="11">Novembre</option>
-            <option value="12">Décembre</option>
-          </select>
-        </div>
-        <div class="field" style="min-width:100px" id="wlYearGroup">
-          <label>Année</label>
-          <select id="wlYear" class="form-control" onchange="wlOnFilterChange()">
-            <option value="">—</option>
-          </select>
-        </div>
-        <div class="field" style="min-width:150px;display:none" id="wlDateStartGroup">
-          <label>Du</label>
-          <input type="date" id="wlDateStart" class="form-control" onchange="wlOnFilterChange()" />
-        </div>
-        <div class="field" style="min-width:150px;display:none" id="wlDateEndGroup">
-          <label>Au</label>
-          <input type="date" id="wlDateEnd" class="form-control" onchange="wlOnFilterChange()" />
-        </div>
-      </div>
-
-      <div class="absence-actions" style="margin:1rem 0;flex-wrap:wrap;gap:.5rem">
-        <button class="btn btn-primary" onclick="loadTeacherWorkload()">🔄 Actualiser</button>
-        <button class="btn btn-success" id="btnWlExport">📥 Générer Excel</button>
-        <span id="wlExportSpinner" class="spinner" style="display:none"></span>
-      </div>
-
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Enseignant</th>
-              <th>Département</th>
-              <th>Filière</th>
-              <th>Séances</th>
-              <th>Total heures</th>
-            </tr>
-          </thead>
-          <tbody id="workloadBody">
-            <tr class="empty-row"><td colspan="5">Chargement…</td></tr>
-          </tbody>
-        </table>
+      <div style="text-align:center;padding:3rem 1rem">
+        <div style="font-size:3rem;margin-bottom:1rem">⏱</div>
+        <h2 style="margin:0 0 .5rem 0">Dashboard — Charge horaire des enseignants</h2>
+        <p style="color:var(--muted);margin-bottom:1.5rem">Tableau de bord complet avec classement, graphiques, filtres avancés et export Excel.</p>
+        <a href="/admin/workload/" class="btn btn-primary" style="font-size:1rem;padding:.6rem 2rem" target="_blank">🚀 Ouvrir le Dashboard complet</a>
       </div>
     </div>
   </main>
@@ -2670,16 +2574,16 @@
   var _tabLoaded = {};
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      var tab = btn.dataset.tab;
+      if (tab === 'workload') { window.open('/admin/workload/', '_blank'); return; }
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      var tab = btn.dataset.tab;
       document.getElementById('tab-' + tab).classList.add('active');
       if (!_tabLoaded[tab]) {
         _tabLoaded[tab] = true;
         if (tab === 'classes') loadClasses();
         else if (tab === 'absence-stats') loadAbsenceStats();
-        else if (tab === 'workload') { wlPopulateFilters(); loadTeacherWorkload(); }
       }
     });
   });
