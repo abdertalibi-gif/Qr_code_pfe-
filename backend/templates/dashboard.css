@@ -685,6 +685,35 @@ th {
   color: var(--text-secondary);
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+th.sortable:hover {
+  background: var(--surface-2);
+}
+th.sortable::after {
+  content: ' ↕';
+  font-size: 0.65rem;
+  opacity: .3;
+  margin-left: .25rem;
+}
+th.sorted-asc::after {
+  content: ' ↑';
+  font-size: 0.65rem;
+  opacity: .7;
+  color: var(--accent);
+  margin-left: .25rem;
+}
+th.sorted-desc::after {
+  content: ' ↓';
+  font-size: 0.65rem;
+  opacity: .7;
+  color: var(--accent);
+  margin-left: .25rem;
+}
+
 td {
   padding: 0.8rem 1.1rem;
   font-size: 0.86rem;

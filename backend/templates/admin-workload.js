@@ -1,235 +1,337 @@
-/* ── Admin Workload Dashboard ── */
-let wlChartHours = null;
-let wlChartPie = null;
+/* ── Teacher Workload Dashboard ── */
 
-function esc(str) { return (str == null ? '' : String(str)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var wld = {
+  data: null,
+  teachers: [],
+  filtered: [],
+  sortKey: 'equivalent',
+  sortDir: -1,
+  barChart: null,
+  pieChart: null,
 
-async function initPage() {
-  await Promise.all([loadDepartments(), loadFilieres(), loadAcademicYears()]);
-  populatePeriodYears();
-  wlLoadData();
-}
+  async init() {
+    await Promise.all([
+      this._loadDepts(),
+      this._loadFilieres(),
+      this._loadAcademicYears(),
+    ]);
+    this._initPeriod();
+    await this.loadData();
+  },
 
-async function loadDepartments() {
-  try {
-    const data = await API.apiFetch('/departments/');
-    const list = Array.isArray(data) ? data : (data.results || []);
-    const sel = document.getElementById('wlDepartment');
-    sel.innerHTML = '<option value="">Tous</option>';
-    list.forEach(function (d) { sel.innerHTML += '<option value="' + d.id + '">' + esc(d.name) + '</option>'; });
-  } catch (e) { /* ignore */ }
-}
+  /* ── Filter helpers ── */
 
-async function loadFilieres() {
-  try {
-    const data = await API.apiFetch('/curriculum/filieres/');
-    const list = Array.isArray(data) ? data : (data.results || []);
-    const sel = document.getElementById('wlFiliere');
-    sel.innerHTML = '<option value="">Toutes</option>';
-    list.forEach(function (f) { sel.innerHTML += '<option value="' + f.id + '">' + esc(f.name) + '</option>'; });
-  } catch (e) { /* ignore */ }
-}
+  async _loadDepts() {
+    try {
+      var data = await API.apiFetch('/departments/');
+      var depts = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldDept');
+      depts.forEach(function (d) {
+        var o = document.createElement('option');
+        o.value = d.id;
+        o.textContent = d.name;
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
 
-async function loadAcademicYears() {
-  var sel = document.getElementById('wlAcYear');
-  var cur = new Date().getFullYear();
-  var html = '<option value="">Toutes</option>';
-  for (var y = cur + 1; y >= cur - 5; y--) html += '<option value="' + y + '">' + y + '</option>';
-  sel.innerHTML = html;
-}
+  async _loadFilieres() {
+    try {
+      var data = await API.apiFetch('/curriculum/filieres/');
+      var fils = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldFiliere');
+      fils.forEach(function (f) {
+        var o = document.createElement('option');
+        o.value = f.id;
+        o.textContent = f.name;
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
 
-function populatePeriodYears() {
-  var sel = document.getElementById('wlYear');
-  var cur = new Date().getFullYear();
-  var html = '<option value="">—</option>';
-  for (var y = cur; y >= cur - 5; y--) html += '<option value="' + y + '">' + y + '</option>';
-  sel.innerHTML = html;
-}
+  async _loadAcademicYears() {
+    try {
+      var data = await API.apiFetch('/classes/');
+      var classes = Array.isArray(data) ? data : (data.results || []);
+      var years = new Set();
+      classes.forEach(function (c) { if (c.academic_year) years.add(c.academic_year); });
+      var sorted = Array.from(years).sort();
+      var sel = document.getElementById('wldYear');
+      sorted.forEach(function (y) {
+        var o = document.createElement('option');
+        o.value = y;
+        o.textContent = y;
+        sel.appendChild(o);
+      });
+    } catch (e) { /* silent */ }
+  },
 
-function wlOnPeriodModeChange() {
-  var mode = document.getElementById('wlPeriodMode').value;
-  document.getElementById('wlMonthGroup').style.display = mode === 'month' ? '' : 'none';
-  document.getElementById('wlYearGroup').style.display = mode === 'month' ? '' : 'none';
-  document.getElementById('wlDateStartGroup').style.display = mode === 'range' ? '' : 'none';
-  document.getElementById('wlDateEndGroup').style.display = mode === 'range' ? '' : 'none';
-  wlLoadData();
-}
+  _initPeriod() {
+    var now = new Date();
+    document.getElementById('wldMonth').value = String(now.getMonth() + 1);
+    document.getElementById('wldDateStart').value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    document.getElementById('wldDateEnd').value = now.toISOString().split('T')[0];
+  },
 
-function wlResetFilters() {
-  ['wlAcYear','wlDepartment','wlFiliere','wlMonth','wlYear','wlDateStart','wlDateEnd'].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.value = '';
+  onPeriodChange() {
+    var val = document.getElementById('wldPeriod').value;
+    document.getElementById('wldMonthGroup').style.display = val === 'month' ? 'block' : 'none';
+    document.getElementById('wldDateStartGroup').style.display = val === 'range' ? 'block' : 'none';
+    document.getElementById('wldDateEndGroup').style.display = val === 'range' ? 'block' : 'none';
+    this.onFilterChange();
+  },
+
+  onFilterChange() {
+    this._applyFilters();
+    this._renderTable();
+    this._renderCharts();
+    this._updateStats();
+  },
+
+  _buildParams() {
+    var params = {};
+    var dept = document.getElementById('wldDept').value;
+    var filiere = document.getElementById('wldFiliere').value;
+    var year = document.getElementById('wldYear').value;
+    var period = document.getElementById('wldPeriod').value;
+
+    if (dept) params.department_id = dept;
+    if (filiere) params.filiere_id = filiere;
+    if (year) params.academic_year = year;
+
+    if (period === 'month') {
+      var m = document.getElementById('wldMonth').value;
+      var y = document.getElementById('wldYear').value || new Date().getFullYear();
+      if (m) { params.month = m; params.year = String(y); }
+    } else if (period === 'range') {
+      var ds = document.getElementById('wldDateStart').value;
+      var de = document.getElementById('wldDateEnd').value;
+      if (ds) params.start_date = ds;
+      if (de) params.end_date = de;
+    }
+    return params;
+  },
+
+  async loadData() {
+    try {
+      var params = this._buildParams();
+      var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+      var url = '/api/v1/teacher-workload-dashboard/' + (qs ? '?' + qs : '');
+      var resp = await API.apiFetch(url);
+      this.teachers = resp.teachers || [];
+      this.totals = resp.totals || {};
+      this.chartData = resp.chart_data || {};
+      this.filtered = this.teachers.slice();
+      this._renderTable();
+      this._renderCharts();
+      this._updateStats();
+    } catch (e) {
+      document.getElementById('wldBody').innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + API.esc(e.message) + '</td></tr>';
+    }
+  },
+
+  /* ── Table ── */
+
+  _applyFilters() {
+    var dept = document.getElementById('wldDept').value;
+    var filiere = document.getElementById('wldFiliere').value;
+    var year = document.getElementById('wldYear').value;
+    var period = document.getElementById('wldPeriod').value;
+
+    this.filtered = this.teachers.filter(function (t) {
+      if (dept && t.department && !t.department.toLowerCase().includes(dept)) return false;
+      if (filiere && t.filieres && !t.filieres.toLowerCase().includes(filiere)) return false;
+      return true;
+    });
+
+    this._sort();
+  },
+
+  _sort() {
+    var key = this.sortKey;
+    var dir = this.sortDir;
+    this.filtered.sort(function (a, b) {
+      var va, vb;
+      if (key === 'name') { va = (a.last_name + a.first_name).toLowerCase(); vb = (b.last_name + b.first_name).toLowerCase(); return va < vb ? -dir : va > vb ? dir : 0; }
+      if (key === 'department') { va = (a.department || '').toLowerCase(); vb = (b.department || '').toLowerCase(); return va < vb ? -dir : va > vb ? dir : 0; }
+      if (key === 'filieres') { va = (a.filieres || '').toLowerCase(); vb = (b.filieres || '').toLowerCase(); return va < vb ? -dir : va > vb ? dir : 0; }
+      if (key === 'rank') return dir * (a.rank || a.id - b.id);
+      if (key === 'cm') return dir * (a.cm_hours - b.cm_hours);
+      if (key === 'td') return dir * (a.td_hours - b.td_hours);
+      if (key === 'tp') return dir * (a.tp_hours - b.tp_hours);
+      if (key === 'sessions') return dir * (a.total_sessions - b.total_sessions);
+      return dir * (a.equivalent_hours - b.equivalent_hours);
+    });
+  },
+
+  setSort(key) {
+    if (this.sortKey === key) {
+      this.sortDir *= -1;
+    } else {
+      this.sortKey = key;
+      this.sortDir = -1;
+    }
+    this._sort();
+    this._renderTable();
+  },
+
+  _renderTable() {
+    var tbody = document.getElementById('wldBody');
+    if (!this.filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Aucune donnée pour les filtres sélectionnés.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = this.filtered.map(function (t, i) {
+      return '<tr>' +
+        '<td style="color:var(--muted)">' + (i + 1) + '</td>' +
+        '<td><strong>' + API.esc(t.first_name) + ' ' + API.esc(t.last_name) + '</strong></td>' +
+        '<td>' + API.esc(t.department || '—') + '</td>' +
+        '<td>' + API.esc(t.filieres || '—') + '</td>' +
+        '<td style="text-align:right">' + t.cm_hours.toFixed(2) + '</td>' +
+        '<td style="text-align:right">' + t.td_hours.toFixed(2) + '</td>' +
+        '<td style="text-align:right">' + t.tp_hours.toFixed(2) + '</td>' +
+        '<td style="text-align:right">' + t.total_sessions + '</td>' +
+        '<td style="text-align:right;font-weight:700;color:var(--accent)">' + t.equivalent_hours.toFixed(2) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    // Update sort indicators
+    document.querySelectorAll('.sortable').forEach(function (th) {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.sort === wld.sortKey) {
+        th.classList.add(wld.sortDir === -1 ? 'sorted-desc' : 'sorted-asc');
+      }
+    });
+  },
+
+  _updateStats() {
+    var filtered = this.filtered;
+    var cm = 0, td = 0, tp = 0, eq = 0, sess = 0;
+    filtered.forEach(function (t) { cm += t.cm_hours; td += t.td_hours; tp += t.tp_hours; eq += t.equivalent_hours; sess += t.total_sessions; });
+    document.getElementById('statTeacherCount').textContent = filtered.length;
+    document.getElementById('statCM').textContent = cm.toFixed(1);
+    document.getElementById('statTD').textContent = td.toFixed(1);
+    document.getElementById('statTP').textContent = tp.toFixed(1);
+    document.getElementById('statEquivalent').textContent = eq.toFixed(1);
+    document.getElementById('statSessions').textContent = sess;
+  },
+
+  /* ── Charts ── */
+
+  _renderCharts() {
+    this._renderBarChart();
+    this._renderPieChart();
+  },
+
+  _renderBarChart() {
+    var top = this.filtered.slice(0, 15);
+    var labels = top.map(function (t) { return t.first_name + ' ' + t.last_name; });
+    var eqData = top.map(function (t) { return t.equivalent_hours; });
+
+    if (this.barChart) { this.barChart.destroy(); this.barChart = null; }
+
+    var ctx = document.getElementById('wldBarChart');
+    if (!ctx) return;
+    if (!labels.length) return;
+
+    this.barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Charge équivalente (h)',
+          data: eqData,
+          backgroundColor: 'rgba(242, 140, 40, 0.75)',
+          borderColor: '#F28C28',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, title: { display: true, text: 'Heures équivalentes' } },
+          y: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  },
+
+  _renderPieChart() {
+    var filtered = this.filtered;
+    var cm = 0, td = 0, tp = 0;
+    filtered.forEach(function (t) { cm += t.cm_hours; td += t.td_hours; tp += t.tp_hours; });
+
+    if (this.pieChart) { this.pieChart.destroy(); this.pieChart = null; }
+
+    var ctx = document.getElementById('wldPieChart');
+    if (!ctx) return;
+    if (cm === 0 && td === 0 && tp === 0) return;
+
+    this.pieChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Cours (CM)', 'TD', 'TP'],
+        datasets: [{
+          data: [cm, td, tp],
+          backgroundColor: ['rgba(15, 125, 184, 0.8)', 'rgba(14, 165, 233, 0.8)', 'rgba(245, 158, 11, 0.8)'],
+          borderColor: ['#0F7DB8', '#0ea5e9', '#f59e0b'],
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var total = cm + td + tp;
+                var pct = total > 0 ? (ctx.parsed / total * 100).toFixed(1) : 0;
+                return ctx.label + ': ' + ctx.parsed.toFixed(1) + 'h (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  },
+
+  /* ── Export Excel ── */
+
+  async exportExcel() {
+    try {
+      var params = this._buildParams();
+      var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+      var url = '/api/v1/teacher-monthly-report/' + (qs ? '?' + qs : '');
+      var blob = await API.apiFetch(url);
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      var now = new Date();
+      a.download = 'Charge_Horaire_Enseignants_' + String(now.getMonth() + 1).padStart(2, '0') + '_' + now.getFullYear() + '.xlsx';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Rapport Excel téléchargé.', 'success');
+    } catch (e) {
+      showToast('Erreur export: ' + e.message, 'error');
+    }
+  }
+};
+
+/* ── Init ── */
+(function () {
+  // Bind sort clicks
+  document.addEventListener('click', function (e) {
+    var th = e.target.closest('.sortable');
+    if (th) wld.setSort(th.dataset.sort);
   });
-  document.getElementById('wlPeriodMode').value = 'all';
-  document.getElementById('wlMonthGroup').style.display = 'none';
-  document.getElementById('wlYearGroup').style.display = 'none';
-  document.getElementById('wlDateStartGroup').style.display = 'none';
-  document.getElementById('wlDateEndGroup').style.display = 'none';
-  wlLoadData();
-}
 
-/* ── Build query string ── */
-function wlBuildQuery() {
-  var params = new URLSearchParams();
-  var ac = document.getElementById('wlAcYear').value;
-  var dept = document.getElementById('wlDepartment').value;
-  var fil = document.getElementById('wlFiliere').value;
-  if (ac) params.set('year', ac);
-  if (dept) params.set('department_id', dept);
-  if (fil) params.set('filiere_id', fil);
-  var mode = document.getElementById('wlPeriodMode').value;
-  if (mode === 'month') {
-    var m = document.getElementById('wlMonth').value;
-    var y = document.getElementById('wlYear').value;
-    if (m) params.set('month', m);
-    if (y) params.set('year', y);
-  } else if (mode === 'range') {
-    var ds = document.getElementById('wlDateStart').value;
-    var de = document.getElementById('wlDateEnd').value;
-    if (ds) params.set('start_date', ds);
-    if (de) params.set('end_date', de);
-  }
-  return params.toString();
-}
+  // Bind export button
+  document.getElementById('btnExportExcel')?.addEventListener('click', function () { wld.exportExcel(); });
 
-/* ── Load & render ── */
-async function wlLoadData() {
-  var tbody = document.getElementById('wlBody');
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Chargement...</td></tr>';
-  try {
-    var qs = wlBuildQuery();
-    var url = '/api/v1/teacher-workload/' + (qs ? '?' + qs : '');
-    var data = await API.apiFetch(url);
-    var teachers = Array.isArray(data) ? data : (data.teachers || []);
-    var totals = data.totals || null;
-    wlRenderStats(totals);
-    wlRenderTable(tbody, teachers, totals);
-    wlRenderCharts(teachers);
-  } catch (e) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Erreur : ' + esc(e.message) + '</td></tr>';
-  }
-}
-
-function wlRenderStats(totals) {
-  var row = document.getElementById('wlStatsRow');
-  if (!totals) { row.innerHTML = ''; return; }
-  row.innerHTML =
-    '<div class="stat-card" style="background:var(--surface-2);padding:.85rem;border-radius:10px;text-align:center">' +
-      '<div style="font-size:1.5rem;font-weight:700">' + totals.cm_hours + '</div>' +
-      '<div style="font-size:.78rem;color:var(--muted)">Heures CM</div>' +
-    '</div>' +
-    '<div class="stat-card" style="background:var(--surface-2);padding:.85rem;border-radius:10px;text-align:center">' +
-      '<div style="font-size:1.5rem;font-weight:700">' + totals.td_hours + '</div>' +
-      '<div style="font-size:.78rem;color:var(--muted)">Heures TD</div>' +
-    '</div>' +
-    '<div class="stat-card" style="background:var(--surface-2);padding:.85rem;border-radius:10px;text-align:center">' +
-      '<div style="font-size:1.5rem;font-weight:700">' + totals.tp_hours + '</div>' +
-      '<div style="font-size:.78rem;color:var(--muted)">Heures TP</div>' +
-    '</div>' +
-    '<div class="stat-card" style="background:var(--accent);padding:.85rem;border-radius:10px;text-align:center;color:#fff">' +
-      '<div style="font-size:1.5rem;font-weight:700">' + totals.equivalent_hours + '</div>' +
-      '<div style="font-size:.78rem;opacity:.85">Charge équivalente totale</div>' +
-    '</div>' +
-    '<div class="stat-card" style="background:var(--surface-2);padding:.85rem;border-radius:10px;text-align:center">' +
-      '<div style="font-size:1.5rem;font-weight:700">' + totals.total_sessions + '</div>' +
-      '<div style="font-size:.78rem;color:var(--muted)">Total séances</div>' +
-    '</div>';
-}
-
-function wlRenderTable(tbody, teachers, totals) {
-  if (!teachers.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="12">Aucune donnée pour les filtres sélectionnés.</td></tr>';
-    return;
-  }
-  var html = '';
-  teachers.forEach(function (t, i) {
-    var rankClass = i === 0 ? ' style="color:var(--accent);font-weight:700"' : '';
-    html += '<tr>' +
-      '<td' + rankClass + '>' + (i + 1) + '</td>' +
-      '<td><strong>' + esc(t.last_name) + ' ' + esc(t.first_name) + '</strong></td>' +
-      '<td>' + esc(t.department || '—') + '</td>' +
-      '<td>' + esc(t.filiere || '—') + '</td>' +
-      '<td>' + t.cm_count + '</td>' +
-      '<td>' + t.td_count + '</td>' +
-      '<td>' + t.tp_count + '</td>' +
-      '<td>' + t.cm_hours + '</td>' +
-      '<td>' + t.td_hours + '</td>' +
-      '<td>' + t.tp_hours + '</td>' +
-      '<td>' + t.total_sessions + '</td>' +
-      '<td style="font-weight:700;color:var(--primary)">' + t.equivalent_hours + '</td>' +
-    '</tr>';
-  });
-  // Totals row
-  if (totals) {
-    html += '<tr style="font-weight:700;background:var(--surface-2)">' +
-      '<td colspan="2">TOTAL GÉNÉRAL</td>' +
-      '<td></td><td></td>' +
-      '<td>' + totals.cm_count + '</td>' +
-      '<td>' + totals.td_count + '</td>' +
-      '<td>' + totals.tp_count + '</td>' +
-      '<td>' + totals.cm_hours + '</td>' +
-      '<td>' + totals.td_hours + '</td>' +
-      '<td>' + totals.tp_hours + '</td>' +
-      '<td>' + totals.total_sessions + '</td>' +
-      '<td style="color:var(--accent)">' + totals.equivalent_hours + '</td>' +
-    '</tr>';
-  }
-  tbody.innerHTML = html;
-}
-
-function wlRenderCharts(teachers) {
-  if (!teachers.length) {
-    if (wlChartHours) { wlChartHours.destroy(); wlChartHours = null; }
-    if (wlChartPie) { wlChartPie.destroy(); wlChartPie = null; }
-    return;
-  }
-  var labels = teachers.map(function (t) { return t.last_name + ' ' + t.first_name; });
-  var cmData = teachers.map(function (t) { return t.cm_hours; });
-  var tdData = teachers.map(function (t) { return t.td_hours; });
-  var tpData = teachers.map(function (t) { return t.tp_hours; });
-  var eqData = teachers.map(function (t) { return t.equivalent_hours; });
-
-  var barCtx = document.getElementById('wlChartHours');
-  if (wlChartHours) wlChartHours.destroy();
-  wlChartHours = new Chart(barCtx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: 'CM', data: cmData, backgroundColor: '#0F7DB8', borderRadius: 4 },
-        { label: 'TD', data: tdData, backgroundColor: '#F28C28', borderRadius: 4 },
-        { label: 'TP', data: tpData, backgroundColor: '#10b981', borderRadius: 4 },
-        { label: 'Équivalent', data: eqData, backgroundColor: 'rgba(15,125,184,0.15)', borderColor: '#0F7DB8', borderWidth: 2, type: 'line', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#0F7DB8' },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } }, y: { beginAtZero: true, title: { display: true, text: 'Heures' } } },
-      plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } } },
-    },
-  });
-
-  // Pie chart: repartition CM/TD/TP
-  var totalCM = cmData.reduce(function (a, b) { return a + b; }, 0);
-  var totalTD = tdData.reduce(function (a, b) { return a + b; }, 0);
-  var totalTP = tpData.reduce(function (a, b) { return a + b; }, 0);
-  var pieCtx = document.getElementById('wlChartPie');
-  if (wlChartPie) wlChartPie.destroy();
-  wlChartPie = new Chart(pieCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['CM (' + totalCM.toFixed(1) + 'h)', 'TD (' + totalTD.toFixed(1) + 'h)', 'TP (' + totalTP.toFixed(1) + 'h)'],
-      datasets: [{
-        data: [totalCM, totalTD, totalTP],
-        backgroundColor: ['#0F7DB8', '#F28C28', '#10b981'],
-        borderWidth: 0,
-      }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } } },
-    },
-  });
-}
-
-if (typeof initPage === 'function') window.initPage = initPage;
+  wld.init();
+})();

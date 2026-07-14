@@ -1138,10 +1138,10 @@ def absence_statistics(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def teacher_workload(request):
-    """Dashboard — teacher workload with CM/TD/TP breakdown and équivalent hours."""
+    """Return teacher workload (total hours) with role-based scoping."""
     from django.db.models import (
         Count, F, ExpressionWrapper, DurationField, FloatField,
-        Value, Case, When, Sum, Q,
+        Value, Case, When, Sum,
     )
     from django.db.models.functions import Extract
     from courses.models import Session
@@ -1166,53 +1166,18 @@ def teacher_workload(request):
     elif request.user.role != "admin":
         return Response({"detail": "Permission refusée."}, status=403)
 
-    # Query-param filters
-    department_id = request.query_params.get("department_id")
-    filiere_id = request.query_params.get("filiere_id")
-    niveau = request.query_params.get("niveau")
-    semestre_id = request.query_params.get("semestre_id")
-    module_id = request.query_params.get("module_id")
-    teacher_id = request.query_params.get("teacher_id")
-    month = request.query_params.get("month")
-    year = request.query_params.get("year")
-    start_date = request.query_params.get("start_date")
-    end_date = request.query_params.get("end_date")
+    # Duration in seconds from (end_time - start_time)
+    duration_seconds = Extract(
+        ExpressionWrapper(F("end_time") - F("start_time"), output_field=DurationField()),
+        "epoch",
+    )
 
-    if department_id:
-        qs = qs.filter(
-            Q(classe__department_id=department_id) |
-            Q(classe__filiere__department_id=department_id)
-        )
-    if filiere_id:
-        qs = qs.filter(classe__filiere_id=filiere_id)
-    if niveau:
-        qs = qs.filter(
-            Q(classe__niveau=niveau) | Q(classe__filiere__niveau=niveau)
-        )
-    if semestre_id:
-        qs = qs.filter(
-            Q(classe__semestre_id=semestre_id) |
-            Q(classe__filiere__semestre_id=semestre_id)
-        )
-    if module_id:
-        qs = qs.filter(module_id=module_id)
-    if teacher_id:
-        qs = qs.filter(teacher_id=teacher_id)
-    if month and year:
-        qs = qs.filter(date__month=month, date__year=year)
-    elif start_date:
-        qs = qs.filter(date__gte=start_date)
-        if end_date:
-            qs = qs.filter(date__lte=end_date)
-    elif year:
-        qs = qs.filter(date__year=year)
-
-    # Duration in hours
-    duration_hours = ExpressionWrapper(
-        Extract(
-            ExpressionWrapper(F("end_time") - F("start_time"), output_field=DurationField()),
-            "epoch",
-        ) / 3600.0,
+    # Adjusted hours based on session type
+    adjusted_hours = Case(
+        When(session_type="Cours", then=duration_seconds / 3600.0),
+        When(session_type="TD", then=duration_seconds / 3600.0 / 1.5),
+        When(session_type="TP", then=duration_seconds / 3600.0 / 1.5),
+        default=Value(0.0),
         output_field=FloatField(),
     )
 
@@ -1220,23 +1185,10 @@ def teacher_workload(request):
         qs
         .values("teacher_id", "teacher__first_name", "teacher__last_name")
         .annotate(
-            cm_count=Count("id", filter=Q(session_type="Cours")),
-            td_count=Count("id", filter=Q(session_type="TD")),
-            tp_count=Count("id", filter=Q(session_type="TP")),
-            cm_hours_raw=Sum(
-                Case(When(session_type="Cours", then=duration_hours),
-                     default=Value(0.0), output_field=FloatField())
-            ),
-            td_hours_raw=Sum(
-                Case(When(session_type="TD", then=duration_hours),
-                     default=Value(0.0), output_field=FloatField())
-            ),
-            tp_hours_raw=Sum(
-                Case(When(session_type="TP", then=duration_hours),
-                     default=Value(0.0), output_field=FloatField())
-            ),
-            total_sessions=Count("id"),
+            session_count=Count("id"),
+            total_hours=Sum(adjusted_hours),
         )
+        .order_by("-total_hours")
     )
 
     # Resolve department / filiere for each teacher
@@ -1250,72 +1202,175 @@ def teacher_workload(request):
             )
         )
         for t in teachers:
-            depts = set()
-            filieres = set()
+            dept_name = None
+            filiere_name = None
             ac = list(t.assigned_classes.all())
-            for c in ac:
+            if ac:
+                c = ac[0]
                 if c.department:
-                    depts.add(c.department.name)
+                    dept_name = c.department.name
                 if c.filiere:
-                    filieres.add(c.filiere.name)
-            teacher_info[t.id] = {
-                "department": ", ".join(sorted(depts)) if depts else None,
-                "filiere": ", ".join(sorted(filieres)) if filieres else None,
-            }
+                    filiere_name = c.filiere.name
+            teacher_info[t.id] = {"department": dept_name, "filiere": filiere_name}
 
     result = []
-    grand_totals = {
-        "cm_count": 0, "td_count": 0, "tp_count": 0,
-        "cm_hours": 0.0, "td_hours": 0.0, "tp_hours": 0.0,
-        "equivalent_hours": 0.0, "total_sessions": 0,
-    }
-
     for w in workload:
         tid = w["teacher_id"]
         info = teacher_info.get(tid, {})
-
-        cm_raw = w["cm_hours_raw"] or 0.0
-        td_raw = w["td_hours_raw"] or 0.0
-        tp_raw = w["tp_hours_raw"] or 0.0
-        eq = cm_raw + (td_raw / 1.5) + ((tp_raw * 2) / 1.5)
-
-        entry = {
+        result.append({
             "id": tid,
             "first_name": w["teacher__first_name"],
             "last_name": w["teacher__last_name"],
             "department": info.get("department"),
             "filiere": info.get("filiere"),
-            "cm_count": w["cm_count"],
-            "td_count": w["td_count"],
-            "tp_count": w["tp_count"],
-            "cm_hours": round(cm_raw, 2),
-            "td_hours": round(td_raw, 2),
-            "tp_hours": round(tp_raw, 2),
-            "equivalent_hours": round(eq, 2),
-            "total_sessions": w["total_sessions"],
-        }
-        result.append(entry)
+            "session_count": w["session_count"],
+            "total_hours": round(w["total_hours"], 2) if w["total_hours"] else 0.0,
+        })
 
-        grand_totals["cm_count"] += entry["cm_count"]
-        grand_totals["td_count"] += entry["td_count"]
-        grand_totals["tp_count"] += entry["tp_count"]
-        grand_totals["cm_hours"] += entry["cm_hours"]
-        grand_totals["td_hours"] += entry["td_hours"]
-        grand_totals["tp_hours"] += entry["tp_hours"]
-        grand_totals["equivalent_hours"] += entry["equivalent_hours"]
-        grand_totals["total_sessions"] += entry["total_sessions"]
+    return Response(result)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_workload_dashboard(request):
+    """Return teacher workload dashboard data with charts and role-based scoping."""
+    from collections import defaultdict
+    from courses.models import Session
+
+    qs = Session.objects.filter(is_active=True, teacher__is_active=True)
+
+    # Role-based scoping
+    if request.user.role == "department_head":
+        dept = get_user_department(request.user)
+        if dept:
+            qs = qs.filter(
+                Q(classe__department=dept) | Q(classe__filiere__department=dept)
+            )
+        else:
+            qs = qs.none()
+    elif request.user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(request.user)
+        if filiere_ids:
+            qs = qs.filter(classe__filiere_id__in=filiere_ids)
+        else:
+            qs = qs.none()
+    elif request.user.role != "admin":
+        return Response({"detail": "Permission refusée."}, status=403)
+
+    # Query-param filters
+    department_id = request.query_params.get("department_id")
+    filiere_id = request.query_params.get("filiere_id")
+    academic_year = request.query_params.get("academic_year")
+    month = request.query_params.get("month")
+    year = request.query_params.get("year")
+    start_date = request.query_params.get("start_date")
+    end_date = request.query_params.get("end_date")
+
+    if department_id:
+        qs = qs.filter(
+            Q(classe__department_id=department_id) |
+            Q(classe__filiere__department_id=department_id)
+        )
+    if filiere_id:
+        qs = qs.filter(classe__filiere_id=filiere_id)
+    if academic_year:
+        qs = qs.filter(classe__academic_year=academic_year)
+    if month and year:
+        qs = qs.filter(date__month=month, date__year=year)
+    elif start_date:
+        qs = qs.filter(date__gte=start_date)
+    if end_date:
+        qs = qs.filter(date__lte=end_date)
+
+    # Prefetch all sessions with related data
+    qs = qs.select_related("teacher", "classe", "classe__filiere", "classe__department")
+
+    # Aggregate per teacher
+    rows = defaultdict(lambda: {
+        "first_name": "",
+        "last_name": "",
+        "departments": set(),
+        "filieres": set(),
+        "cm_hours": 0.0,
+        "td_hours": 0.0,
+        "tp_hours": 0.0,
+        "total_sessions": 0,
+    })
+
+    for s in qs.iterator():
+        tid = s.teacher_id
+        row = rows[tid]
+        if not row["first_name"]:
+            row["first_name"] = s.teacher.first_name
+            row["last_name"] = s.teacher.last_name
+
+        # Duration in hours
+        start_m = s.start_time.hour * 60 + s.start_time.minute
+        end_m = s.end_time.hour * 60 + s.end_time.minute
+        duration_h = max((end_m - start_m) / 60.0, 0.0)
+
+        if s.classe:
+            if s.classe.department:
+                row["departments"].add(s.classe.department.name)
+            if s.classe.filiere:
+                row["filieres"].add(s.classe.filiere.name)
+
+        row["total_sessions"] += 1
+        st = s.session_type
+        if st == "Cours":
+            row["cm_hours"] += duration_h
+        elif st == "TD":
+            row["td_hours"] += duration_h
+        elif st == "TP":
+            row["tp_hours"] += duration_h
+
+    # Compute equivalent hours and build result
+    result = []
+    for tid, row in rows.items():
+        cm = row["cm_hours"]
+        td = row["td_hours"]
+        tp = row["tp_hours"]
+        equivalent = cm + (td / 1.5) + ((tp * 2) / 1.5)
+        result.append({
+            "id": tid,
+            "first_name": row["first_name"],
+            "last_name": row["last_name"],
+            "department": ", ".join(sorted(row["departments"])) if row["departments"] else None,
+            "filieres": ", ".join(sorted(row["filieres"])) if row["filieres"] else None,
+            "cm_hours": round(cm, 2),
+            "td_hours": round(td, 2),
+            "tp_hours": round(tp, 2),
+            "total_sessions": row["total_sessions"],
+            "equivalent_hours": round(equivalent, 2),
+        })
 
     # Sort by equivalent_hours descending
     result.sort(key=lambda x: x["equivalent_hours"], reverse=True)
 
-    grand_totals["cm_hours"] = round(grand_totals["cm_hours"], 2)
-    grand_totals["td_hours"] = round(grand_totals["td_hours"], 2)
-    grand_totals["tp_hours"] = round(grand_totals["tp_hours"], 2)
-    grand_totals["equivalent_hours"] = round(grand_totals["equivalent_hours"], 2)
+    # Totals
+    totals = {
+        "cm_hours": round(sum(r["cm_hours"] for r in result), 2),
+        "td_hours": round(sum(r["td_hours"] for r in result), 2),
+        "tp_hours": round(sum(r["tp_hours"] for r in result), 2),
+        "total_sessions": sum(r["total_sessions"] for r in result),
+        "equivalent_hours": round(sum(r["equivalent_hours"] for r in result), 2),
+        "teacher_count": len(result),
+    }
+
+    # Chart data (top 15 for bar chart)
+    top15 = result[:15]
+    chart_data = {
+        "labels": [f"{r['first_name']} {r['last_name']}" for r in top15],
+        "equivalent_hours": [r["equivalent_hours"] for r in top15],
+        "cm_hours": [r["cm_hours"] for r in top15],
+        "td_hours": [r["td_hours"] for r in top15],
+        "tp_hours": [r["tp_hours"] for r in top15],
+    }
 
     return Response({
         "teachers": result,
-        "totals": grand_totals,
+        "totals": totals,
+        "chart_data": chart_data,
     })
 
 
