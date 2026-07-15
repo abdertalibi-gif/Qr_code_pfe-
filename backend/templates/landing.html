@@ -259,6 +259,13 @@
       .lp-nav-actions a:not(.lp-btn-primary) { display: none; }
     }
 
+    /* Form validation */
+    .lp-form-group { display:flex;flex-direction:column;gap:0.2rem; }
+    .lp-form-error { font-size:0.75rem;color:#EF4444;min-height:1rem; }
+    .lp-form-group input.error, .lp-form-group textarea.error { border-color:#EF4444 !important; }
+    .lp-form-group input.success, .lp-form-group textarea.success { border-color:#10B981 !important; }
+    #cfSubmitBtn:disabled { opacity:0.6;cursor:not-allowed; }
+
     /* Gradient text variants */
     .gradient-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .gradient-blue { background: linear-gradient(135deg, var(--primary), #42A5F5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -390,10 +397,10 @@
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📅</div><h3>Séances</h3><p>Planifiez et gérez les séances avec date, heure, salle et enseignant.</p></div>
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📱</div><h3>QR Code</h3><p>Générez des QR codes uniques par séance avec expiration automatique.</p></div>
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📍</div><h3>Géolocalisation</h3><p>Limitez le scan par géolocalisation pour éviter les fraudes.</p></div>
-    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">🔔</div><h3>Notifications</h3><p>Recevez des alertes en temps réel sur les présences et absences.</p></div>
+
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📊</div><h3>Dashboard</h3><p>Visualisez les statistiques avec des graphiques interactifs en temps réel.</p></div>
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">⏱</div><h3>Charge horaire</h3><p>Calculez automatiquement la charge horaire des enseignants par type.</p></div>
-    <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📄</div><h3>Rapports PDF</h3><p>Exportez les présences et absences en PDF pour archivage.</p></div>
+
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📗</div><h3>Rapports Excel</h3><p>Générez des rapports Excel détaillés de la charge horaire.</p></div>
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📈</div><h3>Statistiques</h3><p>Analysez les tendances de présence avec des graphiques avancés.</p></div>
     <div class="lp-feature-card lp-reveal"><div class="lp-feature-icon">📋</div><h3>Historique</h3><p>Consultez l'historique complet des présences par étudiant et par séance.</p></div>
@@ -417,7 +424,7 @@
       <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">3</div><h4>Génération du QR Code</h4><p>Un QR code unique est généré avec une expiration automatique pour la séance.</p></div></div>
       <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">4</div><h4>Scan par l'étudiant</h4><p>Chaque étudiant scanne le QR code avec son smartphone pour valider sa présence.</p></div></div>
       <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">5</div><h4>Validation automatique</h4><p>La présence est automatiquement validée avec horodatage et géolocalisation.</p></div></div>
-      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">6</div><h4>Génération des rapports</h4><p>Les rapports de présence sont générés en PDF/Excel à la clôture de la séance.</p></div></div>
+      <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">6</div><h4>Génération des rapports</h4><p>Les rapports de présence sont générés en Excel à la clôture de la séance.</p></div></div>
       <div class="lp-timeline-item lp-reveal"><div class="lp-timeline-dot"></div><div class="lp-timeline-content"><div class="lp-timeline-step">7</div><h4>Statistiques et analyses</h4><p>Consultez les tableaux de bord, taux de présence et charge horaire en temps réel.</p></div></div>
     </div>
   </div>
@@ -467,36 +474,6 @@
   </div>
 </section>
 
-<!-- ════════════ CHARGE HORAIRE ════════════ -->
-<section class="lp-section" id="workload">
-  <div style="text-align:center;margin-bottom:3rem">
-    <div class="lp-section-label">⏱ Charge Horaire</div>
-    <h2 class="lp-section-title">Calcul automatique</h2>
-    <p class="lp-section-sub" style="margin:0 auto">La charge horaire des enseignants est calculée automatiquement selon le type de séance.</p>
-    <div class="lp-divider center"></div>
-  </div>
-  <div class="lp-qr-grid" style="gap:2rem">
-    <div class="lp-reveal">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-        <div class="lp-counter" style="border-color:var(--primary-border);background:var(--primary-soft)"><div style="font-size:0.78rem;font-weight:600;color:var(--primary)">📚 Cours</div><div style="font-size:1.6rem;font-weight:800;color:var(--primary);margin:0.3rem 0">1h = 1h</div><div style="font-size:0.75rem;color:var(--muted)">Durée réelle</div></div>
-        <div class="lp-counter" style="border-color:var(--accent-border);background:var(--accent-soft)"><div style="font-size:0.78rem;font-weight:600;color:var(--accent)">📝 TD</div><div style="font-size:1.6rem;font-weight:800;color:var(--accent);margin:0.3rem 0">÷ 1,5</div><div style="font-size:0.75rem;color:var(--muted)">Durée ajustée</div></div>
-        <div class="lp-counter" style="border-color:rgba(16,185,129,0.2);background:#D1FAE5"><div style="font-size:0.78rem;font-weight:600;color:var(--green)">🔬 TP</div><div style="font-size:1.6rem;font-weight:800;color:var(--green);margin:0.3rem 0">÷ 1,5</div><div style="font-size:0.75rem;color:var(--muted)">Durée ajustée</div></div>
-      </div>
-      <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6">Le système calcule automatiquement la charge horaire équivalente de chaque enseignant en fonction du type de séance (CM, TD, TP) avec les coefficients appropriés. Les résultats sont visibles dans un tableau de classement et des graphiques interactifs.</p>
-    </div>
-    <div class="lp-reveal">
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-xl);padding:1.5rem">
-        <div style="display:flex;justify-content:space-between;margin-bottom:1rem;font-size:0.82rem;font-weight:600;color:var(--text-secondary)"><span>Enseignant</span><span>Charge</span></div>
-        <div style="display:flex;flex-direction:column;gap:0.6rem">
-          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. El Allaly</span><span style="font-weight:700;color:var(--primary)">37,3h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards;transform-origin:left;transform:scaleX(0)"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. Bekri</span><span style="font-weight:700;color:var(--primary)">20,0h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:54%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards 0.2s;transform-origin:left;transform:scaleX(0)"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>Prof. Hajji</span><span style="font-weight:700;color:var(--primary)">13,2h</span></div><div style="height:6px;border-radius:3px;background:var(--bg-section);overflow:hidden"><div style="height:100%;width:35%;border-radius:3px;background:linear-gradient(90deg,var(--primary),#42A5F5);animation:chartGrow 1.5s ease-out forwards 0.4s;transform-origin:left;transform:scaleX(0)"></div></div></div>
-        </div>
-        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.85rem"><span style="font-weight:600">Total</span><span style="font-weight:800;color:var(--accent)">74,5h</span></div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- ════════════ WHY ════════════ -->
 <section class="lp-section-wide lp-section-dark" id="why">
@@ -513,9 +490,9 @@
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📱</div><h4>QR Code</h4><p>Validation instantanée par scan</p></div>
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">🕐</div><h4>Temps réel</h4><p>Données mises à jour en direct</p></div>
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📱</div><h4>Responsive</h4><p>Fonctionne sur tous les écrans</p></div>
-      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📄</div><h4>Export PDF</h4><p>Rapports prêts à imprimer</p></div>
+
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📗</div><h4>Export Excel</h4><p>Données exploitables dans Excel</p></div>
-      <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">🔔</div><h4>Notifications</h4><p>Alertes en temps réel</p></div>
+
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">⏱</div><h4>Charge horaire</h4><p>Calcul automatique CM/TD/TP</p></div>
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">📊</div><h4>Statistiques</h4><p>Graphiques et analyses avancées</p></div>
       <div class="lp-why-item lp-reveal"><div class="lp-why-item-icon">👥</div><h4>Multi-rôles</h4><p>5 rôles avec accès différenciés</p></div>
@@ -524,29 +501,6 @@
   </div>
 </section>
 
-<!-- ════════════ TECHNOLOGIES ════════════ -->
-<section class="lp-section">
-  <div style="text-align:center;margin-bottom:2.5rem">
-    <div class="lp-section-label">🛠️ Technologies</div>
-    <h2 class="lp-section-title">Une stack moderne</h2>
-    <div class="lp-divider center"></div>
-  </div>
-  <div class="lp-tech lp-reveal">
-    <span class="lp-tech-badge">Django</span>
-    <span class="lp-tech-badge">Django REST Framework</span>
-    <span class="lp-tech-badge">Flutter</span>
-    <span class="lp-tech-badge">PostgreSQL</span>
-    <span class="lp-tech-badge">HTML5</span>
-    <span class="lp-tech-badge">CSS3</span>
-    <span class="lp-tech-badge">JavaScript</span>
-    <span class="lp-tech-badge">Chart.js</span>
-    <span class="lp-tech-badge">Leaflet</span>
-    <span class="lp-tech-badge">REST API</span>
-    <span class="lp-tech-badge">JWT</span>
-    <span class="lp-tech-badge">QR Code</span>
-    <span class="lp-tech-badge">GitHub</span>
-  </div>
-</section>
 
 <!-- ════════════ TESTIMONIALS ════════════ -->
 <section class="lp-section-wide lp-section-dark">
@@ -589,7 +543,7 @@
     <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Comment sont générés les QR codes ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Chaque séance génère un QR code unique avec une durée d'expiration configurable (20 minutes par défaut). Le QR code est lié à la séance et ne peut pas être réutilisé.</div></div>
     <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Que se passe-t-il si un étudiant n'a pas de smartphone ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">L'enseignant peut marquer manuellement la présence des étudiants depuis son dashboard. Le système prend en charge les deux modes de validation.</div></div>
     <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Les données sont-elles sécurisées ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, toutes les données sont chiffrées et transmises via HTTPS. L'authentification utilise JWT (JSON Web Tokens) et les rôles utilisateur limitent l'accès aux données.</div></div>
-    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Peut-on exporter les rapports ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, les rapports de présence peuvent être exportés en PDF et en Excel. Les rapports de charge horaire sont exportables en Excel avec calculs automatiques.</div></div>
+    <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Peut-on exporter les rapports ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, les rapports de présence et de charge horaire sont exportables en Excel avec calculs automatiques.</div></div>
     <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>Comment est calculée la charge horaire ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">La charge horaire est calculée automatiquement : les Cours (CM) comptent pour leur durée réelle, les TD et TP sont ajustés avec un coefficient de 1,5. Le tableau de classement affiche les enseignants par charge équivalente.</div></div>
     <div class="lp-faq-item lp-reveal"><div class="lp-faq-q"><span>L'application est-elle accessible sur mobile ?</span><span class="lp-faq-toggle">+</span></div><div class="lp-faq-a">Oui, l'interface est entièrement responsive et fonctionne sur tous les appareils. Une application Flutter est également disponible pour une expérience mobile native.</div></div>
   </div>
@@ -610,12 +564,25 @@
         <div class="lp-contact-item"><div class="lp-contact-item-icon">📍</div><div><h4>Université</h4><p>Université Moulay Ismaïl, Meknès, Maroc</p></div></div>
         <div class="lp-contact-item"><div class="lp-contact-item-icon">📞</div><div><h4>Téléphone</h4><p>+212 5 35 50 00 00</p></div></div>
       </div>
-      <form class="lp-contact-form lp-reveal" onsubmit="event.preventDefault();alert('Merci pour votre message ! Nous vous répondrons rapidement.')">
-        <input type="text" placeholder="Nom complet" required>
-        <input type="email" placeholder="Email universitaire" required>
-        <input type="text" placeholder="Sujet">
-        <textarea placeholder="Votre message..." required></textarea>
-        <button type="submit" class="lp-btn lp-btn-primary" style="justify-content:center">Envoyer le message</button>
+      <form class="lp-contact-form lp-reveal" id="contactForm" novalidate>
+        <div class="lp-form-group">
+          <input type="text" id="cfName" placeholder="Nom complet" required>
+          <span class="lp-form-error" id="cfNameError"></span>
+        </div>
+        <div class="lp-form-group">
+          <input type="email" id="cfEmail" placeholder="Email universitaire" required>
+          <span class="lp-form-error" id="cfEmailError"></span>
+        </div>
+        <div class="lp-form-group">
+          <input type="text" id="cfSubject" placeholder="Sujet" required>
+          <span class="lp-form-error" id="cfSubjectError"></span>
+        </div>
+        <div class="lp-form-group">
+          <textarea id="cfMessage" placeholder="Votre message..." required></textarea>
+          <span class="lp-form-error" id="cfMessageError"></span>
+        </div>
+        <div id="cfGlobalError" style="display:none;color:#EF4444;font-size:0.85rem;padding:0.5rem;border-radius:var(--radius);background:#FEF2F2;margin-bottom:0.5rem"></div>
+        <button type="submit" class="lp-btn lp-btn-primary" id="cfSubmitBtn" style="justify-content:center">Envoyer le message</button>
       </form>
     </div>
   </div>
@@ -731,6 +698,87 @@
       }
     });
   });
+
+  // ── Contact Form ──
+  var cf = document.getElementById('contactForm');
+  if (cf) {
+    var cfName = document.getElementById('cfName');
+    var cfEmail = document.getElementById('cfEmail');
+    var cfSubject = document.getElementById('cfSubject');
+    var cfMessage = document.getElementById('cfMessage');
+    var cfSubmit = document.getElementById('cfSubmitBtn');
+    var cfGlobal = document.getElementById('cfGlobalError');
+
+    function cfShowError(id, msg) {
+      var el = document.getElementById(id + 'Error');
+      var input = document.getElementById(id);
+      if (el) el.textContent = msg;
+      if (input) { input.classList.remove('success'); input.classList.toggle('error', !!msg); }
+    }
+
+    function cfValidate() {
+      var ok = true;
+      if (!cfName.value.trim()) { cfShowError('cfName', 'Le nom est obligatoire.'); ok = false; }
+      else { cfShowError('cfName', ''); cfName.classList.add('success'); }
+      if (!cfEmail.value.trim()) { cfShowError('cfEmail', 'L\'email est obligatoire.'); ok = false; }
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cfEmail.value.trim())) { cfShowError('cfEmail', 'Email invalide.'); ok = false; }
+      else { cfShowError('cfEmail', ''); cfEmail.classList.add('success'); }
+      if (!cfSubject.value.trim()) { cfShowError('cfSubject', 'Le sujet est obligatoire.'); ok = false; }
+      else { cfShowError('cfSubject', ''); cfSubject.classList.add('success'); }
+      if (!cfMessage.value.trim()) { cfShowError('cfMessage', 'Le message est obligatoire.'); ok = false; }
+      else { cfShowError('cfMessage', ''); cfMessage.classList.add('success'); }
+      return ok;
+    }
+
+    cf.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      cfGlobal.style.display = 'none';
+      if (!cfValidate()) return;
+      cfSubmit.disabled = true;
+      cfSubmit.textContent = 'Envoi en cours...';
+      try {
+        var res = await fetch('/api/v1/contact-messages/create/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: cfName.value.trim(),
+            email: cfEmail.value.trim(),
+            subject: cfSubject.value.trim(),
+            message: cfMessage.value.trim(),
+          }),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          cf.innerHTML =
+            '<div style="text-align:center;padding:2rem">' +
+            '<div style="font-size:2.5rem;margin-bottom:1rem">✅</div>' +
+            '<h3 style="margin-bottom:0.5rem">Message envoyé !</h3>' +
+            '<p style="color:var(--text-secondary);font-size:0.9rem">' + data.detail + '</p>' +
+            '</div>';
+        } else {
+          cfGlobal.style.display = 'block';
+          if (data.name) cfShowError('cfName', Array.isArray(data.name) ? data.name[0] : data.name);
+          if (data.email) cfShowError('cfEmail', Array.isArray(data.email) ? data.email[0] : data.email);
+          if (data.subject) cfShowError('cfSubject', Array.isArray(data.subject) ? data.subject[0] : data.subject);
+          if (data.message) cfShowError('cfMessage', Array.isArray(data.message) ? data.message[0] : data.message);
+          if (data.detail) { cfGlobal.textContent = data.detail; }
+          else { cfGlobal.textContent = 'Erreur lors de l\'envoi. Veuillez réessayer.'; }
+          cfSubmit.disabled = false;
+          cfSubmit.textContent = 'Envoyer le message';
+        }
+      } catch (err) {
+        cfGlobal.style.display = 'block';
+        cfGlobal.textContent = 'Erreur réseau : ' + err.message;
+        cfSubmit.disabled = false;
+        cfSubmit.textContent = 'Envoyer le message';
+      }
+    });
+
+    // Clear errors on input
+    [cfName, cfEmail, cfSubject, cfMessage].forEach(function(el) {
+      el.addEventListener('input', function() { cfShowError(el.id, ''); el.classList.remove('error'); cfGlobal.style.display = 'none'; });
+    });
+  }
 
 })();
 </script>

@@ -1,7 +1,9 @@
 import logging
 from typing import Type, cast
 
+from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
 from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -18,7 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Amphitheater, Block, Classe, Department, Room, Student, User
+from .models import Amphitheater, Block, Classe, ContactMessage, Department, Room, Student, User
 from .permissions import (
     IsAdmin,
     IsAdminOrDepartmentHeadOrFiliereManager,
@@ -29,6 +31,7 @@ from .permissions import (
 )
 from .serializers import (
     ClasseSerializer,
+    ContactMessageSerializer,
     DepartmentSerializer,
     LoginSerializer,
     ModuleStudentSerializer,
@@ -1992,3 +1995,92 @@ def teacher_monthly_report(request):
     response["Content-Disposition"] = f'attachment; filename="{fn}"'
     wb.save(response)
     return response
+
+
+# ────────────────────────────────────────────────────────────
+# Contact Messages
+# ────────────────────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def contact_message_create(request):
+    """Public endpoint — anyone can submit a contact message."""
+    serializer = ContactMessageSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    msg = serializer.save()
+    logger.info("New contact message #%d from %s <%s>", msg.id, msg.name, msg.email)
+
+    # Try to send email notification to admins
+    try:
+        admin_email = getattr(settings, "ADMIN_EMAIL", None) or settings.DEFAULT_FROM_EMAIL
+        send_mail(
+            subject=f"[PrésenceQR] Nouveau message de {msg.name} — {msg.subject}",
+            message=f"Nom: {msg.name}\nEmail: {msg.email}\nSujet: {msg.subject}\n\nMessage:\n{msg.message}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[admin_email],
+            fail_silently=False,
+        )
+        logger.info("Notification email sent to %s for message #%d", admin_email, msg.id)
+    except Exception as exc:
+        logger.error("Failed to send email notification for message #%d: %s", msg.id, exc)
+
+    return Response(
+        {"detail": "Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais."},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def contact_message_detail(request, pk):
+    """Admin endpoint — retrieve, update (mark read/treated), or delete a contact message."""
+    try:
+        msg = ContactMessage.objects.get(pk=pk)
+    except ContactMessage.DoesNotExist:
+        return Response({"detail": "Message introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        serializer = ContactMessageSerializer(msg)
+        return Response(serializer.data)
+
+    if request.method == "PATCH":
+        serializer = ContactMessageSerializer(msg, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    if request.method == "DELETE":
+        msg.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def contact_message_list(request):
+    """Admin endpoint — list all contact messages, with optional filters."""
+    queryset = ContactMessage.objects.all()
+    status_filter = request.query_params.get("status")
+    if status_filter == "unread":
+        queryset = queryset.filter(is_read=False)
+    elif status_filter == "treated":
+        queryset = queryset.filter(is_treated=True)
+    elif status_filter == "untreated":
+        queryset = queryset.filter(is_treated=False)
+
+    page = int(request.query_params.get("page", 1))
+    page_size = int(request.query_params.get("page_size", 50))
+    start = (page - 1) * page_size
+    end = start + page_size
+    total = queryset.count()
+    items = queryset[start:end]
+
+    serializer = ContactMessageSerializer(items, many=True)
+    return Response({
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "results": serializer.data,
+    })

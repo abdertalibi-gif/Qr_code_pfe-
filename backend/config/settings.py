@@ -120,6 +120,7 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() == "true"
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@presenceqr.ma")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@umi.ac.ma")
 
 # Password reset token lifetime: 24 hours
 PASSWORD_RESET_TIMEOUT = 86400

@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from curriculum.models import Filiere, Module, Semestre
 from users.models import NIVEAU_SEMESTRE_MAP
-from .models import Amphitheater, Block, Classe, Department, Room, Student, StudentModuleEnrollment, User
+from .models import Amphitheater, Block, Classe, ContactMessage, Department, Room, Student, StudentModuleEnrollment, User
 
 
 class EmailBackend(ModelBackend):
@@ -814,3 +814,40 @@ class AmphitheaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Amphitheater
         fields = ["id", "name"]
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        error_messages={"blank": "Le nom est obligatoire.", "required": "Le nom est obligatoire."}
+    )
+    email = serializers.EmailField(
+        error_messages={"blank": "L'email est obligatoire.", "required": "L'email est obligatoire.", "invalid": "Email invalide."}
+    )
+    subject = serializers.CharField(
+        error_messages={"blank": "Le sujet est obligatoire.", "required": "Le sujet est obligatoire."}
+    )
+    message = serializers.CharField(
+        error_messages={"blank": "Le message est obligatoire.", "required": "Le message est obligatoire."}
+    )
+
+    class Meta:
+        model = ContactMessage
+        fields = ["id", "name", "email", "subject", "message", "created_at", "is_read", "is_treated"]
+        read_only_fields = ["id", "created_at"]
+
+    def create(self, validated_data):
+        validated_data.setdefault("is_read", False)
+        validated_data.setdefault("is_treated", False)
+        return super().create(validated_data)
+
+    def validate_name(self, value):
+        return value.strip() if value else value
+
+    def validate_email(self, value):
+        return value.strip() if value else value
+
+    def validate_subject(self, value):
+        return value.strip() if value else value
+
+    def validate_message(self, value):
+        return value.strip() if value else value
