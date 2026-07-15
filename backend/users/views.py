@@ -2062,13 +2062,20 @@ def contact_message_detail(request, pk):
 def contact_message_list(request):
     """Admin endpoint — list all contact messages, with optional filters."""
     queryset = ContactMessage.objects.all()
+
+    # Filter by status
     status_filter = request.query_params.get("status")
-    if status_filter == "unread":
-        queryset = queryset.filter(is_read=False)
-    elif status_filter == "treated":
-        queryset = queryset.filter(is_treated=True)
-    elif status_filter == "untreated":
-        queryset = queryset.filter(is_treated=False)
+    if status_filter and status_filter != "all":
+        queryset = queryset.filter(status=status_filter)
+
+    # Search by name, email, or subject
+    search = request.query_params.get("search", "").strip()
+    if search:
+        queryset = queryset.filter(
+            Q(name__icontains=search)
+            | Q(email__icontains=search)
+            | Q(subject__icontains=search)
+        )
 
     page = int(request.query_params.get("page", 1))
     page_size = int(request.query_params.get("page_size", 50))
@@ -2083,4 +2090,87 @@ def contact_message_list(request):
         "page": page,
         "page_size": page_size,
         "results": serializer.data,
+    })
+
+
+# ────────────────────────────────────────────────────────────
+# Landing Page Statistics
+# ────────────────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def landing_stats(request):
+    """Public endpoint returning real counts for the landing page counters."""
+    from datetime import timedelta as td
+    from django.db.models import Count, Q, Sum, F, ExpressionWrapper, fields
+    from attendance.models import Attendance
+    from courses.models import Session
+    from curriculum.models import Filiere, Module
+    from users.models import Classe, Department
+
+    def _safe_count(qs):
+        try:
+            return qs.count()
+        except Exception:
+            return 0
+
+    user_agg = User.objects.aggregate(
+        students=Count("id", filter=Q(role="student")),
+        teachers=Count("id", filter=Q(role="teacher")),
+    )
+    classes_count = _safe_count(Classe.objects.all())
+    modules_count = _safe_count(Module.objects.all())
+    sessions_count = _safe_count(Session.objects.all())
+    departments_count = _safe_count(Department.objects.all())
+    filieres_count = _safe_count(Filiere.objects.all())
+
+    attendance_agg = {"attendances": 0, "present": 0, "absent": 0}
+    try:
+        attendance_agg = Attendance.objects.aggregate(
+            attendances=Count("id"),
+            present=Count("id", filter=Q(attendance_status="confirmed")),
+            absent=Count("id", filter=Q(attendance_status="absent")),
+        )
+    except Exception:
+        pass
+
+    total_attendance = attendance_agg["attendances"]
+    total_present = attendance_agg["present"]
+    attendance_rate = round((total_present / total_attendance * 100) if total_attendance > 0 else 0, 1)
+
+    # Calculate total teaching hours from all sessions
+    total_hours = 0
+    try:
+        from django.db import connection
+        if connection.vendor == "postgresql":
+            result = Session.objects.aggregate(
+                total=Sum(
+                    ExpressionWrapper(
+                        F("end_time") - F("start_time"),
+                        output_field=fields.DurationField(),
+                    )
+                )
+            )
+            if result["total"] is not None:
+                total_hours = round(result["total"].total_seconds() / 3600, 1)
+        else:
+            for s in Session.objects.iterator():
+                from datetime import datetime
+                start = datetime.combine(s.date, s.start_time)
+                end = datetime.combine(s.date, s.end_time)
+                total_hours += (end - start).total_seconds() / 3600
+            total_hours = round(total_hours, 1)
+    except Exception:
+        total_hours = 0
+
+    return Response({
+        **user_agg,
+        "classes": classes_count,
+        "modules": modules_count,
+        "sessions": sessions_count,
+        "departments": departments_count,
+        "filieres": filieres_count,
+        **attendance_agg,
+        "attendance_rate": attendance_rate,
+        "total_hours": total_hours,
     })

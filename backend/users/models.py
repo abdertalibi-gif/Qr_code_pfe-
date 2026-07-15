@@ -421,13 +421,18 @@ class StudentModuleEnrollment(models.Model):
 
 
 class ContactMessage(models.Model):
+    STATUS_CHOICES = [
+        ("Nouveau", "Nouveau"),
+        ("Lu", "Lu"),
+        ("Traité", "Traité"),
+    ]
+
     name = models.CharField(max_length=255)
     email = models.EmailField()
     subject = models.CharField(max_length=255)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
-    is_treated = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Nouveau")
 
     class Meta:
         db_table = "contact_messages"

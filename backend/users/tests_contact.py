@@ -50,8 +50,7 @@ class ContactMessageAPITests(TestCase):
         self.assertEqual(msg.email, "jean@example.com")
         self.assertEqual(msg.subject, "Question test")
         self.assertEqual(msg.message, "Ceci est un message de test.")
-        self.assertFalse(msg.is_read)
-        self.assertFalse(msg.is_treated)
+        self.assertEqual(msg.status, "Nouveau")
 
     def test_create_message_missing_fields(self):
         response = self.client.post(
@@ -109,7 +108,7 @@ class ContactMessageAPITests(TestCase):
             name="A", email="a@a.com", subject="S1", message="M1"
         )
         ContactMessage.objects.create(
-            name="B", email="b@b.com", subject="S2", message="M2", is_read=True
+            name="B", email="b@b.com", subject="S2", message="M2", status="Lu"
         )
         self.client.force_authenticate(user=self.admin)
         response = self.client.get("/api/v1/contact-messages/")
@@ -117,17 +116,30 @@ class ContactMessageAPITests(TestCase):
         self.assertEqual(response.data["total"], 2)
         self.assertEqual(len(response.data["results"]), 2)
 
-    def test_admin_list_filter_unread(self):
+    def test_admin_list_filter_nouveau(self):
         ContactMessage.objects.create(
             name="A", email="a@a.com", subject="S1", message="M1"
         )
         ContactMessage.objects.create(
-            name="B", email="b@b.com", subject="S2", message="M2", is_read=True
+            name="B", email="b@b.com", subject="S2", message="M2", status="Lu"
         )
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get("/api/v1/contact-messages/?status=unread")
+        response = self.client.get("/api/v1/contact-messages/?status=Nouveau")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["total"], 1)
+
+    def test_admin_list_search(self):
+        ContactMessage.objects.create(
+            name="Jean", email="jean@test.com", subject="Question", message="M1"
+        )
+        ContactMessage.objects.create(
+            name="Pierre", email="pierre@test.com", subject="Info", message="M2"
+        )
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/v1/contact-messages/?search=jean")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total"], 1)
+        self.assertEqual(response.data["results"][0]["name"], "Jean")
 
     def test_admin_list_requires_auth(self):
         response = self.client.get("/api/v1/contact-messages/")
@@ -148,21 +160,36 @@ class ContactMessageAPITests(TestCase):
         response = self.client.get(f"/api/v1/contact-messages/{msg.id}/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["name"], "Test")
+        self.assertIn("status", response.data)
 
-    def test_admin_mark_as_read_and_treated(self):
+    def test_admin_mark_as_traite(self):
+        msg = ContactMessage.objects.create(
+            name="Test", email="t@t.com", subject="S", message="M"
+        )
+        self.assertEqual(msg.status, "Nouveau")
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/v1/contact-messages/{msg.id}/",
+            {"status": "Traité"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        msg.refresh_from_db()
+        self.assertEqual(msg.status, "Traité")
+
+    def test_admin_mark_as_lu(self):
         msg = ContactMessage.objects.create(
             name="Test", email="t@t.com", subject="S", message="M"
         )
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
             f"/api/v1/contact-messages/{msg.id}/",
-            {"is_read": True, "is_treated": True},
+            {"status": "Lu"},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
         msg.refresh_from_db()
-        self.assertTrue(msg.is_read)
-        self.assertTrue(msg.is_treated)
+        self.assertEqual(msg.status, "Lu")
 
     def test_admin_delete_message(self):
         msg = ContactMessage.objects.create(
@@ -177,3 +204,26 @@ class ContactMessageAPITests(TestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get("/api/v1/contact-messages/999/")
         self.assertEqual(response.status_code, 404)
+
+
+class LandingStatsAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_landing_stats_returns_all_keys(self):
+        response = self.client.get("/api/v1/landing-stats/")
+        self.assertEqual(response.status_code, 200)
+        expected = {"students", "teachers", "classes", "modules", "sessions",
+                    "departments", "filieres", "attendances", "present",
+                    "absent", "attendance_rate", "total_hours"}
+        self.assertEqual(set(response.data.keys()), expected)
+
+    def test_landing_stats_requires_no_auth(self):
+        response = self.client.get("/api/v1/landing-stats/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_landing_stats_counts_are_non_negative(self):
+        response = self.client.get("/api/v1/landing-stats/")
+        for key, val in response.data.items():
+            with self.subTest(key=key):
+                self.assertGreaterEqual(val, 0, f"{key} should be >= 0")

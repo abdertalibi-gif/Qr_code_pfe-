@@ -44,6 +44,7 @@ from users.views import (
     teacher_workload,
     teacher_workload_dashboard,
     dashboard_counts,
+    landing_stats,
     system_info,
 )
 from courses.views import SessionViewSet
@@ -180,6 +181,7 @@ api_v1_urlpatterns = [
     path("teacher-monthly-report/", teacher_monthly_report, name="teacher-monthly-report"),
     path("settings/", app_settings, name="app-settings"),
     path("system-info/", system_info, name="system-info"),
+    path("landing-stats/", landing_stats, name="landing-stats"),
     path("blocks/", block_list, name="block-list"),
     path("blocks/<int:pk>/", block_detail, name="block-detail"),
     path("rooms/", room_list, name="room-list"),

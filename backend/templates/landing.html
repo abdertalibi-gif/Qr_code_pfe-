@@ -329,7 +329,7 @@
         <div class="lp-hero-card-top">
           <div class="lp-hero-card-dots"><span></span><span></span><span></span></div>
           <span class="lp-hero-card-title">Dashboard</span>
-          <span style="font-size:0.75rem;color:var(--muted)">📊 Aujourd'hui</span>
+          <span style="font-size:0.75rem;color:var(--muted)">📊 En temps réel</span>
         </div>
         <div class="lp-hero-chart">
           <div class="lp-hero-chart-bar"></div>
@@ -342,9 +342,9 @@
           <div class="lp-hero-chart-bar"></div>
         </div>
         <div class="lp-hero-stats">
-          <div class="lp-hero-stat"><div class="lp-hero-stat-value" data-count-to="96">0</div><div class="lp-hero-stat-label">Présents</div></div>
-          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--accent)" data-count-to="12">0</div><div class="lp-hero-stat-label">Absents</div></div>
-          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--green)" data-count-to="89">0</div><div class="lp-hero-stat-label">Taux %</div></div>
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" data-stat="present">0</div><div class="lp-hero-stat-label">Présents</div></div>
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--accent)" data-stat="absent">0</div><div class="lp-hero-stat-label">Absents</div></div>
+          <div class="lp-hero-stat"><div class="lp-hero-stat-value" style="color:var(--green)" data-stat="attendance_rate">0</div><div class="lp-hero-stat-label">Taux %</div></div>
         </div>
       </div>
       <div class="lp-hero-float" style="top:-10px;right:-20px">
@@ -367,14 +367,16 @@
 <section class="lp-section-wide lp-section-dark" id="stats">
   <div class="lp-section" style="padding-top:0;padding-bottom:0">
     <div class="lp-counters" style="margin:-3rem 0 0">
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🎓</div><div class="lp-counter-num"><span data-count-to="12500">0</span>+</div><div class="lp-counter-label">Étudiants</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🏫</div><div class="lp-counter-num"><span data-count-to="320">0</span>+</div><div class="lp-counter-label">Enseignants</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">🏫</div><div class="lp-counter-num"><span data-count-to="85">0</span>+</div><div class="lp-counter-label">Classes</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📚</div><div class="lp-counter-num"><span data-count-to="240">0</span>+</div><div class="lp-counter-label">Modules</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📅</div><div class="lp-counter-num"><span data-count-to="5800">0</span>+</div><div class="lp-counter-label">Séances</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📈</div><div class="lp-counter-num"><span data-count-to="1240">0</span>+</div><div class="lp-counter-label">Rapports</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">⚡</div><div class="lp-counter-num"><span data-count-to="45200">0</span>+</div><div class="lp-counter-label">QR générés</div></div>
-      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📊</div><div class="lp-counter-num"><span data-count-to="98">0</span>%</div><div class="lp-counter-label">Satisfaction</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🎓</div><div class="lp-counter-num"><span data-stat="students">0</span>+</div><div class="lp-counter-label">Étudiants</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">👨‍🏫</div><div class="lp-counter-num"><span data-stat="teachers">0</span>+</div><div class="lp-counter-label">Enseignants</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">🏫</div><div class="lp-counter-num"><span data-stat="classes">0</span>+</div><div class="lp-counter-label">Classes</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📚</div><div class="lp-counter-num"><span data-stat="modules">0</span>+</div><div class="lp-counter-label">Modules</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📅</div><div class="lp-counter-num"><span data-stat="sessions">0</span>+</div><div class="lp-counter-label">Séances</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">🏢</div><div class="lp-counter-num"><span data-stat="departments">0</span>+</div><div class="lp-counter-label">Départements</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">🏛️</div><div class="lp-counter-num"><span data-stat="filieres">0</span>+</div><div class="lp-counter-label">Filières</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📊</div><div class="lp-counter-num"><span data-stat="attendances">0</span>+</div><div class="lp-counter-label">Présences</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">⏱</div><div class="lp-counter-num"><span data-stat="total_hours">0</span>h</div><div class="lp-counter-label">Heures</div></div>
+      <div class="lp-counter lp-reveal"><div class="lp-counter-icon">📈</div><div class="lp-counter-num"><span data-stat="attendance_rate">0</span>%</div><div class="lp-counter-label">Présence</div></div>
     </div>
   </div>
 </section>
@@ -644,31 +646,43 @@
     revealEls.forEach(function(el) { revealObserver.observe(el); });
   }
 
-  // ── Animated Counters ──
-  var counterEls = document.querySelectorAll('[data-count-to]');
-  if (counterEls.length) {
+  // ── Animated Counters (real data from API) ──
+  var statsData = null;
+  async function loadLandingStats() {
+    try {
+      var res = await fetch('/api/v1/landing-stats/');
+      statsData = await res.json();
+    } catch (e) {
+      return;
+    }
+    var counterEls = document.querySelectorAll('[data-stat]');
+    if (!counterEls.length) return;
     var counterObserver = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           var el = entry.target;
-          var target = parseInt(el.getAttribute('data-count-to'), 10);
-          if (!isNaN(target)) {
-            var duration = 2000;
-            var start = performance.now();
-            function step(now) {
-              var progress = Math.min((now - start) / duration, 1);
-              var eased = 1 - Math.pow(1 - progress, 3);
-              el.textContent = Math.floor(eased * target).toLocaleString('fr-FR');
-              if (progress < 1) { requestAnimationFrame(step); }
-            }
-            requestAnimationFrame(step);
+          var key = el.getAttribute('data-stat');
+          var target = parseFloat(statsData[key]);
+          if (isNaN(target)) target = 0;
+          var duration = 2000;
+          var start = performance.now();
+          function step(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            var current = eased * target;
+            el.textContent = (key === 'attendance_rate' || key === 'total_hours')
+              ? current.toFixed(1).replace('.', ',')
+              : Math.floor(current).toLocaleString('fr-FR');
+            if (progress < 1) { requestAnimationFrame(step); }
           }
+          requestAnimationFrame(step);
           counterObserver.unobserve(el);
         }
       });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.3 });
     counterEls.forEach(function(el) { counterObserver.observe(el); });
   }
+  loadLandingStats();
 
   // ── FAQ Accordion ──
   var faqItems = document.querySelectorAll('.lp-faq-item');

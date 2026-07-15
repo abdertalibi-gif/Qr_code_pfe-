@@ -832,13 +832,8 @@ class ContactMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ContactMessage
-        fields = ["id", "name", "email", "subject", "message", "created_at", "is_read", "is_treated"]
+        fields = ["id", "name", "email", "subject", "message", "created_at", "status"]
         read_only_fields = ["id", "created_at"]
-
-    def create(self, validated_data):
-        validated_data.setdefault("is_read", False)
-        validated_data.setdefault("is_treated", False)
-        return super().create(validated_data)
 
     def validate_name(self, value):
         return value.strip() if value else value
