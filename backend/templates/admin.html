@@ -99,6 +99,18 @@
     </button>
   </div>
 
+  <!-- SUMMARY STATS ROW -->
+  <div class="stats-grid" style="margin-bottom:1.5rem;padding:0 2rem">
+    <div class="stat-card"><div class="stat-icon indigo">👤</div><div><div class="label">Utilisateurs</div><div class="value" id="sumUsers">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">👨‍🏫</div><div><div class="label">Enseignants</div><div class="value" id="sumTeachers">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon green">🎓</div><div><div class="label">Étudiants</div><div class="value" id="sumStudents">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple">🏫</div><div><div class="label">Classes</div><div class="value" id="sumClasses">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">📚</div><div><div class="label">Modules</div><div class="value" id="sumModules">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon indigo">📅</div><div><div class="label">Séances</div><div class="value" id="sumSessions">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">🏛️</div><div><div class="label">Départements</div><div class="value" id="sumDepartments">—</div></div></div>
+    <div class="stat-card"><div class="stat-icon teal">✉️</div><div><div class="label">Messages</div><div class="value" id="sumMessages">—</div></div></div>
+  </div>
+
   <!-- LIVE ATTENDANCE PANEL -->
   <div class="tab-panel" id="tab-attendance">
     <div class="stats-grid">
@@ -1675,6 +1687,14 @@
       set('heroModuleCount', d.modules);
       set('heroMessageCount', d.messages + ' (' + d.new_messages + '✉️)');
       set('cntMessages', d.new_messages || '—');
+      set('sumUsers', d.users);
+      set('sumTeachers', d.teachers);
+      set('sumStudents', d.students);
+      set('sumClasses', d.classes);
+      set('sumModules', d.modules);
+      set('sumSessions', d.sessions);
+      set('sumDepartments', d.departments);
+      set('sumMessages', d.messages + ' (' + d.new_messages + '✉️)');
     } catch (e) { /* ignore */ }
   }
 
