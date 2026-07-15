@@ -30,7 +30,6 @@
     <a href="/admin/reports/" class="nav-link" data-page="reports">📊 Rapports <span class="nav-count" id="navCntReports">—</span></a>
     <a href="/admin/statistics/" class="nav-link" data-page="statistics">📈 Statistiques</a>
     <a href="/admin/workload/" class="nav-link" data-page="workload">⏱ Charge horaire</a>
-    <a href="/admin/contact-messages/" class="nav-link" data-page="contact-messages">✉️ Messages</a>
     <a href="/admin/settings/" class="nav-link" data-page="settings">⚙️ Paramètres</a>
   </div>
   <div class="nav-right">
@@ -130,7 +129,7 @@
     document.querySelectorAll('.nav-link[data-page]').forEach(link => {
       const page = link.dataset.page;
       const allowedPages = isAdmin
-        ? ['attendance-live', 'users', 'teachers', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'filieres', 'rooms', 'reports', 'statistics', 'workload', 'settings', 'contact-messages']
+        ? ['attendance-live', 'users', 'teachers', 'students', 'classes', 'curriculum', 'sessions', 'departments', 'filieres', 'rooms', 'reports', 'statistics', 'workload', 'settings']
         : ['attendance-live', 'sessions', 'curriculum', 'departments', 'filieres', 'rooms', 'reports', 'statistics'];
       link.style.display = allowedPages.includes(page) ? '' : 'none';
     });

@@ -199,18 +199,6 @@
     .lp-faq-a { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6; }
     .lp-faq-item.open .lp-faq-a { max-height: 300px; padding: 0.5rem 0 1rem; }
 
-    /* Contact */
-    .lp-contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
-    .lp-contact-info { display: flex; flex-direction: column; gap: 1.2rem; }
-    .lp-contact-item { display: flex; align-items: center; gap: 1rem; }
-    .lp-contact-item-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
-    .lp-contact-item h4 { font-size: 0.88rem; font-weight: 600; }
-    .lp-contact-item p { font-size: 0.82rem; color: var(--text-secondary); }
-    .lp-contact-form { display: flex; flex-direction: column; gap: 1rem; }
-    .lp-contact-form input, .lp-contact-form textarea { padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: var(--font); font-size: 0.88rem; outline: none; transition: border-color var(--transition); background: var(--bg); color: var(--text); }
-    .lp-contact-form input:focus, .lp-contact-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
-    .lp-contact-form textarea { min-height: 120px; resize: vertical; }
-
     /* Footer */
     .lp-footer { background: var(--text); color: rgba(255,255,255,0.7); padding: 4rem 2rem 2rem; }
     .lp-footer-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 2rem; }
@@ -235,7 +223,6 @@
       .lp-hero-desc { margin-left: auto; margin-right: auto; }
       .lp-hero-actions { justify-content: center; }
       .lp-qr-grid { grid-template-columns: 1fr; }
-      .lp-contact-grid { grid-template-columns: 1fr; }
       .lp-footer-inner { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 768px) {
@@ -295,7 +282,6 @@
       <li><a href="#showcase">Captures</a></li>
       <li><a href="#stats">Statistiques</a></li>
       <li><a href="#faq">FAQ</a></li>
-      <li><a href="#contact">Contact</a></li>
     </ul>
     <div class="lp-nav-actions">
       <a href="/login/" class="lp-btn lp-btn-outline" style="padding:0.55rem 1.2rem">Se connecter</a>
@@ -551,45 +537,6 @@
   </div>
 </section>
 
-<!-- ════════════ CONTACT ════════════ -->
-<section class="lp-section-wide lp-section-dark" id="contact">
-  <div class="lp-section">
-    <div style="text-align:center;margin-bottom:3rem">
-      <div class="lp-section-label">📬 Contact</div>
-      <h2 class="lp-section-title">Restons en contact</h2>
-      <p class="lp-section-sub" style="margin:0 auto">Une question ? Une suggestion ? Notre équipe est là pour vous.</p>
-      <div class="lp-divider center"></div>
-    </div>
-    <div class="lp-contact-grid">
-      <div class="lp-contact-info lp-reveal">
-        <div class="lp-contact-item"><div class="lp-contact-item-icon">📧</div><div><h4>Email</h4><p>contact@presenceqr.umi.ac.ma</p></div></div>
-        <div class="lp-contact-item"><div class="lp-contact-item-icon">📍</div><div><h4>Université</h4><p>Université Moulay Ismaïl, Meknès, Maroc</p></div></div>
-        <div class="lp-contact-item"><div class="lp-contact-item-icon">📞</div><div><h4>Téléphone</h4><p>+212 5 35 50 00 00</p></div></div>
-      </div>
-      <form class="lp-contact-form lp-reveal" id="contactForm" novalidate>
-        <div class="lp-form-group">
-          <input type="text" id="cfName" placeholder="Nom complet" required>
-          <span class="lp-form-error" id="cfNameError"></span>
-        </div>
-        <div class="lp-form-group">
-          <input type="email" id="cfEmail" placeholder="Email universitaire" required>
-          <span class="lp-form-error" id="cfEmailError"></span>
-        </div>
-        <div class="lp-form-group">
-          <input type="text" id="cfSubject" placeholder="Sujet" required>
-          <span class="lp-form-error" id="cfSubjectError"></span>
-        </div>
-        <div class="lp-form-group">
-          <textarea id="cfMessage" placeholder="Votre message..." required></textarea>
-          <span class="lp-form-error" id="cfMessageError"></span>
-        </div>
-        <div id="cfGlobalError" style="display:none;color:#EF4444;font-size:0.85rem;padding:0.5rem;border-radius:var(--radius);background:#FEF2F2;margin-bottom:0.5rem"></div>
-        <button type="submit" class="lp-btn lp-btn-primary" id="cfSubmitBtn" style="justify-content:center">Envoyer le message</button>
-      </form>
-    </div>
-  </div>
-</section>
-
 <!-- ════════════ FOOTER ════════════ -->
 <footer class="lp-footer">
   <div class="lp-footer-inner">
@@ -597,7 +544,7 @@
       <a href="#" class="lp-brand"><span class="lp-brand-icon">📋</span>PrésenceQR</a>
       <p>Plateforme intelligente de gestion des présences universitaires par QR Code. Simplifiez le suivi de vos étudiants avec une solution moderne, sécurisée et fiable.</p>
     </div>
-    <div><h4>Navigation</h4><ul><li><a href="#features">Fonctionnalités</a></li><li><a href="#why">Pourquoi nous</a></li><li><a href="#showcase">Captures</a></li><li><a href="#faq">FAQ</a></li><li><a href="#contact">Contact</a></li></ul></div>
+    <div><h4>Navigation</h4><ul><li><a href="#features">Fonctionnalités</a></li><li><a href="#why">Pourquoi nous</a></li><li><a href="#showcase">Captures</a></li><li><a href="#faq">FAQ</a></li></ul></div>
     <div><h4>Liens utiles</h4><ul><li><a href="/login/">Connexion</a></li><li><a href="/login/">Créer un compte</a></li><li><a href="#">Documentation</a></li><li><a href="#">Support</a></li></ul></div>
     <div><h4>Légal</h4><ul><li><a href="#">Confidentialité</a></li><li><a href="#">CGU</a></li><li><a href="#">Cookies</a></li></ul></div>
   </div>
@@ -712,87 +659,6 @@
       }
     });
   });
-
-  // ── Contact Form ──
-  var cf = document.getElementById('contactForm');
-  if (cf) {
-    var cfName = document.getElementById('cfName');
-    var cfEmail = document.getElementById('cfEmail');
-    var cfSubject = document.getElementById('cfSubject');
-    var cfMessage = document.getElementById('cfMessage');
-    var cfSubmit = document.getElementById('cfSubmitBtn');
-    var cfGlobal = document.getElementById('cfGlobalError');
-
-    function cfShowError(id, msg) {
-      var el = document.getElementById(id + 'Error');
-      var input = document.getElementById(id);
-      if (el) el.textContent = msg;
-      if (input) { input.classList.remove('success'); input.classList.toggle('error', !!msg); }
-    }
-
-    function cfValidate() {
-      var ok = true;
-      if (!cfName.value.trim()) { cfShowError('cfName', 'Le nom est obligatoire.'); ok = false; }
-      else { cfShowError('cfName', ''); cfName.classList.add('success'); }
-      if (!cfEmail.value.trim()) { cfShowError('cfEmail', 'L\'email est obligatoire.'); ok = false; }
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cfEmail.value.trim())) { cfShowError('cfEmail', 'Email invalide.'); ok = false; }
-      else { cfShowError('cfEmail', ''); cfEmail.classList.add('success'); }
-      if (!cfSubject.value.trim()) { cfShowError('cfSubject', 'Le sujet est obligatoire.'); ok = false; }
-      else { cfShowError('cfSubject', ''); cfSubject.classList.add('success'); }
-      if (!cfMessage.value.trim()) { cfShowError('cfMessage', 'Le message est obligatoire.'); ok = false; }
-      else { cfShowError('cfMessage', ''); cfMessage.classList.add('success'); }
-      return ok;
-    }
-
-    cf.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      cfGlobal.style.display = 'none';
-      if (!cfValidate()) return;
-      cfSubmit.disabled = true;
-      cfSubmit.textContent = 'Envoi en cours...';
-      try {
-        var res = await fetch('/api/v1/contact-messages/create/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: cfName.value.trim(),
-            email: cfEmail.value.trim(),
-            subject: cfSubject.value.trim(),
-            message: cfMessage.value.trim(),
-          }),
-        });
-        var data = await res.json();
-        if (res.ok) {
-          cf.innerHTML =
-            '<div style="text-align:center;padding:2rem">' +
-            '<div style="font-size:2.5rem;margin-bottom:1rem">✅</div>' +
-            '<h3 style="margin-bottom:0.5rem">Message envoyé !</h3>' +
-            '<p style="color:var(--text-secondary);font-size:0.9rem">' + data.detail + '</p>' +
-            '</div>';
-        } else {
-          cfGlobal.style.display = 'block';
-          if (data.name) cfShowError('cfName', Array.isArray(data.name) ? data.name[0] : data.name);
-          if (data.email) cfShowError('cfEmail', Array.isArray(data.email) ? data.email[0] : data.email);
-          if (data.subject) cfShowError('cfSubject', Array.isArray(data.subject) ? data.subject[0] : data.subject);
-          if (data.message) cfShowError('cfMessage', Array.isArray(data.message) ? data.message[0] : data.message);
-          if (data.detail) { cfGlobal.textContent = data.detail; }
-          else { cfGlobal.textContent = 'Erreur lors de l\'envoi. Veuillez réessayer.'; }
-          cfSubmit.disabled = false;
-          cfSubmit.textContent = 'Envoyer le message';
-        }
-      } catch (err) {
-        cfGlobal.style.display = 'block';
-        cfGlobal.textContent = 'Erreur réseau : ' + err.message;
-        cfSubmit.disabled = false;
-        cfSubmit.textContent = 'Envoyer le message';
-      }
-    });
-
-    // Clear errors on input
-    [cfName, cfEmail, cfSubject, cfMessage].forEach(function(el) {
-      el.addEventListener('input', function() { cfShowError(el.id, ''); el.classList.remove('error'); cfGlobal.style.display = 'none'; });
-    });
-  }
 
 })();
 </script>

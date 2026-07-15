@@ -30,9 +30,6 @@ from users.views import (
     app_settings,
     block_detail,
     block_list,
-    contact_message_create,
-    contact_message_detail,
-    contact_message_list,
     department_list,
     department_detail,
     room_detail,
@@ -193,9 +190,6 @@ api_v1_urlpatterns = [
     path("teachers/import-excel/template/", teacher_import_template, name="teacher-import-template"),
     path("departments/", department_list, name="department-list"),
     path("departments/<int:pk>/", department_detail, name="department-detail"),
-    path("contact-messages/", contact_message_list, name="contact-message-list"),
-    path("contact-messages/create/", contact_message_create, name="contact-message-create"),
-    path("contact-messages/<int:pk>/", contact_message_detail, name="contact-message-detail"),
     path("", include("curriculum.urls")),
 ]
 
@@ -226,7 +220,6 @@ urlpatterns = [
     path("admin/absences/", serve_admin_page("admin_absences.html"), name="admin-absences"),
     path("admin/assistants/", serve_admin_page("admin_assistants.html"), name="admin-assistants"),
     path("admin/workload/", serve_admin_page("admin_workload.html"), name="admin-workload"),
-    path("admin/contact-messages/", serve_admin_page("admin_contact_messages.html"), name="admin-contact-messages"),
 
     path("teacher/", serve_template("teacher.html"), name="teacher-page"),
     path("student/", serve_template("student.html"), name="student-page"),
@@ -257,7 +250,6 @@ urlpatterns = [
     path("admin-absences.js", serve_js("admin-absences.js"), name="admin-absences-js"),
     path("admin-assistants.js", serve_js("admin-assistants.js"), name="admin-assistants-js"),
     path("admin-workload.js", serve_js("admin-workload.js"), name="admin-workload-js"),
-    path("admin-contact-messages.js", serve_js("admin-contact-messages.js"), name="admin-contact-messages-js"),
     path("dashboard.css", serve_css("dashboard.css"), name="dashboard-css"),
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_v1_urlpatterns)),
