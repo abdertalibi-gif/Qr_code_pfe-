@@ -14,6 +14,7 @@ var wld = {
   async init() {
     await Promise.all([
       this._loadDepts(),
+      this._loadSemestresAll(),
       this._loadAcademicYears(),
       this._loadTeachers(),
     ]);
@@ -60,6 +61,22 @@ var wld = {
   async _loadSemestres(niveau) {
     try {
       var data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
+      var sems = Array.isArray(data) ? data : (data.results || []);
+      var sel = document.getElementById('wldSemestre');
+      sel.innerHTML = '<option value="">— Sélectionner —</option>';
+      sems.forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+    } catch (e) { /* silent */ }
+  },
+
+  async _loadSemestresAll() {
+    try {
+      var data = await API.apiFetch('/curriculum/semestres/');
       var sems = Array.isArray(data) ? data : (data.results || []);
       var sel = document.getElementById('wldSemestre');
       sel.innerHTML = '<option value="">— Sélectionner —</option>';
@@ -188,7 +205,11 @@ var wld = {
   async onNiveauChange() {
     this._resetDownstream('semestre');
     var niveau = document.getElementById('wldNiveau').value;
-    if (niveau) await this._loadSemestres(niveau);
+    if (niveau) {
+      await this._loadSemestres(niveau);
+    } else {
+      await this._loadSemestresAll();
+    }
     this.page = 0;
     this.loadData();
   },
