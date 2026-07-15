@@ -55,6 +55,7 @@
       <span class="hero-chip">🚪 <strong id="heroRoomCount">—</strong> salles</span>
       <span class="hero-chip">🏗️ <strong id="heroBlockCount">—</strong> blocs</span>
       <span class="hero-chip">🎭 <strong id="heroAmphiCount">—</strong> amphithéâtres</span>
+      <span class="hero-chip">✉️ <strong id="heroMessageCount">—</strong> messages</span>
     </div>
   </div>
 
@@ -1669,6 +1670,7 @@
       set('heroStudentCount', d.students);
       set('heroSessionCount', d.sessions);
       set('heroModuleCount', d.modules);
+      set('heroMessageCount', d.messages + ' (' + d.new_messages + '✉️)');
     } catch (e) { /* ignore */ }
   }
 

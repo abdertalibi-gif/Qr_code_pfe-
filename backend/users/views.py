@@ -1543,6 +1543,8 @@ def dashboard_counts(request):
             "blocks": Block.objects.count(),
             "rooms": Room.objects.count(),
             "amphitheaters": Amphitheater.objects.count(),
+            "messages": ContactMessage.objects.count(),
+            "new_messages": ContactMessage.objects.filter(status="Nouveau").count(),
             **session_agg,
             **attendance_agg,
         })
