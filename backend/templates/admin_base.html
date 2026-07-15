@@ -30,7 +30,7 @@
     <a href="/admin/reports/" class="nav-link" data-page="reports">📊 Rapports <span class="nav-count" id="navCntReports">—</span></a>
     <a href="/admin/statistics/" class="nav-link" data-page="statistics">📈 Statistiques</a>
     <a href="/admin/workload/" class="nav-link" data-page="workload">⏱ Charge horaire</a>
-    <a href="/admin/contact-messages/" class="nav-link" data-page="contact-messages">✉️ Messages <span class="nav-count" id="navCntMessages">—</span></a>
+    <a href="/admin/contact-messages/" class="nav-link" data-page="contact-messages">✉️ Messages</a>
     <a href="/admin/settings/" class="nav-link" data-page="settings">⚙️ Paramètres</a>
   </div>
   <div class="nav-right">
@@ -113,12 +113,6 @@
       set('navCntBlocks', d.blocks);
       set('navCntAmphis', d.amphitheaters);
       set('navCntReports', d.reports);
-      const msgEl = document.getElementById('navCntMessages');
-      if (msgEl && d.new_messages !== undefined) {
-        const unread = d.new_messages;
-        msgEl.textContent = unread > 0 ? unread : '';
-        msgEl.style.display = unread > 0 ? '' : 'none';
-      }
     } catch (e) { /* silently ignore sidebar count errors */ }
   }
 

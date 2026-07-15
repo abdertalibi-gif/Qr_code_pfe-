@@ -94,6 +94,9 @@
     <button class="tab-btn" data-tab="workload">
       ⏱ Charge horaire <span class="tab-count" id="cntWorkload">—</span>
     </button>
+    <button class="tab-btn" data-tab="contact-messages" onclick="window.location.href='/admin/contact-messages/'">
+      ✉️ Messages <span class="tab-count" id="cntMessages">—</span>
+    </button>
   </div>
 
   <!-- LIVE ATTENDANCE PANEL -->
@@ -1671,6 +1674,7 @@
       set('heroSessionCount', d.sessions);
       set('heroModuleCount', d.modules);
       set('heroMessageCount', d.messages + ' (' + d.new_messages + '✉️)');
+      set('cntMessages', d.new_messages || '—');
     } catch (e) { /* ignore */ }
   }
 
