@@ -97,6 +97,9 @@ class UserViewSet(viewsets.ModelViewSet):
         role_param = self.request.query_params.get("role")
         if role_param:
             qs = qs.filter(role=role_param)
+        department_id = self.request.query_params.get("department_id")
+        if department_id and role_param == "program_manager":
+            qs = qs.filter(managed_filieres__department_id=department_id).distinct()
         if self.request.user.role == "department_head":
             dept = get_user_department(self.request.user)
             if dept:

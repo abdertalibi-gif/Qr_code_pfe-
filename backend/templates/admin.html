@@ -904,7 +904,7 @@
       <div class="table-wrap" style="max-height:450px;overflow-y:auto">
         <table>
           <thead>
-            <tr><th>Filière</th><th>Responsable actuel</th><th>Nouveau responsable</th></tr>
+            <tr><th>Niveau</th><th>Filière</th><th>Responsable actuel</th><th>Nouveau responsable</th></tr>
           </thead>
           <tbody id="filiereManagersBody"></tbody>
         </table>
@@ -3994,6 +3994,12 @@ tbody.innerHTML = list.map(function (d) {
   }
 
   /* ── Filiere Managers ── */
+  var NIVEAU_LABELS = {
+    'LIC': 'Licence',
+    'LIC_EXC': 'Licence Excellence',
+    'MAS': 'Master',
+    'MAS_EXC': 'Master Parcours d\'excellence',
+  };
   var _currentDeptIdForManagers = null;
   var _filiereManagerChanges = [];
   var _managersLoading = false;
@@ -4013,10 +4019,10 @@ tbody.innerHTML = list.map(function (d) {
       var filieres = await API.apiFetch('/curriculum/filiere-managers/?department_id=' + deptId);
       filieres = Array.isArray(filieres) ? filieres : [];
 
-      // Load eligible users (program_manager role only)
+      // Load eligible users (program_manager role only, same department)
       var eligible = [];
       try {
-        var users = await API.apiFetch('/users/?role=program_manager');
+        var users = await API.apiFetch('/users/?role=program_manager&department_id=' + deptId);
         eligible = Array.isArray(users) ? users : (users.results || []);
       } catch (e) {
         eligible = [];
@@ -4024,7 +4030,7 @@ tbody.innerHTML = list.map(function (d) {
 
       var tbody = document.getElementById('filiereManagersBody');
       if (!filieres.length) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière dans ce département.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Aucune filière dans ce département.</td></tr>';
         document.getElementById('btnSaveFiliereManagers').disabled = true;
         openModal('modalFiliereManagers');
         releaseManagersLockOnClose();
@@ -4044,7 +4050,9 @@ tbody.innerHTML = list.map(function (d) {
           options += '<option value="' + u.id + '"' + selected + '>' +
             esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>';
         });
+        var niveauLabel = NIVEAU_LABELS[f.niveau] || f.niveau || '—';
         return '<tr>' +
+          '<td>' + esc(niveauLabel) + '</td>' +
           '<td><strong>' + esc(f.name) + '</strong></td>' +
           '<td>' + esc(currentManagerName || '—') + '</td>' +
           '<td><select class="filiere-manager-select" data-filiere-id="' + f.id + '" style="width:100%">' + options + '</select></td>' +
