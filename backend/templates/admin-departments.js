@@ -23,7 +23,7 @@ function renderDepartments() {
   const tbody = document.getElementById('departmentsBody');
   const list = allDepartments.filter(function (d) { return !q || d.name.toLowerCase().includes(q); });
   if (!list.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun département trouvé.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun département trouvé.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(function (d) {
@@ -32,7 +32,6 @@ function renderDepartments() {
       '<td><strong>' + esc(d.name) + '</strong></td>' +
       '<td>' + esc(d.head_name || '—') + '</td>' +
       '<td>' + (d.filiere_count || 0) + '</td>' +
-      '<td class="admin-only"><button class="btn sm outline admin-only" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
       '<td class="actions-cell admin-only">' +
         '<button class="btn sm admin-only" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
         '<button class="btn sm outline admin-only" onclick="deleteDepartment(' + d.id + ')">🗑️</button>' +
@@ -101,26 +100,24 @@ async function saveDepartment() {
 }
 
 /* ── Filiere Managers ── */
-let _currentDeptIdForManagers = null;
 
-async function manageFiliereManagers(deptId) {
-  _currentDeptIdForManagers = deptId;
-  const dept = allDepartments.find(function (d) { return d.id === deptId; });
-  document.getElementById('filiereManagersTitle').textContent = '🎯 Gérer les responsables — ' + (dept ? dept.name : 'Département #' + deptId);
+async function manageFiliereManagers() {
+  document.getElementById('filiereManagersTitle').textContent = '🎯 Gérer les responsables de filière';
 
   try {
-    const filieres = await API.apiFetch('/curriculum/filieres/?department_id=' + deptId);
-    const filieresList = Array.isArray(filieres) ? filieres : [];
-
-    let eligible = [];
-    try {
-      const users = await API.apiFetch('/users/');
-      eligible = Array.isArray(users) ? users : (users.results || []);
-    } catch (e) { eligible = []; }
+    const [filieres, users] = await Promise.all([
+      API.apiFetch('/curriculum/filieres/'),
+      API.apiFetch('/users/'),
+    ]);
+    const filieresList = Array.isArray(filieres) ? filieres : (filieres.results || []);
+    const allUsers = Array.isArray(users) ? users : (users.results || []);
+    const eligibleUsers = allUsers.filter(function (u) {
+      return u.role === 'teacher' || u.role === 'program_manager';
+    });
 
     const tbody = document.getElementById('filiereManagersBody');
     if (!filieresList.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière dans ce département.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière trouvée.</td></tr>';
       document.getElementById('btnSaveFiliereManagers').disabled = true;
       openModal('modalFiliereManagers');
       return;
@@ -130,13 +127,10 @@ async function manageFiliereManagers(deptId) {
       const currentManagerId = f.manager_id || '';
       let currentManagerName = '';
       if (currentManagerId) {
-        const u = eligible.find(function (x) { return String(x.id) === String(currentManagerId); });
+        const u = allUsers.find(function (x) { return String(x.id) === String(currentManagerId); });
         currentManagerName = u ? (u.full_name || u.first_name + ' ' + u.last_name) : '#' + currentManagerId;
       }
       let options = '<option value="">— Non assigné —</option>';
-      const eligibleUsers = eligible.filter(function (u) {
-        return u.role === 'program_manager';
-      });
       eligibleUsers.forEach(function (u) {
         const selected = String(u.id) === String(currentManagerId) ? ' selected' : '';
         options += '<option value="' + u.id + '"' + selected + '>' + esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>';
@@ -164,8 +158,8 @@ document.getElementById('btnSaveFiliereManagers')?.addEventListener('click', asy
     const filiereId = sel.dataset.filiereId;
     const managerId = sel.value || null;
     try {
-      await API.apiFetch('/curriculum/filieres/' + parseInt(filiereId) + '/', {
-        method: 'PATCH',
+      await API.apiFetch('/curriculum/filieres/' + parseInt(filiereId) + '/assign-manager/', {
+        method: 'POST',
         body: JSON.stringify({ manager_id: managerId ? parseInt(managerId) : null }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -173,18 +167,23 @@ document.getElementById('btnSaveFiliereManagers')?.addEventListener('click', asy
     } catch (e) { errorCount++; }
   }
   showToast(successCount + ' mis à jour' + (errorCount ? ', ' + errorCount + ' erreur(s).' : '.'), errorCount ? 'error' : 'success');
-  closeModal('modalFiliereManagers');
+  if (!errorCount) closeModal('modalFiliereManagers');
   await loadDepartments();
 });
 
 function setupDepartmentUI() {
   const isRestricted = currentUser.role === 'department_head' || currentUser.role === 'program_manager';
   if (isRestricted) {
-    const deptBtn = document.getElementById('btnOpenAddDepartment');
+    var deptBtn = document.getElementById('btnOpenAddDepartment');
     if (deptBtn) deptBtn.style.display = 'none';
+    var mgrBtn = document.getElementById('btnManageFiliereManagers');
+    if (mgrBtn) mgrBtn.style.display = 'none';
   }
   document.getElementById('btnOpenAddDepartment')?.addEventListener('click', function () {
     openDepartmentModal(null);
+  });
+  document.getElementById('btnManageFiliereManagers')?.addEventListener('click', function () {
+    manageFiliereManagers();
   });
   document.getElementById('departmentForm')?.addEventListener('submit', async function (e) {
     e.preventDefault();

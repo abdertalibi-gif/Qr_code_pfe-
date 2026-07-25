@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from rest_framework import status
 
+from users.models import User
 from users.permissions import IsAdmin, IsAdminOrTeacher, apply_role_filtering, get_user_department, get_user_filiere_ids
 
 from .models import Filiere, Module, NIVEAU_CHOICES, Semestre
@@ -933,6 +934,86 @@ def filiere_detail(request, pk):
                 {"detail": f"Erreur lors de la suppression : {exc}"},
                 status=500,
             )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def filiere_assign_manager(request, pk):
+    """Assign a teacher as the responsible (program_manager) for a filiere.
+
+    - Changes the teacher's role to program_manager automatically.
+    - If the teacher already manages another filiere, removes them first.
+    - If the target filiere already has a different manager, removes them.
+    - One filiere = one manager, one teacher = one filiere.
+    """
+    if request.user.role != "admin":
+        return Response({"detail": "Permission refusée."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        filiere = Filiere.objects.get(pk=pk)
+    except Filiere.DoesNotExist:
+        return Response({"detail": "Filière introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    teacher_id = request.data.get("manager_id")
+
+    # Unassign current manager
+    if not teacher_id:
+        old_manager = filiere.manager
+        if old_manager:
+            filiere.manager = None
+            filiere.save(update_fields=["manager"])
+            if old_manager.role == "program_manager" and not old_manager.managed_filieres.exists():
+                old_manager.role = "teacher"
+                old_manager.save(update_fields=["role"])
+            cache.clear()
+        return Response({"detail": "Responsable retiré.", "manager_id": None, "manager_name": None})
+
+    try:
+        teacher = User.objects.get(pk=teacher_id)
+    except User.DoesNotExist:
+        return Response({"detail": "Enseignant introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if teacher.role not in ("teacher", "program_manager"):
+        return Response(
+            {"detail": "Seul un enseignant peut être responsable de filière."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Same teacher already assigned to this filiere → no-op
+    if filiere.manager == teacher:
+        return Response({
+            "detail": f"{teacher.full_name} est déjà responsable de cette filière.",
+            "manager_id": teacher.id,
+            "manager_name": teacher.full_name,
+        })
+
+    # Step 1: If teacher already manages another filiere, remove them
+    if teacher.managed_filieres.exists():
+        for other in teacher.managed_filieres.exclude(pk=filiere.pk):
+            other.manager = None
+            other.save(update_fields=["manager"])
+
+    # Step 2: If this filiere has a different manager, remove them
+    if filiere.manager and filiere.manager != teacher:
+        old_manager = filiere.manager
+        filiere.manager = None
+        filiere.save(update_fields=["manager"])
+        if old_manager.role == "program_manager" and not old_manager.managed_filieres.exists():
+            old_manager.role = "teacher"
+            old_manager.save(update_fields=["role"])
+
+    # Step 3: Assign the teacher as manager
+    teacher.role = "program_manager"
+    teacher.save(update_fields=["role"])
+    filiere.manager = teacher
+    filiere.save(update_fields=["manager"])
+    cache.clear()
+
+    return Response({
+        "detail": f"{teacher.full_name} est maintenant responsable de {filiere.name}.",
+        "manager_id": teacher.id,
+        "manager_name": teacher.full_name,
+    })
 
 
 @api_view(["GET"])
