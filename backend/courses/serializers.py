@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import serializers
 
 from attendance.utils import round_coordinate
@@ -66,6 +67,24 @@ class SessionSerializer(serializers.ModelSerializer):
         if user and getattr(user, "is_authenticated", False) and user.role == "teacher":
             self.fields["teacher"].required = False
             self.fields["teacher"].read_only = True
+        if user and getattr(user, "is_authenticated", False) and user.role == "department_head":
+            dept = user.headed_department.first()
+            if dept:
+                dept_classe_ids = Classe.objects.filter(
+                    Q(department=dept) | Q(filiere__department=dept)
+                ).values_list("id", flat=True).distinct()
+                dept_module_ids = Module.objects.filter(filiere__department=dept).values_list("id", flat=True)
+                dept_teacher_ids = User.objects.filter(
+                    Q(role="teacher")
+                    & (Q(assigned_classes__department=dept)
+                       | Q(assigned_classes__filiere__department=dept)
+                       | Q(sessions__classe__department=dept)
+                       | Q(sessions__classe__filiere__department=dept)
+                       | Q(taught_modules__filiere__department=dept))
+                ).values_list("id", flat=True).distinct()
+                self.fields["classe"].queryset = Classe.objects.filter(id__in=list(dept_classe_ids))
+                self.fields["module_id"].queryset = Module.objects.filter(id__in=list(dept_module_ids))
+                self.fields["teacher"].queryset = User.objects.filter(id__in=list(dept_teacher_ids))
 
     class Meta:
         model = Session

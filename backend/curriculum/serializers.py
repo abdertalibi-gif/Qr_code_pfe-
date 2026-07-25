@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import serializers
 from .models import Semestre, Filiere, Module
 from users.models import Department, User
@@ -17,6 +18,15 @@ class ModuleSerializer(serializers.ModelSerializer):
             "id", "name", "code", "filiere_id", "filiere_name",
             "coefficient", "total_hours", "teacher", "teacher_name",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if user and user.is_authenticated and user.role == "department_head":
+            dept = user.headed_department.first()
+            if dept:
+                self.fields["filiere_id"].queryset = Filiere.objects.filter(department=dept)
 
     def get_teacher_name(self, obj):
         if obj.teacher:
@@ -72,6 +82,16 @@ class FiliereSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     manager_name = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if user and user.is_authenticated and user.role == "department_head":
+            dept = user.headed_department.first()
+            if dept:
+                self.fields["department_id"].queryset = Department.objects.filter(id=dept.id)
+                self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__department=dept).distinct()
 
     class Meta:
         model = Filiere

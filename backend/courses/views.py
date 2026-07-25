@@ -15,6 +15,7 @@ from users.permissions import (
     IsAdmin,
     IsAdminOrTeacher,
     apply_role_filtering,
+    get_user_department,
     get_user_filiere_ids,
 )
 
@@ -58,6 +59,12 @@ class SessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         try:
             user = self.request.user
+            if user.role == "department_head":
+                dept = get_user_department(user)
+                classe = serializer.validated_data.get("classe")
+                if classe and dept:
+                    if classe.department_id != dept.id and classe.filiere.department_id != dept.id:
+                        raise serializers.ValidationError({"classe": "Cette classe ne fait pas partie de votre département."})
             if user.role == "program_manager":
                 filiere_ids = get_user_filiere_ids(user)
                 classe = serializer.validated_data.get("classe")

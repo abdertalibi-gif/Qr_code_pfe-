@@ -255,6 +255,18 @@ class ClasseViewSet(viewsets.ModelViewSet):
                     )
         serializer.save()
 
+    def perform_update(self, serializer):
+        user = self.request.user
+        filiere = serializer.validated_data.get("filiere")
+        if user.role == "department_head":
+            dept = get_user_department(user)
+            if filiere and dept and filiere.department_id != dept.id:
+                from rest_framework import serializers as rf_serializers
+                raise rf_serializers.ValidationError(
+                    {"filiere": "Vous ne pouvez modifier une classe que dans votre département."}
+                )
+        serializer.save()
+
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
