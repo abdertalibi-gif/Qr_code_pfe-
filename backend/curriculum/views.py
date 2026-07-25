@@ -648,12 +648,32 @@ def curriculum_view(request):
     if Semestre.objects.count() == 0:
         _seed_curriculum_data()
 
-    cache_key = _cache_key("curriculum")
+    cache_key = _cache_key("curriculum", str(request.user.role), str(request.user.id))
     cached = _cached_response(cache_key)
     if cached:
         return cached
 
     semestres = Semestre.objects.prefetch_related("filieres__modules").all()
+
+    # Role-based filtering
+    user = request.user
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        if dept:
+            semestres = Semestre.objects.filter(
+                filieres__department=dept
+            ).prefetch_related("filieres__modules").distinct()
+        else:
+            semestres = Semestre.objects.none()
+    elif user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(user)
+        if filiere_ids:
+            semestres = Semestre.objects.filter(
+                filieres__id__in=filiere_ids
+            ).prefetch_related("filieres__modules").distinct()
+        else:
+            semestres = Semestre.objects.none()
+
     serializer = SemestreSerializer(semestres, many=True)
 
     data = serializer.data
@@ -666,8 +686,9 @@ def curriculum_view(request):
 @permission_classes([IsAuthenticated])
 def semestre_list(request):
     department_id = request.query_params.get("department_id", "")
-    filiere_ids = request.query_params.get("filiere_ids", "")
-    cache_key = _cache_key("semestres", department_id, filiere_ids)
+    filiere_ids_param = request.query_params.get("filiere_ids", "")
+    user = request.user
+    cache_key = _cache_key("semestres", str(user.role), str(user.id), department_id, filiere_ids_param)
     cached = _cached_response(cache_key)
     if cached:
         return cached
@@ -676,10 +697,22 @@ def semestre_list(request):
         Semestre.objects
         .filter(filieres__niveau__gt="")
     )
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        if dept:
+            sems = sems.filter(filieres__department=dept)
+        else:
+            sems = Semestre.objects.none()
+    elif user.role == "program_manager":
+        pm_filiere_ids = get_user_filiere_ids(user)
+        if pm_filiere_ids:
+            sems = sems.filter(filieres__id__in=pm_filiere_ids)
+        else:
+            sems = Semestre.objects.none()
     if department_id:
         sems = sems.filter(filieres__department_id=department_id)
-    if filiere_ids:
-        ids = [int(x) for x in filiere_ids.split(",") if x.strip().isdigit()]
+    if filiere_ids_param:
+        ids = [int(x) for x in filiere_ids_param.split(",") if x.strip().isdigit()]
         if ids:
             sems = sems.filter(filieres__id__in=ids)
     sems = sems.distinct().order_by("name").values("id", "name")
@@ -910,6 +943,16 @@ def filiere_modules_by_semester(request, pk):
         filiere = Filiere.objects.select_related("semestre").get(pk=pk)
     except Filiere.DoesNotExist:
         return Response({"detail": "Filière introuvable."}, status=404)
+
+    user = request.user
+    if user.role == "department_head":
+        dept = get_user_department(user)
+        if not dept or filiere.department_id != dept.id:
+            return Response({"detail": "Permission refusée."}, status=403)
+    elif user.role == "program_manager":
+        filiere_ids = get_user_filiere_ids(user)
+        if filiere.id not in filiere_ids:
+            return Response({"detail": "Permission refusée."}, status=403)
 
     niveau = filiere.niveau
     from users.models import NIVEAU_SEMESTRE_MAP

@@ -472,6 +472,21 @@ class ClasseSerializer(serializers.ModelSerializer):
                 self.fields["module_id"].queryset = Module.objects.filter(id__in=dept_module_ids)
                 self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__department=dept).distinct()
                 self.fields["teacher_id"].queryset = User.objects.filter(id__in=list(dept_teacher_ids))
+        if user and user.is_authenticated and user.role == "program_manager":
+            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            if filiere_ids:
+                pm_filieres = Filiere.objects.filter(id__in=filiere_ids)
+                pm_module_ids = Module.objects.filter(filiere_id__in=filiere_ids).values_list("id", flat=True)
+                pm_teacher_ids = User.objects.filter(
+                    Q(role="teacher")
+                    & (Q(assigned_classes__filiere_id__in=filiere_ids)
+                       | Q(sessions__classe__filiere_id__in=filiere_ids)
+                       | Q(taught_modules__filiere_id__in=filiere_ids))
+                ).values_list("id", flat=True).distinct()
+                self.fields["filiere_id"].queryset = pm_filieres
+                self.fields["module_id"].queryset = Module.objects.filter(id__in=list(pm_module_ids))
+                self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__id__in=filiere_ids).distinct()
+                self.fields["teacher_id"].queryset = User.objects.filter(id__in=list(pm_teacher_ids))
 
     class Meta:
         model = Classe

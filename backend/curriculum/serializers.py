@@ -27,6 +27,10 @@ class ModuleSerializer(serializers.ModelSerializer):
             dept = user.headed_department.first()
             if dept:
                 self.fields["filiere_id"].queryset = Filiere.objects.filter(department=dept)
+        if user and user.is_authenticated and user.role == "program_manager":
+            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            if filiere_ids:
+                self.fields["filiere_id"].queryset = Filiere.objects.filter(id__in=filiere_ids)
 
     def get_teacher_name(self, obj):
         if obj.teacher:
@@ -92,6 +96,12 @@ class FiliereSerializer(serializers.ModelSerializer):
             if dept:
                 self.fields["department_id"].queryset = Department.objects.filter(id=dept.id)
                 self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__department=dept).distinct()
+        if user and user.is_authenticated and user.role == "program_manager":
+            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            if filiere_ids:
+                dept_ids = Filiere.objects.filter(id__in=filiere_ids).values_list("department_id", flat=True).distinct()
+                self.fields["department_id"].queryset = Department.objects.filter(id__in=list(dept_ids))
+                self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__id__in=filiere_ids).distinct()
 
     class Meta:
         model = Filiere

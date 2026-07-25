@@ -265,6 +265,13 @@ class ClasseViewSet(viewsets.ModelViewSet):
                 raise rf_serializers.ValidationError(
                     {"filiere": "Vous ne pouvez modifier une classe que dans votre département."}
                 )
+        if user.role == "program_manager":
+            filiere_ids = get_user_filiere_ids(user)
+            if filiere and filiere_ids and filiere.id not in filiere_ids:
+                from rest_framework import serializers as rf_serializers
+                raise rf_serializers.ValidationError(
+                    {"filiere": "Vous ne pouvez modifier une classe que dans votre filière."}
+                )
         serializer.save()
 
     def create(self, request, *args, **kwargs):
