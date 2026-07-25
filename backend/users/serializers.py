@@ -213,8 +213,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 {"password_confirm": "Passwords do not match."}
             )
         data.pop("password_confirm", None)
+        role = data.get("role") or (getattr(self.instance, "role", None) if self.instance else None) or "teacher"
+        email = data.get("email", "")
+        if email:
+            if role == "student":
+                if not email.endswith("@edu.umi.ac.ma"):
+                    raise serializers.ValidationError({"email": "L'email étudiant doit être @edu.umi.ac.ma."})
+            elif not email.endswith("@umi.ac.ma"):
+                raise serializers.ValidationError({"email": "L'email doit être @umi.ac.ma."})
         assigned = data.get("assigned_classes", [])
-        role = data.get("role", "teacher")
         can_have_classes = ("teacher", "department_head", "program_manager")
         if role not in can_have_classes and assigned:
             raise serializers.ValidationError(
@@ -330,6 +337,13 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         role = data.get("role", getattr(self.instance, "role", None))
+        email = data.get("email", "")
+        if email and role:
+            if role == "student":
+                if not email.endswith("@edu.umi.ac.ma"):
+                    raise serializers.ValidationError({"email": "L'email étudiant doit être @edu.umi.ac.ma."})
+            elif not email.endswith("@umi.ac.ma"):
+                raise serializers.ValidationError({"email": "L'email doit être @umi.ac.ma."})
         assigned = data.get("assigned_classes")
         can_have_classes = ("teacher", "department_head", "program_manager")
         if assigned is not None and role not in can_have_classes and assigned:

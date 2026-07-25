@@ -29,7 +29,7 @@ from users.models import Classe, Student, StudentModuleEnrollment, User
 
 logger = logging.getLogger(__name__)
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+STUDENT_EMAIL_RE = re.compile(r"^[^@\s]+@edu\.umi\.ac\.ma$")
 
 HEADER_ALIASES = {
     "code": {
@@ -190,7 +190,7 @@ def parse_import_file(uploaded_file) -> tuple[list[str], list[list[Any]]]:
 def _validate_email_value(email: str) -> bool:
     if not email:
         return False
-    if not EMAIL_RE.match(email):
+    if not STUDENT_EMAIL_RE.match(email):
         return False
     try:
         validate_email(email)
@@ -568,14 +568,14 @@ def build_import_template_xlsx() -> bytes:
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
     sample_data = [
-        ["M123456789", "Benali",   "Ayman",   "ayman.benali@umi.ac.ma",   "0612345678"],
-        ["M987654321", "Alaoui",   "Fatima",  "fatima.alaoui@umi.ac.ma",  "0612345679"],
-        ["M456789123", "Idrissi",  "Karim",   "karim.idrissi@umi.ac.ma",  "0612345680"],
-        ["M321654987", "Zahraoui", "Nadia",   "nadia.zahraoui@umi.ac.ma", "0612345681"],
-        ["M741852963", "El Amrani","Youssef", "youssef.elamrani@umi.ac.ma","0612345682"],
-        ["M852963741", "Bennani",  "Sara",    "sara.bennani@umi.ac.ma",   "0612345683"],
-        ["M159753456", "Tazi",     "Omar",    "omar.tazi@umi.ac.ma",      "0612345684"],
-        ["M357951852", "Fassi",    "Imane",   "imane.fassi@umi.ac.ma",    "0612345685"],
+        ["M123456789", "Benali",   "Ayman",   "ayman.benali@edu.umi.ac.ma",   "0612345678"],
+        ["M987654321", "Alaoui",   "Fatima",  "fatima.alaoui@edu.umi.ac.ma",  "0612345679"],
+        ["M456789123", "Idrissi",  "Karim",   "karim.idrissi@edu.umi.ac.ma",  "0612345680"],
+        ["M321654987", "Zahraoui", "Nadia",   "nadia.zahraoui@edu.umi.ac.ma", "0612345681"],
+        ["M741852963", "El Amrani","Youssef", "youssef.elamrani@edu.umi.ac.ma","0612345682"],
+        ["M852963741", "Bennani",  "Sara",    "sara.bennani@edu.umi.ac.ma",   "0612345683"],
+        ["M159753456", "Tazi",     "Omar",    "omar.tazi@edu.umi.ac.ma",      "0612345684"],
+        ["M357951852", "Fassi",    "Imane",   "imane.fassi@edu.umi.ac.ma",    "0612345685"],
     ]
     for row in sample_data:
         sheet.append(row)
@@ -749,7 +749,7 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
             row_errors.append("Module obligatoire.")
         if email:
             if not _validate_email_value(email):
-                row_errors.append("Format d'email invalide.")
+                row_errors.append("Email invalide. Seuls les emails @edu.umi.ac.ma sont acceptés.")
             elif email in seen_emails:
                 row_errors.append(f"Email en double (ligne {seen_emails[email]}).")
             else:
@@ -882,15 +882,15 @@ def build_complete_import_template_xlsx() -> bytes:
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
     sample_data = [
-        ["Benali",   "Ayman",   "M123456789", "ayman.benali@umi.ac.ma",   "Pass1234", "LIC", "Informatique",            "S3", "Java"],
-        ["Alaoui",   "Fatima",  "M987654321", "fatima.alaoui@umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Java"],
-        ["Idrissi",  "Karim",   "M456789123", "karim.idrissi@umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Python"],
-        ["Zahraoui", "Nadia",   "M321654987", "nadia.zahraoui@umi.ac.ma", "Pass1234", "LIC", "Mathématiques",           "S3", "Algèbre"],
-        ["El Amrani","Youssef", "M741852963", "youssef.elamrani@umi.ac.ma","Pass1234","LIC", "Mathématiques",           "S3", "Analyse"],
-        ["Bennani",  "Sara",    "M852963741", "sara.bennani@umi.ac.ma",   "Pass1234", "MAS", "Génie Logiciel",          "S1", "Architecture"],
-        ["Tazi",     "Omar",    "M159753456", "omar.tazi@umi.ac.ma",      "Pass1234", "MAS", "Génie Logiciel",          "S1", "UML"],
-        ["Fassi",    "Imane",   "M357951852", "imane.fassi@umi.ac.ma",    "Pass1234", "MAS", "Sécurité Informatique",   "S2", "Cryptographie"],
-        ["Chraibi",  "Amine",   "M753159456", "amine.chraibi@umi.ac.ma",  "Pass1234", "MAS", "Réseaux",                "S2", "Routage"],
+        ["Benali",   "Ayman",   "M123456789", "ayman.benali@edu.umi.ac.ma",   "Pass1234", "LIC", "Informatique",            "S3", "Java"],
+        ["Alaoui",   "Fatima",  "M987654321", "fatima.alaoui@edu.umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Java"],
+        ["Idrissi",  "Karim",   "M456789123", "karim.idrissi@edu.umi.ac.ma",  "Pass1234", "LIC", "Informatique",            "S3", "Python"],
+        ["Zahraoui", "Nadia",   "M321654987", "nadia.zahraoui@edu.umi.ac.ma", "Pass1234", "LIC", "Mathématiques",           "S3", "Algèbre"],
+        ["El Amrani","Youssef", "M741852963", "youssef.elamrani@edu.umi.ac.ma","Pass1234","LIC", "Mathématiques",           "S3", "Analyse"],
+        ["Bennani",  "Sara",    "M852963741", "sara.bennani@edu.umi.ac.ma",   "Pass1234", "MAS", "Génie Logiciel",          "S1", "Architecture"],
+        ["Tazi",     "Omar",    "M159753456", "omar.tazi@edu.umi.ac.ma",      "Pass1234", "MAS", "Génie Logiciel",          "S1", "UML"],
+        ["Fassi",    "Imane",   "M357951852", "imane.fassi@edu.umi.ac.ma",    "Pass1234", "MAS", "Sécurité Informatique",   "S2", "Cryptographie"],
+        ["Chraibi",  "Amine",   "M753159456", "amine.chraibi@edu.umi.ac.ma",  "Pass1234", "MAS", "Réseaux",                "S2", "Routage"],
     ]
     for row in sample_data:
         sheet.append(row)

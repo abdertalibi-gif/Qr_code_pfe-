@@ -166,7 +166,7 @@ class StudentImportAPITests(TestCase):
             code_massar="CNE010",
             first_name="Test",
             last_name="Student",
-            email="test@umi.ac.ma",
+            email="test@edu.umi.ac.ma",
             classe=self.classe,
         )
         StudentModuleEnrollment.objects.create(student=student, module=self.module)
