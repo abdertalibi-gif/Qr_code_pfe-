@@ -20,7 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Amphitheater, Block, Classe, Department, Room, Student, User
+from .models import Amphitheater, Block, Classe, Department, PasswordResetToken, Room, Student, User
 from .permissions import (
     IsAdmin,
     IsAdminOrDepartmentHeadOrFiliereManager,
@@ -1657,92 +1657,60 @@ class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        role = request.data.get("role", "student").strip().lower()
-        first_name = request.data.get("first_name", "").strip().lower()
-        last_name = request.data.get("last_name", "").strip().lower()
         email = request.data.get("email", "").strip().lower()
+        generic_msg = "Si cette adresse existe, un e-mail de réinitialisation a été envoyé."
 
-        missing = []
-        if not first_name:
-            missing.append("Prénom")
-        if not last_name:
-            missing.append("Nom")
         if not email:
-            missing.append("Email")
-
-        if role == "teacher":
-            identifier = request.data.get("cin", "").strip()
-            ident_label = "CNE / CIN"
-        else:
-            identifier = request.data.get("code_massar", "").strip()
-            ident_label = "Code Massar"
-
-        if not identifier:
-            missing.append(ident_label)
-
-        if missing:
             return Response(
-                {"detail": f"Champs obligatoires : {', '.join(missing)}."},
+                {"detail": "Veuillez saisir votre adresse e-mail."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         user = User.objects.filter(email=email, is_active=True).first()
-        msg = "Identifiants incorrects. Veuillez vérifier vos informations."
+        if not user:
+            logger.info(f"Password reset requested for unknown email: {email}")
+            return Response({"detail": generic_msg})
 
-        if user:
-            if role == "teacher":
-                if user.role != "teacher":
-                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-                if (
-                    user.first_name.strip().lower() != first_name
-                    or user.last_name.strip().lower() != last_name
-                    or (user.cin or "").strip().lower() != identifier.lower()
-                ):
-                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                from users.models import Student
-                student = Student.objects.filter(
-                    user=user,
-                    first_name__iexact=first_name,
-                    last_name__iexact=last_name,
-                    code_massar__iexact=identifier,
-                ).first()
-                if not student:
-                    return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        from django.contrib.auth.tokens import PasswordResetTokenGenerator
+        token_generator = PasswordResetTokenGenerator()
+        raw_token = token_generator.make_token(user)
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        reset_url = f"{request.scheme}://{request.get_host()}/password-reset/{uidb64}/{raw_token}/"
 
-            token_generator = PasswordResetTokenGenerator()
-            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = token_generator.make_token(user)
-            reset_url = f"{request.scheme}://{request.get_host()}/password-reset/{uidb64}/{token}/"
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        PasswordResetToken.objects.create(
+            user=user,
+            token=f"{uidb64}:{raw_token}",
+        )
 
-            logger.info(f"Password reset link for {email} (role={role}): {reset_url}")
+        logger.info(f"Password reset link for {email}: {reset_url}")
 
-            from django.conf import settings
-            try:
-                from django.core.mail import send_mail
-                subject = "Reinitialisation de votre mot de passe - PresenceQR"
-                message = (
-                    f"Bonjour {user.first_name},\n\n"
-                    f"Vous avez demande la reinitialisation de votre mot de passe.\n\n"
-                    f"Cliquez sur le lien ci-dessous pour definir un nouveau mot de passe :\n"
-                    f"{reset_url}\n\n"
-                    f"Ce lien est valable 24 heures.\n\n"
-                    f"---\nPresenceQR"
-                )
-                send_mail(
-                    subject, message,
-                    settings.DEFAULT_FROM_EMAIL or "noreply@presenceqr.ma",
-                    [email], fail_silently=True,
-                )
-            except Exception as e:
-                logger.warning(f"Email sending failed for {email}: {e}")
-
-            return Response({
-                "detail": "Identifiants vérifiés. Utilisez le lien ci-dessous.",
+        from django.conf import settings
+        try:
+            from django.core.mail import send_mail
+            from django.template.loader import render_to_string
+            html_message = render_to_string("email/password_reset.html", {
+                "user": user,
                 "reset_url": reset_url,
+                "expiry_minutes": 30,
             })
+            text_message = render_to_string("email/password_reset.txt", {
+                "user": user,
+                "reset_url": reset_url,
+                "expiry_minutes": 30,
+            })
+            send_mail(
+                subject="Réinitialisation de votre mot de passe — PresenceQR",
+                message=text_message,
+                from_email=settings.DEFAULT_FROM_EMAIL or "noreply@presenceqr.ma",
+                recipient_list=[email],
+                html_message=html_message,
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.warning(f"Email sending failed for {email}: {e}")
 
-        return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": generic_msg})
 
 
 class PasswordResetConfirmView(APIView):
@@ -1761,7 +1729,7 @@ class PasswordResetConfirmView(APIView):
 
         if len(new_password) < 8:
             return Response(
-                {"detail": "Le mot de passe doit contenir au moins 8 caracteres."},
+                {"detail": "Le mot de passe doit contenir au moins 8 caractères."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1770,22 +1738,38 @@ class PasswordResetConfirmView(APIView):
             user = User.objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             return Response(
-                {"detail": "Lien de reinitialisation invalide."},
+                {"detail": "Lien de réinitialisation invalide."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from django.contrib.auth.tokens import PasswordResetTokenGenerator
         token_generator = PasswordResetTokenGenerator()
         if not token_generator.check_token(user, token):
             return Response(
-                {"detail": "Lien de reinitialisation invalide ou expire."},
+                {"detail": "Lien de réinitialisation invalide ou expiré."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        stored_token = PasswordResetToken.objects.filter(
+            user=user,
+            token=f"{uidb64}:{token}",
+            used=False,
+        ).first()
+        if not stored_token or not stored_token.is_valid:
+            return Response(
+                {"detail": "Lien de réinitialisation invalide ou expiré."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stored_token.used = True
+        stored_token.save(update_fields=["used"])
+        PasswordResetToken.objects.filter(user=user, used=False).exclude(pk=stored_token.pk).update(used=True)
 
         user.set_password(new_password)
         user.save(update_fields=["password"])
         logger.info(f"Password reset successful for {user.email}")
 
-        return Response({"detail": "Mot de passe reinitialise avec succes."})
+        return Response({"detail": "Mot de passe réinitialisé avec succès."})
 
 
 @api_view(["GET"])

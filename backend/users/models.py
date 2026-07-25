@@ -389,6 +389,33 @@ class Student(models.Model):
         return f"{self.first_name} {self.last_name} ({self.code_massar})"
 
 
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+    token = models.CharField(max_length=255, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "password_reset_tokens"
+        verbose_name = "Jeton de réinitialisation"
+        verbose_name_plural = "Jetons de réinitialisation"
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return (timezone.now() - self.created_at).total_seconds() > 1800
+
+    @property
+    def is_valid(self):
+        return not self.used and not self.is_expired
+
+    def __str__(self):
+        return f"ResetToken(user={self.user_id}, used={self.used})"
+
+
 class StudentModuleEnrollment(models.Model):
     """Inscription d'un étudiant à un module (table de liaison M2M)."""
 
