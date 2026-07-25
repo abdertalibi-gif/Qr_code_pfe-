@@ -78,14 +78,45 @@
       <div id="resetModal" style="display:none">
         <h2 style="margin-top:1.5rem;font-size:1.1rem">Réinitialiser votre mot de passe</h2>
         <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem">
-          Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation.
+          Saisissez vos informations pour vérifier votre identité.
         </p>
+        <div class="field" style="margin-bottom:1rem">
+          <label>Vous êtes</label>
+          <div style="display:flex;gap:0.75rem;margin-top:0.25rem">
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:.88rem;cursor:pointer">
+              <input type="radio" name="resetRole" value="student" checked onchange="toggleResetRole()" />
+              Étudiant
+            </label>
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:.88rem;cursor:pointer">
+              <input type="radio" name="resetRole" value="teacher" onchange="toggleResetRole()" />
+              Enseignant
+            </label>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="resetFirstName">Prénom</label>
+            <input type="text" id="resetFirstName" placeholder="Votre prénom" />
+          </div>
+          <div class="field">
+            <label for="resetLastName">Nom</label>
+            <input type="text" id="resetLastName" placeholder="Votre nom" />
+          </div>
+        </div>
+        <div class="field" id="resetCodeMassarField">
+          <label for="resetCodeMassar">Code Massar</label>
+          <input type="text" id="resetCodeMassar" placeholder="ex: M123456789" />
+        </div>
+        <div class="field" id="resetCinField" style="display:none">
+          <label for="resetCin">CNE / CIN</label>
+          <input type="text" id="resetCin" placeholder="ex: NE123456" />
+        </div>
         <div class="field">
           <label for="resetEmail">Adresse e-mail</label>
           <input type="email" id="resetEmail" placeholder="vous@exemple.ma" />
         </div>
         <button class="btn" id="resetBtn" style="margin-top:0.5rem">
-          <span class="btn-label">Envoyer le lien</span>
+          <span class="btn-label">Vérifier et réinitialiser</span>
           <span class="spinner"></span>
         </button>
         <p style="margin-top:1rem;font-size:.82rem;text-align:center">
@@ -130,7 +161,6 @@
     const resetBtn = document.getElementById('resetBtn');
     const resetAlert = document.getElementById('resetAlert');
     const resetEmail = document.getElementById('resetEmail');
-    let resetCooldown = false;
 
     function showAlert(msg, type = 'error') {
       alertEl.className = `alert ${type}`;
@@ -152,15 +182,26 @@
       resetBtn.classList.toggle('loading', loading);
     }
 
+    function toggleResetRole() {
+      const isTeacher = document.querySelector('input[name="resetRole"]:checked').value === 'teacher';
+      document.getElementById('resetCodeMassarField').style.display = isTeacher ? 'none' : '';
+      document.getElementById('resetCinField').style.display = isTeacher ? '' : 'none';
+    }
+
     function showResetModal() {
       form.style.display = 'none';
       resetModal.style.display = 'block';
       resetAlert.className = 'alert';
       resetEmail.value = '';
-      resetEmail.disabled = false;
+      document.getElementById('resetFirstName').value = '';
+      document.getElementById('resetLastName').value = '';
+      document.getElementById('resetCodeMassar').value = '';
+      document.getElementById('resetCin').value = '';
+      document.querySelector('input[name="resetRole"][value="student"]').checked = true;
+      toggleResetRole();
       resetBtn.style.display = '';
-      resetCooldown = false;
-      resetEmail.focus();
+      resetEmail.disabled = false;
+      document.getElementById('resetFirstName').focus();
     }
 
     function showLoginForm() {
@@ -180,29 +221,51 @@
     });
 
     resetBtn.addEventListener('click', async function () {
-      if (resetCooldown) return;
+      const first_name = document.getElementById('resetFirstName').value.trim();
+      const last_name = document.getElementById('resetLastName').value.trim();
       const email = resetEmail.value.trim();
-      if (!email) {
-        showResetAlert('Veuillez saisir votre adresse e-mail.');
+      const role = document.querySelector('input[name="resetRole"]:checked').value;
+      const isTeacher = role === 'teacher';
+      const identifier = isTeacher
+        ? document.getElementById('resetCin').value.trim()
+        : document.getElementById('resetCodeMassar').value.trim();
+      const identLabel = isTeacher ? 'CNE / CIN' : 'Code Massar';
+      const missing = [];
+      if (!first_name) missing.push('Prénom');
+      if (!last_name) missing.push('Nom');
+      if (!identifier) missing.push(identLabel);
+      if (!email) missing.push('Email');
+      if (missing.length) {
+        showResetAlert('Champs obligatoires : ' + missing.join(', ') + '.');
         return;
       }
       setResetLoading(true);
+      const payload = { role, first_name, last_name, email };
+      if (isTeacher) payload.cin = identifier;
+      else payload.code_massar = identifier;
       try {
         const res = await fetch(API_BASE + '/auth/password-reset/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
-        showResetAlert(
-          data.detail || 'Si cette adresse existe, un e-mail de réinitialisation a été envoyé.',
-          'success'
-        );
+        if (!res.ok) {
+          showResetAlert(data.detail || 'Identifiants incorrects.');
+          setResetLoading(false);
+          return;
+        }
+        let message = data.detail || 'Identifiants vérifiés.';
+        if (data.reset_url) {
+          message = 'Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :<br><br>'
+                  + '<a href="' + data.reset_url + '" style="color:var(--primary);word-break:break-all">'
+                  + data.reset_url + '</a>';
+        }
+        showResetAlert(message, 'success');
         resetBtn.style.display = 'none';
         resetEmail.disabled = true;
-        resetCooldown = true;
       } catch (err) {
-        showResetAlert('Erreur réseau. Veuillez réessayer.');
+        showResetAlert('Erreur reseau. Veuillez reessayer.');
       } finally {
         setResetLoading(false);
       }

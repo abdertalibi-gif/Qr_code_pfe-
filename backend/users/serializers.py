@@ -702,6 +702,9 @@ class StudentSerializer(serializers.ModelSerializer):
     def validate(self, data):
         module_id = data.pop("module_id", None)
         classe = data.pop("classe", None)
+        email = data.get("email", "")
+        if email and not email.endswith("@edu.umi.ac.ma"):
+            raise serializers.ValidationError({"email": "L'email étudiant doit être @edu.umi.ac.ma."})
 
         if not module_id and not classe:
             raise serializers.ValidationError(

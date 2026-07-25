@@ -92,11 +92,11 @@ def _generate_code(existing: set[str]) -> str:
 
 
 def _generate_email(first_name: str, last_name: str, existing: set[str]) -> str:
-    base = f"{_slug(first_name)}.{_slug(last_name)}@umi.ac.ma"
+    base = f"{_slug(first_name)}.{_slug(last_name)}@edu.umi.ac.ma"
     if base not in existing:
         return base
     for i in range(2, 100):
-        candidate = f"{_slug(first_name)}.{_slug(last_name)}{i}@umi.ac.ma"
+        candidate = f"{_slug(first_name)}.{_slug(last_name)}{i}@edu.umi.ac.ma"
         if candidate not in existing:
             return candidate
     return base
