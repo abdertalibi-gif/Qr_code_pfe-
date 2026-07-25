@@ -439,7 +439,6 @@
       <h2>Départements</h2>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchDepartments" placeholder="Rechercher un département…" />
-        <button class="btn admin-only" id="btnManageFiliereManagers">🎯 Gérer les responsables</button>
         <button class="btn" id="btnOpenAddDepartment">+ Nouveau département</button>
       </div>
     </div>
@@ -451,6 +450,7 @@
               <th>Nom</th>
               <th>Chef de département</th>
               <th>Filières</th>
+              <th class="admin-only">Responsables de filière</th>
               <th class="admin-only">Actions</th>
             </tr>
           </thead>
@@ -3892,7 +3892,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
     const tbody = document.getElementById('departmentsBody');
     const list = allDepartments.filter(function (d) { return !q || d.name.toLowerCase().includes(q); });
     if (!list.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun département trouvé.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun département trouvé.</td></tr>';
       return;
     }
 tbody.innerHTML = list.map(function (d) {
@@ -3903,6 +3903,7 @@ tbody.innerHTML = list.map(function (d) {
         '<td><strong>' + esc(d.name) + '</strong></td>' +
         '<td>' + esc(headName) + '</td>' +
         '<td>' + filiereCount + '</td>' +
+        '<td class="admin-only"><button class="btn-sm outline admin-only" onclick="manageFiliereManagers(' + d.id + ')">🎯 Gérer</button></td>' +
         '<td class="actions-cell admin-only">' +
           '<button class="btn-sm admin-only" onclick="editDepartment(' + d.id + ')">✏️ Modifier</button>' +
           '<button class="btn-sm outline admin-only" onclick="deleteDepartment(' + d.id + ')">🗑️</button>' +
@@ -3920,16 +3921,10 @@ tbody.innerHTML = list.map(function (d) {
     if (isRestricted) {
       var deptBtn = document.getElementById('btnOpenAddDepartment');
       if (deptBtn) deptBtn.style.display = 'none';
-      var mgrBtn = document.getElementById('btnManageFiliereManagers');
-      if (mgrBtn) mgrBtn.style.display = 'none';
     }
 
     document.getElementById('btnOpenAddDepartment').addEventListener('click', function () {
       openDepartmentModal(null);
-    });
-
-    document.getElementById('btnManageFiliereManagers').addEventListener('click', function () {
-      manageFiliereManagers();
     });
 
     document.getElementById('departmentForm').addEventListener('submit', async function (e) {
@@ -3999,27 +3994,37 @@ tbody.innerHTML = list.map(function (d) {
   }
 
   /* ── Filiere Managers ── */
+  var _currentDeptIdForManagers = null;
+  var _filiereManagerChanges = [];
   var _managersLoading = false;
 
-  async function manageFiliereManagers() {
+  async function manageFiliereManagers(deptId) {
     if (_managersLoading) return;
     _managersLoading = true;
-    document.getElementById('filiereManagersTitle').textContent = '🎯 Gérer les responsables de filière';
+    console.log("Opening manage department ID:", deptId);
+    _currentDeptIdForManagers = deptId;
+    _filiereManagerChanges = [];
+    var dept = allDepartments.find(function (d) { return d.id === deptId; });
+    document.getElementById('filiereManagersTitle').textContent =
+      '🎯 Gérer les responsables — ' + (dept ? dept.name : 'Département #' + deptId);
 
     try {
-      var [filieres, users] = await Promise.all([
-        API.apiFetch('/curriculum/filieres/'),
-        API.apiFetch('/users/'),
-      ]);
-      filieres = Array.isArray(filieres) ? filieres : (filieres.results || []);
-      var allUsers = Array.isArray(users) ? users : (users.results || []);
-      var eligibleUsers = allUsers.filter(function (u) {
-        return u.role === 'teacher' || u.role === 'program_manager';
-      });
+      // Load filieres for this department (deduplicated by name+department)
+      var filieres = await API.apiFetch('/curriculum/filiere-managers/?department_id=' + deptId);
+      filieres = Array.isArray(filieres) ? filieres : [];
+
+      // Load eligible users (program_manager role only)
+      var eligible = [];
+      try {
+        var users = await API.apiFetch('/users/?role=program_manager');
+        eligible = Array.isArray(users) ? users : (users.results || []);
+      } catch (e) {
+        eligible = [];
+      }
 
       var tbody = document.getElementById('filiereManagersBody');
       if (!filieres.length) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière trouvée.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune filière dans ce département.</td></tr>';
         document.getElementById('btnSaveFiliereManagers').disabled = true;
         openModal('modalFiliereManagers');
         releaseManagersLockOnClose();
@@ -4030,11 +4035,11 @@ tbody.innerHTML = list.map(function (d) {
         var currentManagerId = f.manager_id || '';
         var currentManagerName = '';
         if (currentManagerId) {
-          var u = allUsers.find(function (x) { return String(x.id) === String(currentManagerId); });
+          var u = eligible.find(function (x) { return String(x.id) === String(currentManagerId); });
           currentManagerName = u ? (u.full_name || u.first_name + ' ' + u.last_name) : '#' + currentManagerId;
         }
         var options = '<option value="">— Non assigné —</option>';
-        eligibleUsers.forEach(function (u) {
+        eligible.forEach(function (u) {
           var selected = String(u.id) === String(currentManagerId) ? ' selected' : '';
           options += '<option value="' + u.id + '"' + selected + '>' +
             esc(u.full_name || u.first_name + ' ' + u.last_name) + ' (' + esc(u.email) + ')</option>';
@@ -4067,21 +4072,29 @@ tbody.innerHTML = list.map(function (d) {
   }
 
   async function saveFiliereManagers() {
+    console.log("Saving filiere managers");
     var selects = document.querySelectorAll('.filiere-manager-select');
-    var successCount = 0;
-    var errorCount = 0;
-    for (var i = 0; i < selects.length; i++) {
-      var sel = selects[i];
+    var updates = [];
+    selects.forEach(function (sel) {
       var filiereId = sel.dataset.filiereId;
       var managerId = sel.value || null;
+      updates.push({ id: filiereId, manager_id: managerId });
+    });
+
+    var successCount = 0;
+    var errorCount = 0;
+    for (var i = 0; i < updates.length; i++) {
       try {
-        await API.apiFetch('/curriculum/filieres/' + parseInt(filiereId) + '/assign-manager/', {
-          method: 'POST',
-          body: JSON.stringify({ manager_id: managerId ? parseInt(managerId) : null }),
+        await API.apiFetch('/curriculum/filieres/' + parseInt(updates[i].id) + '/', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            manager_id: updates[i].manager_id ? parseInt(updates[i].manager_id) : null,
+          }),
           headers: { 'Content-Type': 'application/json' },
         });
         successCount++;
       } catch (e) {
+        console.log("Error saving filiere", updates[i].id, e.message);
         errorCount++;
       }
     }
