@@ -2,6 +2,7 @@ from django.db.models import Q
 from rest_framework import serializers
 from .models import Semestre, Filiere, Module
 from users.models import Department, User
+from users.permissions import get_user_filiere_ids
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -28,7 +29,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             if dept:
                 self.fields["filiere_id"].queryset = Filiere.objects.filter(department=dept)
         if user and user.is_authenticated and user.role == "program_manager":
-            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            filiere_ids = get_user_filiere_ids(user)
             if filiere_ids:
                 self.fields["filiere_id"].queryset = Filiere.objects.filter(id__in=filiere_ids)
 
@@ -97,7 +98,7 @@ class FiliereSerializer(serializers.ModelSerializer):
                 self.fields["department_id"].queryset = Department.objects.filter(id=dept.id)
                 self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__department=dept).distinct()
         if user and user.is_authenticated and user.role == "program_manager":
-            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            filiere_ids = get_user_filiere_ids(user)
             if filiere_ids:
                 dept_ids = Filiere.objects.filter(id__in=filiere_ids).values_list("department_id", flat=True).distinct()
                 self.fields["department_id"].queryset = Department.objects.filter(id__in=list(dept_ids))
@@ -119,6 +120,27 @@ class FiliereSerializer(serializers.ModelSerializer):
                 "Seul un compte avec le rôle Responsable de Filière peut être affecté."
             )
         return value
+
+    def update(self, instance, validated_data):
+        manager_updated = "manager" in validated_data
+        new_manager = validated_data.pop("manager", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if manager_updated:
+            instance.manager = new_manager
+        instance.save()
+        if manager_updated and instance.name and instance.department_id:
+            same_filieres = Filiere.objects.filter(
+                name=instance.name, department_id=instance.department_id
+            ).exclude(pk=instance.pk)
+            if new_manager:
+                conflicting = same_filieres.exclude(manager=new_manager).exclude(manager__isnull=True)
+                if conflicting.exists():
+                    other = conflicting.first()
+                    msg = "Cette filière a déjà un responsable (%s)." % other.manager.get_full_name()
+                    raise serializers.ValidationError({"manager_id": msg})
+            same_filieres.update(manager=new_manager)
+        return instance
 
     def get_modules(self, obj):
         return [{"id": module.id, "name": module.name} for module in obj.modules.all()]

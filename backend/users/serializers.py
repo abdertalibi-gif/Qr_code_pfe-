@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from curriculum.models import Filiere, Module, Semestre
 from users.models import NIVEAU_SEMESTRE_MAP
+from users.permissions import get_user_filiere_ids
 from .models import Amphitheater, Block, Classe, Department, Room, Student, StudentModuleEnrollment, User
 
 
@@ -266,12 +267,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
             department.head = user
             department.save(update_fields=["head"])
         if filiere and role == "program_manager":
-            if filiere.manager and filiere.manager != user:
-                raise serializers.ValidationError(
-                    {"filiere_id": "Cette filière a déjà un responsable."}
-                )
-            filiere.manager = user
-            filiere.save(update_fields=["manager"])
+            from curriculum.models import Filiere as FiliereModel
+            same_filieres = FiliereModel.objects.filter(name=filiere.name, department=filiere.department)
+            conflicting = same_filieres.exclude(manager=user).exclude(manager__isnull=True)
+            if conflicting.exists():
+                other = conflicting.first()
+                msg = "Cette filière a déjà un responsable (%s)." % other.manager.get_full_name()
+                raise serializers.ValidationError({"filiere_id": msg})
+            same_filieres.update(manager=user)
         return user
 
 
@@ -378,17 +381,20 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 old_dept.head = None
                 old_dept.save(update_fields=["head"])
         if filiere is not None and role == "program_manager":
-            if filiere.manager and filiere.manager != instance:
-                raise serializers.ValidationError(
-                    {"filiere_id": "Cette filière a déjà un responsable."}
-                )
-            filiere.manager = instance
-            filiere.save(update_fields=["manager"])
+            from curriculum.models import Filiere as FiliereModel
+            same_filieres = FiliereModel.objects.filter(name=filiere.name, department=filiere.department)
+            conflicting = same_filieres.exclude(manager=instance).exclude(manager__isnull=True)
+            if conflicting.exists():
+                other = conflicting.first()
+                msg = "Cette filière a déjà un responsable (%s)." % other.manager.get_full_name()
+                raise serializers.ValidationError({"filiere_id": msg})
+            same_filieres.update(manager=instance)
         elif old_role == "program_manager" and role != "program_manager":
+            from curriculum.models import Filiere as FiliereModel
             old_filieres = instance.managed_filieres.all()
-            for old_f in old_filieres:
-                old_f.manager = None
-                old_f.save(update_fields=["manager"])
+            old_pairs = set(old_filieres.values_list("name", "department_id"))
+            for name, dept_id in old_pairs:
+                FiliereModel.objects.filter(name=name, department_id=dept_id).update(manager=None)
         return instance
 
 class ClasseSerializer(serializers.ModelSerializer):
@@ -473,7 +479,7 @@ class ClasseSerializer(serializers.ModelSerializer):
                 self.fields["semestre_id"].queryset = Semestre.objects.filter(filieres__department=dept).distinct()
                 self.fields["teacher_id"].queryset = User.objects.filter(id__in=list(dept_teacher_ids))
         if user and user.is_authenticated and user.role == "program_manager":
-            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            filiere_ids = get_user_filiere_ids(user)
             if filiere_ids:
                 pm_filieres = Filiere.objects.filter(id__in=filiere_ids)
                 pm_module_ids = Module.objects.filter(filiere_id__in=filiere_ids).values_list("id", flat=True)

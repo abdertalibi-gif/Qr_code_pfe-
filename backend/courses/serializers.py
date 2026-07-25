@@ -4,6 +4,7 @@ from rest_framework import serializers
 from attendance.utils import round_coordinate
 from curriculum.models import Module
 from users.models import Classe, User, Block, Room, Amphitheater
+from users.permissions import get_user_filiere_ids
 
 from .models import Session
 
@@ -86,7 +87,7 @@ class SessionSerializer(serializers.ModelSerializer):
                 self.fields["module_id"].queryset = Module.objects.filter(id__in=list(dept_module_ids))
                 self.fields["teacher"].queryset = User.objects.filter(id__in=list(dept_teacher_ids))
         if user and getattr(user, "is_authenticated", False) and user.role == "program_manager":
-            filiere_ids = list(user.managed_filieres.values_list("id", flat=True))
+            filiere_ids = get_user_filiere_ids(user)
             if filiere_ids:
                 pm_classe_ids = Classe.objects.filter(filiere_id__in=filiere_ids).values_list("id", flat=True).distinct()
                 pm_module_ids = Module.objects.filter(filiere_id__in=filiere_ids).values_list("id", flat=True)

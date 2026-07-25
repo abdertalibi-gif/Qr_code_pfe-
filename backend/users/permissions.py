@@ -66,10 +66,26 @@ def get_user_department(user):
 
 
 def get_user_filiere_ids(user):
-    """Return list of filiere IDs managed by a program_manager, or empty."""
+    """Return list of filiere IDs managed by a program_manager, or empty.
+    
+    Expands to ALL Filiere rows sharing the same (name, department) —
+    crucial because each filiere concept (e.g. "Hygiène Info") has one
+    DB row per semestre, but the manager must see ALL semestres.
+    """
     if user.role != "program_manager":
         return []
-    return list(user.managed_filieres.values_list("id", flat=True))
+    managed_ids = list(user.managed_filieres.values_list("id", flat=True))
+    if not managed_ids:
+        return []
+    # Expand to all rows of the same filiere (same name + department)
+    from curriculum.models import Filiere
+    pairs = Filiere.objects.filter(id__in=managed_ids).values_list("name", "department_id")
+    if not pairs:
+        return managed_ids
+    q = Q()
+    for name, dept_id in pairs:
+        q |= Q(name=name, department_id=dept_id)
+    return list(Filiere.objects.filter(q).values_list("id", flat=True))
 
 
 def apply_role_filtering(queryset, model_type, request):
