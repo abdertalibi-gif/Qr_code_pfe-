@@ -5,6 +5,9 @@ import '../../constants/app_constants.dart';
 import '../../constants/app_theme.dart';
 import '../../models/session_model.dart';
 import '../../providers/teacher_provider.dart';
+import '../../services/file_share_service.dart';
+import '../../services/teacher_service.dart';
+import '../../utils/app_exceptions.dart';
 
 /// Liste des classes et séances de l'enseignant.
 class SessionsScreen extends StatefulWidget {
@@ -18,6 +21,26 @@ class _SessionsScreenState extends State<SessionsScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
+  int? _exportingId;
+
+  Future<void> _exportXlsx(int sessionId) async {
+    if (_exportingId != null) return;
+    setState(() => _exportingId = sessionId);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await TeacherService().exportSessionXlsx(sessionId);
+      await FileShareService.shareXlsx(bytes, 'presence_$sessionId.xlsx');
+    } on AppException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Export indisponible')),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingId = null);
+    }
+  }
 
   Future<void> _openForm({SessionModel? session}) async {
     await Navigator.of(context).pushNamed(
@@ -127,8 +150,10 @@ class _SessionsScreenState extends State<SessionsScreen>
                 ...provider.sessions.map(
                   (s) => _SessionTile(
                     session: s,
+                    exporting: _exportingId == s.id,
                     onTap: () => _openDetail(s.id),
                     onEdit: () => _openForm(session: s),
+                    onExport: () => _exportXlsx(s.id),
                   ),
                 ),
             ],
@@ -141,12 +166,16 @@ class _SessionsScreenState extends State<SessionsScreen>
 
 class _SessionTile extends StatelessWidget {
   final SessionModel session;
+  final bool exporting;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onExport;
   const _SessionTile({
     required this.session,
+    this.exporting = false,
     required this.onTap,
     required this.onEdit,
+    required this.onExport,
   });
 
   @override
@@ -194,6 +223,18 @@ class _SessionTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            IconButton(
+              icon: exporting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.grid_on_rounded,
+                      color: AppTheme.primary, size: 20),
+              onPressed: exporting ? null : onExport,
+              tooltip: 'Feuille de présence (Excel)',
+            ),
             Chip(
               label: Text(session.sessionType,
                   style: const TextStyle(fontSize: 10)),

@@ -172,9 +172,34 @@ class _SessionHeader extends StatelessWidget {
 
 // ─── Onglet Présences ────────────────────────────────────────────────────
 
-class _AttendanceTab extends StatelessWidget {
+class _AttendanceTab extends StatefulWidget {
   final int sessionId;
   const _AttendanceTab({required this.sessionId});
+
+  @override
+  State<_AttendanceTab> createState() => _AttendanceTabState();
+}
+
+class _AttendanceTabState extends State<_AttendanceTab> {
+  bool _exporting = false;
+
+  Future<void> _exportXlsx() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await TeacherService().exportSessionXlsx(widget.sessionId);
+      await FileShareService.shareXlsx(bytes, 'presence_${widget.sessionId}.xlsx');
+    } on AppException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Export indisponible')),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,41 +207,65 @@ class _AttendanceTab extends StatelessWidget {
     if (provider.sessionDetailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (provider.sessionAttendees.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => provider.loadSessionDetail(sessionId),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 80),
-            Icon(Icons.people_outline_rounded,
-                size: 56, color: Colors.grey),
-            SizedBox(height: 12),
-            Center(
-              child: Text('Aucune présence enregistrée pour l\'instant',
-                  style: TextStyle(color: Colors.grey)),
-            ),
-            SizedBox(height: 8),
-            Center(
-              child: Text(
-                'Les étudiants scannent le QR pour être enregistrés.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final attendees = provider.sessionAttendees;
     return RefreshIndicator(
-      onRefresh: () => provider.loadSessionDetail(sessionId),
+      onRefresh: () => provider.loadSessionDetail(widget.sessionId),
       color: AppTheme.primary,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        itemCount: provider.sessionAttendees.length,
+        itemCount: attendees.isEmpty ? 2 : attendees.length + 1,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, i) {
-          final a = provider.sessionAttendees[i];
+          if (i == 0) {
+            return OutlinedButton.icon(
+              onPressed: _exporting ? null : _exportXlsx,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: _exporting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.grid_on_rounded,
+                      color: AppTheme.primary),
+              label: Text(_exporting
+                  ? 'Génération en cours…'
+                  : 'Exporter la feuille de présence (Excel)'),
+            );
+          }
+          if (attendees.isEmpty) {
+            return Card(
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 24),
+                child: Column(
+                  children: const [
+                    Icon(Icons.people_outline_rounded,
+                        size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text(
+                      'Aucune présence enregistrée pour l\'instant',
+                      style: TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Les étudiants scannent le QR pour être enregistrés.',
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          final a = attendees[i - 1];
           final isDark = Theme.of(context).brightness == Brightness.dark;
           return Card(
             elevation: 0,
