@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/auth_model.dart';
 import '../models/user_model.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';

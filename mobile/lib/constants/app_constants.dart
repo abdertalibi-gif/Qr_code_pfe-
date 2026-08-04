@@ -33,6 +33,30 @@ class AppConstants {
     return 'http://$devHost:$apiPort/api/v1';
   }
 
+  /// WebSocket root (no trailing slash) derived from [baseUrl].
+  /// The Django channels routes live under `/ws/...` (not `/api/v1/...`),
+  /// so the `/api/v1` prefix is stripped from the base URL.
+  static String get wsServerRoot {
+    final base = _stripApiPrefix(baseUrl);
+    if (base.startsWith('https://')) {
+      return 'wss://${base.substring(8)}';
+    }
+    if (base.startsWith('http://')) {
+      return 'ws://${base.substring(7)}';
+    }
+    return base;
+  }
+
+  static String _stripApiPrefix(String url) {
+    if (url.endsWith('/api/v1')) return url.substring(0, url.length - 7);
+    if (url.endsWith('/api/v1/')) return url.substring(0, url.length - 8);
+    return url;
+  }
+
+  // ─── WebSocket paths ──────────────────────────────────────────────────────
+  static String wsTeacherLiveUri(int teacherId) => '$wsServerRoot/ws/attendance/live/teacher/$teacherId/';
+  static String wsSessionUri(int sessionId) => '$wsServerRoot/ws/attendance/$sessionId/';
+
   // ─── Endpoints ────────────────────────────────────────────────────────────
   static const String loginEndpoint = '/auth/login/';
   static const String refreshEndpoint = '/auth/refresh/';
@@ -41,6 +65,35 @@ class AppConstants {
   static const String validateAppAttendanceEndpoint = '/attendance/validate/app/';
   static const String myAttendanceEndpoint = '/attendance/my/';
   static const String appDeepLinkScheme = 'presenceqr';
+
+  // ─── Teacher / curriculum endpoints ──────────────────────────────────────
+  static const String classesEndpoint = '/classes/';
+  static const String sessionsEndpoint = '/sessions/';
+  static const String sessionAvailableLocationsEndpoint =
+      '/sessions/available-locations/';
+  static const String teachersEndpoint = '/teachers/';
+  static const String attendanceEndpoint = '/attendance/';
+  static const String curriculumEndpoint = '/curriculum/';
+  static const String curriculumModulesEndpoint = '/curriculum/modules/';
+  static const String curriculumNiveauxEndpoint = '/curriculum/niveaux/';
+  static const String statisticsEndpoint = '/statistics/';
+  static const String blocksEndpoint = '/blocks/';
+  static const String amphitheatersEndpoint = '/amphitheaters/';
+  static const String studentsEndpoint = '/students/';
+  static const String exportWizardEndpoint = '/attendance/export-wizard/';
+
+  static String sessionDetailEndpoint(int id) => '/sessions/$id/';
+  static String sessionGenerateQrEndpoint(int id) => '/sessions/$id/generate-qr/';
+  static String sessionCurrentQrEndpoint(int id) => '/sessions/$id/current-qr/';
+  static String sessionCloseEndpoint(int id) => '/sessions/$id/close/';
+  static String sessionAttendanceEndpoint(int id) => '/attendance/session/$id/';
+  static String sessionStatsEndpoint(int id) => '/attendance/session/$id/stats/';
+  static String sessionSuspiciousEndpoint(int id) =>
+      '/attendance/session/$id/suspicious/';
+  static String sessionExportEndpoint(int id) =>
+      '/attendance/session/$id/export/';
+  static String sessionReportEndpoint(int id) =>
+      '/attendance/session/$id/report/';
 
   // ─── SharedPreferences keys ───────────────────────────────────────────────
   static const String accessTokenKey = 'access_token';
@@ -61,6 +114,28 @@ class AppConstants {
   static const String routeValidation = '/validation';
   static const String routeSuccess = '/success';
   static const String routeError = '/error';
+
+  // ─── Teacher routes ───────────────────────────────────────────────────────
+  static const String routeTeacherHome = '/teacher/home';
+  static const String routeSessions = '/teacher/sessions';
+  static const String routeSessionForm = '/teacher/session-form';
+  static const String routeSessionDetail = '/teacher/session-detail';
+  static const String routeGenerateQr = '/teacher/generate-qr';
+  static const String routeTeacherProfile = '/teacher/profile';
+  static const String routeTeacherDashboard = '/teacher/dashboard';
+  static const String routeExport = '/teacher/export';
+
+  // ─── Student routes ───────────────────────────────────────────────────────
+  static const String routeStudentProfile = '/student/profile';
+  static const String routeStudentSchedule = '/student/schedule';
+  static const String routeStudentStats = '/student/stats';
+  static const String routeStudentModules = '/student/modules';
+  static const String routeStudentAbsences = '/student/absences';
+  static const String routeStudentQr = '/student/qr';
+  static const String routeStudentHome = '/student/home';
+
+  // ─── Other ────────────────────────────────────────────────────────────────
+  static const String routeRoleNotSupported = '/role-not-supported';
 
   // ─── Misc ─────────────────────────────────────────────────────────────────
   static const String appName = 'PrésenceQR';

@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:io' hide TimeoutException;
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,6 +99,26 @@ class DioClient {
     }
   }
 
+  Future<Response<T>> patch<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      return await _dio.patch<T>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+      );
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } on SocketException {
+      throw const NetworkException();
+    }
+  }
+
   Future<Response<T>> delete<T>(
     String path, {
     dynamic data,
@@ -111,6 +132,25 @@ class DioClient {
         queryParameters: queryParameters,
         options: options,
       );
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } on SocketException {
+      throw const NetworkException();
+    }
+  }
+
+  /// Fetches a raw binary payload (e.g. an XLSX export) as bytes.
+  Future<Uint8List> downloadBytes(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        path,
+        queryParameters: queryParameters,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
@@ -158,7 +198,6 @@ class DioClient {
         return const AppException('SSL certificate error.');
 
       case DioExceptionType.unknown:
-      default:
         if (e.error is SocketException) return const NetworkException();
         return AppException(e.message ?? 'Unknown error.');
     }

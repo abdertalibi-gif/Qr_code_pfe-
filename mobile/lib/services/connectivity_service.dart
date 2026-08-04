@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' hide TimeoutException;
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';

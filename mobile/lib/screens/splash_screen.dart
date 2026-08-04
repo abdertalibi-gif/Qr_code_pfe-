@@ -113,9 +113,25 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (authProvider.isAuthenticated) {
-      Navigator.of(context).pushReplacementNamed(AppConstants.routeHome);
+      _routeForRole(authProvider.user?.role);
     } else {
       Navigator.of(context).pushReplacementNamed(AppConstants.routeLogin);
+    }
+  }
+
+  /// Redirige selon le rôle de l'utilisateur.
+  void _routeForRole(String? role) {
+    switch (role) {
+      case 'teacher':
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeTeacherHome);
+      case 'student':
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeStudentHome);
+      default:
+        // Admin, department_head, program_manager : réservés au Web.
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeRoleNotSupported);
     }
   }
 

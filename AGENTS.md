@@ -102,3 +102,26 @@ Enseignant, DÃ©partement, FiliÃ¨re, Nb sÃ©ances CM/TD/TP, Total heures CM/TD/TP,
 - `backend/templates/admin-teachers.js` â€” openEditTeacher() (utilise modales admin.html)
 - `backend/templates/admin_teachers.html` â€” champs tIsDeptHead/etIsDeptHead (supprimÃ©s)
 - `backend/users/tests_import.py` â€” test mis Ã  jour pour email-match+massar update
+
+## Mobile (Flutter) : parité Enseignant / Étudiant — État
+- Objectif : replicer le Web pour roles 	eacher et student uniquement (autres roles ? ole_not_supported_screen.dart). Backend/Web inchangés.
+- mobile/lib — 0 erreur et 0 warning lutter analyze (seuls restent des infos withOpacity). lutter test OK. lutter build apk --debug OK.
+- Roles routés depuis splash_screen.dart / login_screen.dart via _routeForRole.
+
+### Enseignant (espaces complet)
+- Dashboard (TeacherDashboardScreen) : carte bienvenue, grille stats globales (présents/absents/taux/étudiants), séances récentes, présences en direct + bouton refresh + tirer-pour-rafraichir.
+- Sync auto : TeacherHomeScreen Timer 30 s -> efreshDashboardLive() sur onglets Accueil/Présences/Stats + refresh au retour foreground (WidgetsBindingObserver). Rechargement après action : SessionsScreen re-ouvre puis efreshSessions() (conserve classe sélectionnée).
+- Séances : SessionsScreen (chips classes, liste, état temps réel), SessionFormScreen (création/edit ; vérif dispo via _available -> bannière lieux dispo), reload après retour.
+- Détail séance (SessionDetailScreen) : 5 onglets – Présences, Carte(GPS), QR, Statistiques, Suspects. Bouton export feuille de présence XLSX dans l'AppBar.
+- Export XLSX : DioClient.downloadBytes() (ResponseType.bytes) + TeacherService.exportSessionXlsx(sessionId) (GET /attendance/session/\{id\}/export/) + FileShareService.shareXlsx() (share_plus). Endpoints ajoutés : sessionExportEndpoint, sessionReportEndpoint.
+- Carte GPS : _MapTab (flutter_map + latlong2) affiche les marqueurs des présences (champs latitude/longitude ajoutés à AttendanceModel + SessionAttendance, parsés depuis ttendance_status/latitude/longitude du serializer).
+- QR : onglet QR (current-qr), GenerateQrScreen (expiration, rayon, GPS), closeSession.
+- Stats globales : TeacherStatisticsScreen périodes 7/30/90 — fix : loadGlobalStats(period) recharge au changement de période.
+- Live attendance : TeacherAttendanceScreen (liste scans récents) + sync 30 s.
+
+### Étudiant
+- StudentHomeScreen 4 onglets (Accueil HomeScreen scan/validation, Emploi du temps, Stats, Profil). Historique : StudentProvider.loadHistory (/attendance/my/). Stats : taux présent calculé via ttendanceStatus != 'absent' (champ ttendance_status ajouté à AttendanceModel). StudentProfileScreen, StudentScheduleScreen (Cours/Présences).
+
+### Notes / limites
+- Pas de DELDT sšance côté Web enseignant : non répliqu‚ (le backend l'expose, mais pas d'UI Web de reference).
+- Live temps réel par polling HTTP 30 s (pas de WebSocket mobil en debut) ; le Web utilise ws /ws/attendance/... — amélioration future possible.

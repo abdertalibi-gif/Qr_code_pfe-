@@ -44,6 +44,13 @@ class UserModel {
   final String role;
   final String createdAt;
   final StudentProfile? studentProfile;
+  final String phone;
+  final String? cin;
+  final String grade;
+  final String speciality;
+  final int? departmentId;
+  final String? departmentName;
+  final List<int> assignedClassIds;
 
   UserModel({
     required this.id,
@@ -53,6 +60,13 @@ class UserModel {
     required this.role,
     required this.createdAt,
     this.studentProfile,
+    this.phone = '',
+    this.cin,
+    this.grade = '',
+    this.speciality = '',
+    this.departmentId,
+    this.departmentName,
+    this.assignedClassIds = const [],
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -69,7 +83,24 @@ class UserModel {
       role: json['role'] as String? ?? '',
       createdAt: json['created_at'] as String? ?? '',
       studentProfile: profile,
+      phone: json['phone'] as String? ?? '',
+      cin: json['cin'] as String?,
+      grade: json['grade'] as String? ?? '',
+      speciality: json['speciality'] as String? ?? '',
+      departmentId: json['department_id'] as int?,
+      departmentName: json['department_name'] as String?,
+      assignedClassIds: _readIntList(json['assigned_class_ids']),
     );
+  }
+
+  static List<int> _readIntList(dynamic value) {
+    if (value is List) {
+      return value
+          .whereType<num>()
+          .map((e) => e.toInt())
+          .toList();
+    }
+    return const [];
   }
 
   Map<String, dynamic> toJson() => {
@@ -79,6 +110,13 @@ class UserModel {
         'email': email,
         'role': role,
         'created_at': createdAt,
+        'phone': phone,
+        'cin': cin,
+        'grade': grade,
+        'speciality': speciality,
+        'department_id': departmentId,
+        'department_name': departmentName,
+        'assigned_class_ids': assignedClassIds,
         if (studentProfile != null) 'student_profile': studentProfile!.toJson(),
       };
 
@@ -101,6 +139,13 @@ class UserModel {
     String? email,
     String? role,
     String? createdAt,
+    String? phone,
+    String? cin,
+    String? grade,
+    String? speciality,
+    int? departmentId,
+    String? departmentName,
+    List<int>? assignedClassIds,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -109,6 +154,14 @@ class UserModel {
       email: email ?? this.email,
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
+      studentProfile: studentProfile,
+      phone: phone ?? this.phone,
+      cin: cin ?? this.cin,
+      grade: grade ?? this.grade,
+      speciality: speciality ?? this.speciality,
+      departmentId: departmentId ?? this.departmentId,
+      departmentName: departmentName ?? this.departmentName,
+      assignedClassIds: assignedClassIds ?? this.assignedClassIds,
     );
   }
 

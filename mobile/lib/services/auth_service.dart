@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' hide TimeoutException;
 
 import 'package:shared_preferences/shared_preferences.dart';
 

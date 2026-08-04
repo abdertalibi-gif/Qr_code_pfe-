@@ -107,14 +107,6 @@ class _ErrorScreenState extends State<ErrorScreen>
     );
   }
 
-  void _tryScanAgain() {
-    context.read<AttendanceProvider>().resetValidation();
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppConstants.routeScanner,
-      (route) => route.settings.name == AppConstants.routeHome,
-    );
-  }
-
   void _retryValidation() {
     context.read<AttendanceProvider>().clearScannedToken();
     Navigator.of(context).pushNamedAndRemoveUntil(

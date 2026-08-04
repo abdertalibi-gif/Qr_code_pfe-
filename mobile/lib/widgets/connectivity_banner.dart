@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../constants/app_theme.dart';
 import '../services/connectivity_service.dart';
 
 /// A slim animated banner that slides down from the top of the screen

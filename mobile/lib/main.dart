@@ -7,8 +7,16 @@ import 'constants/app_constants.dart';
 import 'constants/app_theme.dart';
 import 'providers/attendance_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/student_provider.dart';
+import 'providers/teacher_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/error_screen.dart';
+import 'screens/role_not_supported_screen.dart';
+import 'screens/student/student_home_screen.dart';
+import 'screens/teacher/session_detail_screen.dart';
+import 'screens/teacher/session_form_screen.dart';
+import 'screens/teacher/teacher_home_screen.dart';
+import 'screens/teacher/generate_qr_screen.dart';
 import 'services/deep_link_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -16,6 +24,7 @@ import 'screens/qr_scanner_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/success_screen.dart';
 import 'screens/validation_screen.dart';
+import 'models/session_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,6 +99,8 @@ class _AttendanceAppState extends State<AttendanceApp> {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
+        ChangeNotifierProvider(create: (_) => TeacherProvider()),
+        ChangeNotifierProvider(create: (_) => StudentProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
@@ -144,7 +155,32 @@ final Map<String, WidgetBuilder> _routeBuilders = {
   AppConstants.routeValidation: (_) => const ValidationScreen(),
   AppConstants.routeSuccess: (_) => const SuccessScreen(),
   AppConstants.routeError: (_) => const ErrorScreen(),
+
+  // ── Enseignant ─────────────────────────────────────────────────────────
+  AppConstants.routeTeacherHome: (_) => const TeacherHomeScreen(),
+  AppConstants.routeSessionForm: (ctx) => SessionFormScreen(
+        session: _argumentOf<SessionModel>(ctx, 'session'),
+      ),
+  AppConstants.routeSessionDetail: (ctx) => SessionDetailScreen(
+        sessionId: _argumentOf<int>(ctx, 'sessionId') ?? 0,
+      ),
+  AppConstants.routeGenerateQr: (ctx) => GenerateQrScreen(
+        sessionId: _argumentOf<int>(ctx, 'sessionId') ?? 0,
+      ),
+
+  // ── Étudiant ───────────────────────────────────────────────────────────
+  AppConstants.routeStudentHome: (_) => const StudentHomeScreen(),
+  AppConstants.routeRoleNotSupported: (_) => const RoleNotSupportedScreen(),
 };
+
+/// Lit un argument nommé dans les [RouteSettings] de la route.
+T? _argumentOf<T>(BuildContext context, String key) {
+  final settings = ModalRoute.of(context)?.settings;
+  final args = settings?.arguments;
+  if (args is Map<String, dynamic>) return args[key] as T?;
+  if (args is T) return args;
+  return null;
+}
 
 // ─── Custom Page Route ────────────────────────────────────────────────────────
 

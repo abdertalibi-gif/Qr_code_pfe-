@@ -36,12 +36,6 @@ class StudentDetail {
       };
 
   String get fullName => '$firstName $lastName'.trim();
-
-  String get initials {
-    final f = firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
-    final l = lastName.isNotEmpty ? lastName[0].toUpperCase() : '';
-    return '$f$l';
-  }
 }
 
 class AttendanceModel {
@@ -51,6 +45,9 @@ class AttendanceModel {
   final String validationTime;
   final String? ipAddress;
   final String deviceId;
+  final String attendanceStatus;
+  final double? latitude;
+  final double? longitude;
   final StudentDetail? studentDetail;
 
   AttendanceModel({
@@ -60,6 +57,9 @@ class AttendanceModel {
     required this.validationTime,
     this.ipAddress,
     required this.deviceId,
+    this.attendanceStatus = 'confirmed',
+    this.latitude,
+    this.longitude,
     this.studentDetail,
   });
 
@@ -71,11 +71,19 @@ class AttendanceModel {
       validationTime: json['validation_time'] as String? ?? '',
       ipAddress: json['ip_address'] as String?,
       deviceId: json['device_id'] as String? ?? '',
+      attendanceStatus: json['attendance_status'] as String? ?? 'confirmed',
+      latitude: _num(json['latitude']),
+      longitude: _num(json['longitude']),
       studentDetail: json['student_detail'] != null
           ? StudentDetail.fromJson(
               json['student_detail'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  static double? _num(dynamic value) {
+    if (value is num) return value.toDouble();
+    return null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -85,6 +93,9 @@ class AttendanceModel {
         'validation_time': validationTime,
         'ip_address': ipAddress,
         'device_id': deviceId,
+        'attendance_status': attendanceStatus,
+        'latitude': latitude,
+        'longitude': longitude,
         if (studentDetail != null)
           'student_detail': studentDetail!.toJson(),
       };
@@ -102,7 +113,7 @@ class AttendanceModel {
   String get formattedValidationTime {
     final dt = validationDateTime;
     if (dt == null) return validationTime;
-    final pad = (int n) => n.toString().padLeft(2, '0');
+    String pad(int n) => n.toString().padLeft(2, '0');
     return '${dt.year}-${pad(dt.month)}-${pad(dt.day)}  '
         '${pad(dt.hour)}:${pad(dt.minute)}:${pad(dt.second)}';
   }

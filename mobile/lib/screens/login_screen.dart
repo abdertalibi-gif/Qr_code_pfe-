@@ -78,10 +78,25 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) return;
 
     if (success) {
-      Navigator.of(context).pushReplacementNamed(AppConstants.routeHome);
+      _routeForRole(authProvider.user?.role);
     } else {
       final msg = authProvider.errorMessage ?? AppStrings.loginFailed;
       _showErrorSnackBar(msg);
+    }
+  }
+
+  /// Redirige selon le rôle après connexion.
+  void _routeForRole(String? role) {
+    switch (role) {
+      case 'teacher':
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeTeacherHome);
+      case 'student':
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeStudentHome);
+      default:
+        Navigator.of(context)
+            .pushReplacementNamed(AppConstants.routeRoleNotSupported);
     }
   }
 

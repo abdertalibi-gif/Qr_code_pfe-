@@ -293,7 +293,6 @@ class _SuccessScreenState extends State<SuccessScreen>
   // ─── Details card ─────────────────────────────────────────────────────────
 
   Widget _buildDetailsCard(dynamic payload, bool isDark) {
-    final validationTime = payload?.formattedValidationTime ?? '—';
     final sessionId = payload?.session?.toString() ?? '—';
     final attendanceId = payload?.id?.toString() ?? '—';
 

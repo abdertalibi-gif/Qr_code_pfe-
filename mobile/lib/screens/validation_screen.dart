@@ -150,8 +150,6 @@ class _ValidationScreenState extends State<ValidationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.validateAttendance),
