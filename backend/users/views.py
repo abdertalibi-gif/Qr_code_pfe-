@@ -186,9 +186,7 @@ class ClasseViewSet(viewsets.ModelViewSet):
         )
         user = self.request.user
         if user.role == "teacher":
-            qs = qs.filter(
-                Q(teachers=user) | Q(sessions__teacher=user)
-            ).distinct()
+            qs = qs.filter(teachers=user).distinct()
         elif user.role == "department_head":
             qs = apply_role_filtering(qs, "classe", self.request)
         elif user.role == "program_manager":
@@ -309,10 +307,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.role == "teacher":
-            qs = qs.filter(
-                Q(classe__teachers=user)
-                | Q(classe__sessions__teacher=user)
-            ).distinct()
+            qs = qs.filter(classe__teachers=user).distinct()
         elif user.role == "department_head":
             qs = apply_role_filtering(qs, "student", self.request)
         elif user.role == "program_manager":
@@ -1338,7 +1333,7 @@ def teacher_workload_dashboard(request):
         "tp_hours": 0.0,
         "total_sessions": 0,
     })
-
+    
     dept_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
     filiere_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
     monthly = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0})
@@ -1493,8 +1488,6 @@ def app_settings(request):
             "scan_limit": 1,
         }
     return Response(settings)
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def system_info(request):

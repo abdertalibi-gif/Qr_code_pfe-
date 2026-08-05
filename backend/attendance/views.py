@@ -33,6 +33,7 @@ from users.permissions import IsAdminOrTeacher, IsStudent, apply_role_filtering
 from .models import Attendance, SuspiciousAttempt
 from .serializers import (
     AttendanceSerializer,
+    StudentScheduleSerializer,
     SuspiciousAttemptSerializer,
     ValidateAppAttendanceSerializer,
     ValidateAttendanceSerializer,
@@ -198,6 +199,46 @@ class MyAttendanceListView(ListAPIView):
             "session__teacher",
             "session__classe",
         ).filter(student__user=user).order_by("-validation_time")
+
+
+class MyScheduleListView(ListAPIView):
+    """Emploi du temps de l'étudiant (lecture seule).
+
+    Renvoie les séances de la classe de l'étudiant (filière / semestre /
+    groupe implicites via sa classe), triées par date puis heure de début,
+    avec un statut calculé (a_venir / en_cours / terminee / annulee) et
+    l'indicateur qr_open (QR de présence ouvert par l'enseignant).
+
+    Le token QR de validation n'est jamais exposé ici.
+    """
+
+    serializer_class = StudentScheduleSerializer
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get_queryset(self):
+        user = self.request.user
+        try:
+            student = user.student_profile
+        except Student.DoesNotExist:
+            return Session.objects.none()
+        if student is None or student.classe_id is None:
+            return Session.objects.none()
+
+        qs = Session.objects.select_related(
+            "module",
+            "teacher",
+            "classe",
+            "block",
+            "room",
+            "amphitheater",
+        ).filter(classe_id=student.classe_id)
+
+        # Filtres optionnels (date, module) pour le confort de l'étudiant.
+        date_filter = self.request.query_params.get("date")
+        if date_filter:
+            qs = qs.filter(date=date_filter)
+
+        return qs.order_by("date", "start_time")
 
 
 class AllAttendanceListView(ListAPIView):

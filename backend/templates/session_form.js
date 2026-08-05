@@ -24,7 +24,7 @@
       var needsTeacher = this.userRole !== 'teacher';
       await Promise.all([
         this._loadBlocksAmphis(),
-        this._loadNiveaux(),
+        needsTeacher ? this._loadNiveaux() : Promise.resolve(),
         needsTeacher ? this._loadTeachers() : Promise.resolve(),
       ]);
       this._bindEvents();

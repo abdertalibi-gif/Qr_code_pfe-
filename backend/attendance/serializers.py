@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
+from courses.models import Session
+
 from .models import Attendance, SuspiciousAttempt
 from .utils import round_coordinate
-
 
 class AttendanceSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
@@ -141,3 +142,64 @@ class ValidateAppAttendanceSerializer(serializers.Serializer):
 
     def validate_longitude(self, value):
         return round_coordinate(value)
+
+
+class StudentScheduleSerializer(serializers.ModelSerializer):
+    """Séances de l'emploi du temps d'un étudiant (lecture seule).
+
+    N'expose jamais qr_token / qr_session_id — l'étudiant ne doit pas pouvoir
+    valider lui-même sa présence avec le QR de l'enseignant.
+    """
+
+    module_name = serializers.CharField(source="module.name", read_only=True)
+    teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
+    block_name = serializers.CharField(source="block.name", read_only=True)
+    room_name = serializers.CharField(source="room.name", read_only=True)
+    amphitheater_name = serializers.CharField(source="amphitheater.name", read_only=True)
+    classe_name = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    qr_open = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Session
+        fields = [
+            "id",
+            "subject",
+            "module_name",
+            "teacher_name",
+            "classe",
+            "classe_name",
+            "location_type",
+            "block_name",
+            "room_name",
+            "amphitheater_name",
+            "date",
+            "start_time",
+            "end_time",
+            "session_type",
+            "is_active",
+            "is_closed",
+            "qr_expires_at",
+            "is_within_session_window",
+            "status",
+            "qr_open",
+        ]
+
+    def get_classe_name(self, obj):
+        return str(obj.classe)
+
+    def get_status(self, obj):
+        from django.utils import timezone
+
+        if not obj.is_active:
+            return "annulee"
+        now = timezone.now()
+        start, end = obj._session_window_bounds()
+        if now < start:
+            return "a_venir"
+        if start <= now <= end:
+            return "en_cours"
+        return "terminee"
+
+    def get_qr_open(self, obj):
+        return bool(obj.is_qr_valid)

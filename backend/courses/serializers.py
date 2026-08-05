@@ -269,10 +269,7 @@ class SessionSerializer(serializers.ModelSerializer):
             request = self.context.get("request")
             if request and request.user.role == "teacher" and classe:
                 assigned = request.user.assigned_classes.filter(pk=classe.pk).exists()
-                has_sessions = Session.objects.filter(
-                    classe=classe, teacher=request.user
-                ).exists()
-                if not assigned and not has_sessions:
+                if not assigned:
                     raise serializers.ValidationError(
                         {"classe": "Vous n'êtes pas affecté à cette classe."}
                     )

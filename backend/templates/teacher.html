@@ -313,7 +313,6 @@
                 }
 
                 await loadClasses();
-                await Promise.all([loadCurriculum()]);
                 await SessionForm.init({ isAdmin: false, userRole: currentUser.role });
                 await loadLiveAttendance();
                 connectTeacherLiveWS();
@@ -460,17 +459,29 @@
 
             /* ═══════════════════════════════════════════════════════════
     CURRICULUM DATA (used by export wizard)
+    Dérivé UNIQUEMENT des classes de l'enseignant (GET /classes/ scopé),
+    jamais du endpoint /curriculum/ (non scopé pour les enseignants).
 ═══════════════════════════════════════════════════════════════════ */
-            let curriculumData = [];
+            function wizardSemestres() {
+                const set = new Set();
+                (allClasses || []).forEach(function (c) { if (c.semestre_name) set.add(c.semestre_name); });
+                return Array.from(set);
+            }
 
-            async function loadCurriculum() {
-                try {
-                    const data = await API.apiFetch('/curriculum/');
-                    curriculumData = Array.isArray(data) ? data : [];
-                } catch (e) {
-                    console.error('Failed to load curriculum:', e);
-                    curriculumData = [];
-                }
+            function wizardFilieres(semestre) {
+                const set = new Set();
+                (allClasses || []).forEach(function (c) {
+                    if ((!semestre || c.semestre_name === semestre) && c.filiere_name) set.add(c.filiere_name);
+                });
+                return Array.from(set);
+            }
+
+            function wizardModules(semestre, filiere) {
+                const set = new Set();
+                (allClasses || []).forEach(function (c) {
+                    if ((!semestre || c.semestre_name === semestre) && (!filiere || c.filiere_name === filiere) && c.module_name) set.add(c.module_name);
+                });
+                return Array.from(set);
             }
 
             /* ── Session created event: auto-refresh ── */
@@ -776,14 +787,13 @@
 
                 const semSel = document.getElementById('expSemestre');
                 semSel.innerHTML = '<option value="">— Sélectionner —</option>';
-                if (Array.isArray(curriculumData) && curriculumData.length) {
-                    curriculumData.forEach(sem => {
-                        const opt = document.createElement('option');
-                        opt.value = sem.semestre;
-                        opt.textContent = sem.semestre;
-                        semSel.appendChild(opt);
-                    });
-                }
+                const semestres = wizardSemestres();
+                semestres.forEach(sem => {
+                    const opt = document.createElement('option');
+                    opt.value = sem;
+                    opt.textContent = sem;
+                    semSel.appendChild(opt);
+                });
 
                 const filSel = document.getElementById('expFiliere');
                 filSel.innerHTML = '<option value="">— Sélectionner d\'abord le semestre —</option>';
@@ -839,15 +849,12 @@
                     filSel.disabled = !selectedSemestre;
 
                     if (selectedSemestre) {
-                        const semData = curriculumData.find(s => s.semestre === selectedSemestre);
-                        if (semData && semData.filieres) {
-                            semData.filieres.forEach(f => {
-                                const opt = document.createElement('option');
-                                opt.value = f.name;
-                                opt.textContent = f.name;
-                                filSel.appendChild(opt);
-                            });
-                        }
+                        wizardFilieres(selectedSemestre).forEach(f => {
+                            const opt = document.createElement('option');
+                            opt.value = f;
+                            opt.textContent = f;
+                            filSel.appendChild(opt);
+                        });
                     }
                     reloadStudentsIfActive();
                     validateExportForm();
@@ -862,17 +869,12 @@
                     clsSel.disabled = !selectedFiliere;
 
                     if (selectedFiliere) {
-                        const semData = curriculumData.find(s => s.semestre === selectedSemestre);
-                        const filData = semData?.filieres?.find(f => f.name === selectedFiliere);
-                        if (filData && filData.modules) {
-                            filData.modules.forEach(m => {
-                                const label = typeof m === 'string' ? m : (m?.name || '');
-                                const opt = document.createElement('option');
-                                opt.value = label;
-                                opt.textContent = label;
-                                modSel.appendChild(opt);
-                            });
-                        }
+                        wizardModules(selectedSemestre, selectedFiliere).forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m;
+                            opt.textContent = m;
+                            modSel.appendChild(opt);
+                        });
                         if (allClasses) {
                             const filtered = allClasses.filter(c =>
                                 (c.filiere_name || '').toLowerCase() === selectedFiliere.toLowerCase()

@@ -256,14 +256,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-        if department and role == "teacher":
+        if role == "teacher":
             if assigned_classes:
                 user.assigned_classes.set(assigned_classes)
-            else:
-                dept_classes = Classe.objects.filter(
-                    Q(department=department) | Q(filiere__department=department)
-                )
-                user.assigned_classes.set(list(dept_classes))
         elif assigned_classes:
             user.assigned_classes.set(assigned_classes)
         if department and role == "department_head":
@@ -372,14 +367,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
         instance.save()
-        if department is not None and role == "teacher":
-            if assigned_classes:
+        if role == "teacher":
+            if assigned_classes is not None:
                 instance.assigned_classes.set(assigned_classes)
-            else:
-                dept_classes = Classe.objects.filter(
-                    Q(department=department) | Q(filiere__department=department)
-                )
-                instance.assigned_classes.set(list(dept_classes))
         elif assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
         if department is not None and role == "department_head":

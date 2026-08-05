@@ -6,6 +6,7 @@ from .views import (
     ExportAttendanceView,
     ExportWizardView,
     MyAttendanceListView,
+    MyScheduleListView,
     QrSessionInfoView,
     SessionAttendanceListView,
     SessionStatsView,
@@ -24,6 +25,7 @@ urlpatterns = [
     ),
     path("qr-info/", QrSessionInfoView.as_view(), name="attendance-qr-info"),
     path("my/", MyAttendanceListView.as_view(), name="attendance-my"),
+    path("my-schedule/", MyScheduleListView.as_view(), name="attendance-my-schedule"),
     path("", AllAttendanceListView.as_view(), name="attendance-list"),
     path(
         "session/<int:session_id>/",

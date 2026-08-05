@@ -19,9 +19,7 @@ from typing import Any
 
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Q
-
-from users.models import Classe, Department, User
+from users.models import Department, User
 
 logger = logging.getLogger(__name__)
 
@@ -274,8 +272,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
     # Batch processing: collect creates and updates
     new_users: list[User] = []
     updated_users: list[tuple[User, list[str]]] = []
-    # Remember department for each processed user (email -> Department)
-    user_dept_map: dict[str, Department] = {}
 
     for r in rows_to_process:
         dept = dept_map.get(_norm(r.department))
@@ -287,8 +283,6 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
             })
             report.skipped += 1
             continue
-
-        user_dept_map[r.email.lower()] = dept
 
         existing_user = existing_users_map.get(r.email.lower())
         if existing_user:
@@ -385,25 +379,10 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                 "messages": [str(exc)],
             })
 
-    # Assign department classes to all imported users
-    if user_dept_map:
-        emails = list(user_dept_map.keys())
-        # Preload classes per department to avoid per-user queries
-        dept_ids = set(d.id for d in user_dept_map.values())
-        classes_by_dept: dict[int, list[Classe]] = {}
-        # Match classes via direct department FK OR filiere department FK
-        for c in Classe.objects.filter(
-            Q(department_id__in=dept_ids) | Q(filiere__department_id__in=dept_ids)
-        ).select_related("filiere").only("id", "department_id", "filiere_id"):
-            dept_key = c.department_id
-            if dept_key is None and c.filiere:
-                dept_key = c.filiere.department_id
-            if dept_key:
-                classes_by_dept.setdefault(dept_key, []).append(c)
-        for u in User.objects.filter(email__in=emails).only("id", "email").iterator():
-            dept = user_dept_map.get(u.email.lower())
-            if dept and dept.id in classes_by_dept:
-                u.assigned_classes.set(classes_by_dept[dept.id])
+    # NB: les classes ne sont PAS auto-assignées lors de l'import.
+    # L'affectation est exclusivement gérée par l'administrateur via
+    # assigned_class_ids (user_detail / admin UI), afin qu'un enseignant
+    # ne voie jamais des classes qui ne lui ont pas été explicitement confiées.
 
     return report.as_dict()
 
