@@ -27,11 +27,12 @@
         <th>Semestre</th>
         <th>Module</th>
         <th>Étudiants</th>
+        <th>Enseignant</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody id="classesBody">
-      <tr class="empty-row"><td colspan="8">Chargement…</td></tr>
+      <tr class="empty-row"><td colspan="9">Chargement…</td></tr>
     </tbody>
   </table>
 </div>
@@ -77,6 +78,16 @@
           <option value="">— Sélectionnez d'abord la filière —</option>
         </select>
         <span class="spinner" id="clModuleSpinner" style="display:none"></span>
+      </div>
+      <div class="field">
+        <label>Enseignant</label>
+        <select id="clTeacher">
+          <option value="">— Sélectionner un enseignant —</option>
+        </select>
+        <span class="spinner" id="clTeacherSpinner" style="display:none"></span>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
+          La classe apparaîtra automatiquement dans l'espace de cet enseignant.
+        </p>
       </div>
       <div class="field">
         <label>Année universitaire <span class="req">*</span></label>

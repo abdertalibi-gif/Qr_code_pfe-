@@ -125,15 +125,6 @@
         <label>Mot de passe</label>
         <input type="password" id="uPassword" placeholder="••••••••" />
       </div>
-
-      <!-- Assigned classes (teacher / department_head / program_manager) -->
-      <div class="field role-field" data-roles="teacher,department_head,program_manager" style="display:none">
-        <label>Classes assignées</label>
-        <select id="uClasses" multiple size="4"></select>
-        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
-          Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
-        </p>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn outline" data-close="modalAddUser">Annuler</button>
@@ -195,11 +186,6 @@
       <div class="field role-field-edit" data-roles="teacher" style="display:none">
         <label>Spécialité</label>
         <input type="text" id="euSpeciality" />
-      </div>
-
-      <div class="field role-field-edit" data-roles="teacher,department_head,program_manager" style="display:none">
-        <label>Classes assignées</label>
-        <select id="euClasses" multiple size="4"></select>
       </div>
 
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>

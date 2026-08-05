@@ -449,10 +449,11 @@ class ClasseSerializer(serializers.ModelSerializer):
     amphitheater_name = serializers.CharField(source="amphitheater.name", read_only=True)
     location_display = serializers.SerializerMethodField()
     teacher_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role__in=["teacher", "department_head", "program_manager"]),
+        queryset=User.objects.filter(role="teacher"),
         required=False, allow_null=True, write_only=True,
     )
     teacher_name = serializers.SerializerMethodField()
+    assigned_teacher_id = serializers.SerializerMethodField()
     department_id = serializers.PrimaryKeyRelatedField(
         source="department",
         queryset=Department.objects.all(),
@@ -524,6 +525,7 @@ class ClasseSerializer(serializers.ModelSerializer):
             "teacher_count",
             "teacher_id",
             "teacher_name",
+            "assigned_teacher_id",
             "department_id",
             "department_name",
             "level",
@@ -543,6 +545,7 @@ class ClasseSerializer(serializers.ModelSerializer):
             "amphitheater_name",
             "location_display",
             "teacher_name",
+            "assigned_teacher_id",
             "department_name",
         ]
         extra_kwargs = {
@@ -568,6 +571,9 @@ class ClasseSerializer(serializers.ModelSerializer):
         if teacher:
             return teacher.full_name
         return None
+    def get_assigned_teacher_id(self, obj):
+        teacher = obj.teachers.first()
+        return teacher.pk if teacher else None
     def validate(self, data):
         import logging
         logger = logging.getLogger(__name__)
@@ -624,12 +630,15 @@ class ClasseSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        teacher_provided = "teacher_id" in validated_data
         teacher = validated_data.pop("teacher_id", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        if teacher:
-            teacher.assigned_classes.add(instance)
+        if teacher_provided:
+            # L'enseignant de la classe est l'unique source de vérité :
+            # remplacer l'affectation (retire l'ancien enseignant, ajoute le nouveau).
+            instance.teachers.set([teacher] if teacher else [])
         return instance
 
 class StudentSerializer(serializers.ModelSerializer):

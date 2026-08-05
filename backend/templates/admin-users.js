@@ -96,12 +96,6 @@ function populateRoleSelects(prefix) {
     filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
       allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
   }
-  const classSel = document.getElementById(prefix + 'Classes');
-  if (classSel) {
-    classSel.innerHTML = allClasses.map(c =>
-      '<option value="' + c.id + '">' + esc(c.filiere_name || '—') + ' — ' + esc(c.semestre_name || '') + ' (' + esc(c.academic_year) + ')</option>'
-    ).join('');
-  }
   const studentClasseSel = document.getElementById(prefix + 'StudentClasse');
   if (studentClasseSel) {
     studentClasseSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -138,20 +132,8 @@ async function openEditUser(id) {
 
   const deptSel = document.getElementById('euDepartment');
   if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
-  else if (u.role === 'teacher' && deptSel && allClasses.length && u.assigned_class_ids && u.assigned_class_ids.length) {
-    var deptIds = {};
-    allClasses.forEach(function(c) {
-      if (u.assigned_class_ids.indexOf(c.id) >= 0 && c.department_id) deptIds[c.department_id] = true;
-    });
-    var deptKeys = Object.keys(deptIds);
-    if (deptKeys.length === 1) deptSel.value = deptKeys[0];
-  }
   const filSel = document.getElementById('euFiliere');
   if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
-
-  const assigned = u.assigned_class_ids || [];
-  const sel = document.getElementById('euClasses');
-  if (sel) Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)); });
 
   openModal('modalEditUser');
 }
@@ -184,12 +166,6 @@ function buildPayload(prefix) {
   if (passwordEl && passwordEl.value) body.password = passwordEl.value;
 
   const role = body.role;
-  if (role === 'teacher' || role === 'department_head' || role === 'program_manager') {
-    const classSel = document.getElementById(prefix + 'Classes');
-    if (classSel) {
-      body.assigned_class_ids = Array.from(classSel.selectedOptions).map(o => Number(o.value));
-    }
-  }
   if (role === 'department_head') {
     const deptEl = document.getElementById(prefix + 'Department');
     body.department_id = deptEl ? Number(deptEl.value) || null : null;

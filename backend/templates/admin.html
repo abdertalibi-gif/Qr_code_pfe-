@@ -371,11 +371,12 @@
             <th>Année</th>
             <th>Localisation</th>
             <th>Étudiants</th>
+            <th>Enseignant</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="classesBody">
-          <tr class="empty-row"><td colspan="8">Chargement…</td></tr>
+          <tr class="empty-row"><td colspan="9">Chargement…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1111,13 +1112,6 @@
         <label>Mot de passe</label>
         <input type="password" id="uPassword" placeholder="••••••••" />
       </div>
-      <div class="field role-field" id="uClassesWrap" data-roles="teacher,department_head,program_manager">
-        <label>Classes assignées</label>
-        <select id="uClasses" multiple size="4"></select>
-        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
-          Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes.
-        </p>
-      </div>
       <div class="field role-field" data-roles="department_head,teacher" style="display:none">
         <label>Département <span class="req">*</span></label>
         <select id="uDepartment"><option value="">— Sélectionner —</option></select>
@@ -1280,10 +1274,6 @@
       <div class="field role-field-edit" data-roles="teacher" style="display:none">
         <label>Spécialité</label>
         <input type="text" id="euSpeciality" />
-      </div>
-      <div class="field role-field-edit" id="euClassesWrap" data-roles="teacher,department_head,program_manager">
-        <label>Classes assignées</label>
-        <select id="euClasses" multiple size="4"></select>
       </div>
       <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
     </form>
@@ -1762,20 +1752,8 @@
     document.getElementById('euSpeciality').value = u.speciality || '';
     populateRoleSelects('eu');
     showFieldsForRole(u.role, 'eu');
-    const sel = document.getElementById('euClasses');
-    const assigned = u.assigned_class_ids || [];
-    Array.from(sel.options).forEach(o => { o.selected = assigned.includes(Number(o.value)) || assigned.includes(o.value); });
     const deptSel = document.getElementById('euDepartment');
     if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
-    else if (u.role === 'teacher' && deptSel && allClasses.length && u.assigned_class_ids && u.assigned_class_ids.length) {
-      // Find the common department from the teacher's assigned classes
-      var deptIds = {};
-      allClasses.forEach(function(c) {
-        if (u.assigned_class_ids.indexOf(c.id) >= 0 && c.department_id) deptIds[c.department_id] = true;
-      });
-      var deptKeys = Object.keys(deptIds);
-      if (deptKeys.length === 1) deptSel.value = deptKeys[0];
-    }
     const filSel = document.getElementById('euFiliere');
     if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
     openModal('modalEditUser');
@@ -2230,10 +2208,10 @@
     const query = searchQuery('searchClasses');
     const filtered = allClasses.filter(c => matchesQuery(
       query,
-      c.niveau_id, c.filiere_name, c.semestre_name, c.academic_year, c.student_count, c.location_display
+      c.niveau_id, c.filiere_name, c.semestre_name, c.academic_year, c.student_count, c.location_display, c.teacher_name
     ));
     if (!filtered.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${query ? 'Aucun résultat.' : 'Aucune classe.'}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${query ? 'Aucun résultat.' : 'Aucune classe.'}</td></tr>`;
       return;
     }
     const niveauLabel = { LIC: 'Licence', LIC_EXC: 'Licence Excellence', MAS: 'Master', MAS_EXC: 'Master Parcours d\'excellence' };
@@ -2246,6 +2224,7 @@
         <td>${esc(c.academic_year)}</td>
         <td>${esc(locationLabel(c))}</td>
         <td>${c.student_count ?? '—'}</td>
+        <td>${esc(c.teacher_name || '—')}</td>
         <td>
           <button class="btn sm outline admin-only" onclick="openEditClasse(${c.id})">Modifier</button>
           <button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteClasse(${c.id})">Supprimer</button>
@@ -2935,12 +2914,6 @@
       filSel.innerHTML = '<option value="">— Sélectionner —</option>' +
         allFilieres.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join('');
     }
-    const classSel = document.getElementById(prefix + 'Classes');
-    if (classSel) {
-      classSel.innerHTML = allClasses.map(c =>
-        '<option value="' + c.id + '">' + esc(c.filiere_name || '—') + ' — ' + esc(c.semestre_name || '') + ' (' + esc(c.academic_year) + ')</option>'
-      ).join('');
-    }
     const studentClasseSel = document.getElementById(prefix + 'StudentClasse');
     if (studentClasseSel) {
       studentClasseSel.innerHTML = '<option value="">— Sélectionner —</option>' +
@@ -2964,12 +2937,6 @@
     if (passwordEl && passwordEl.value) body.password = passwordEl.value;
 
     const role = body.role;
-    if (role === 'teacher' || role === 'department_head' || role === 'program_manager') {
-      const classSel = document.getElementById(prefix + 'Classes');
-      if (classSel) {
-        body.assigned_class_ids = Array.from(classSel.selectedOptions).map(o => Number(o.value));
-      }
-    }
     if (role === 'department_head') {
       const deptEl = document.getElementById(prefix + 'Department');
       body.department_id = deptEl ? Number(deptEl.value) || null : null;
@@ -3316,7 +3283,9 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
     } else if (locType === 'AMPHITHEATRE') {
       document.getElementById('clAmphi').value = c.amphitheater_id || '';
     }
-    loadClasseTeachers();
+    loadClasseTeachers().then(() => {
+      document.getElementById('clTeacher').value = c.assigned_teacher_id || '';
+    });
     openModal('modalClasse');
   }
 

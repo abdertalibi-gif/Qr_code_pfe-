@@ -9,8 +9,27 @@ let allRooms = [];
 let allAmphis = [];
 
 async function initPage() {
-  await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadBlocks(), loadAmphis()]);
+  await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadBlocks(), loadAmphis(), loadTeachers()]);
   setupEventListeners();
+}
+
+async function loadTeachers() {
+  try {
+    const data = await API.apiFetch('/users/?role=teacher');
+    const teachers = Array.isArray(data) ? data : (data.results || []);
+    const sel = document.getElementById('clTeacher');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Sélectionner un enseignant —</option>';
+    teachers.forEach(function (t) {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = (t.full_name || t.first_name + ' ' + t.last_name) + (t.email ? ' (' + t.email + ')' : '');
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    const sel = document.getElementById('clTeacher');
+    if (sel) sel.innerHTML = '<option value="">Erreur de chargement des enseignants</option>';
+  }
 }
 
 async function loadClasses() {
@@ -86,7 +105,7 @@ function renderClasses() {
     return !q || (c.name && c.name.toLowerCase().includes(q)) || (c.filiere_name && c.filiere_name.toLowerCase().includes(q));
   });
   if (!filtered.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">' + (q ? 'Aucun résultat.' : 'Aucune classe.') + '</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">' + (q ? 'Aucun résultat.' : 'Aucune classe.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map(function (c, i) {
@@ -98,6 +117,7 @@ function renderClasses() {
       '<td>' + esc(c.semestre_name || '—') + '</td>' +
       '<td>' + esc(c.module_name || '—') + '</td>' +
       '<td>' + (c.student_count ?? '—') + '</td>' +
+      '<td>' + esc(c.teacher_name || '—') + '</td>' +
       '<td class="actions-cell">' +
         '<button class="btn sm outline" onclick="openEditClass(' + c.id + ')">Modifier</button>' +
         '<button class="btn sm outline" style="color:var(--red)" onclick="deleteClass(' + c.id + ')">Supprimer</button>' +
@@ -205,6 +225,7 @@ function openEditClass(id) {
     }
     if (c.amphitheater_id) document.getElementById('clAmphi').value = c.amphitheater_id;
   }
+  document.getElementById('clTeacher').value = c.assigned_teacher_id || '';
   openModal('modalClasse');
 }
 
@@ -228,6 +249,7 @@ function resetClassForm() {
   document.getElementById('clBlock').value = '';
   cascadeRoom('');
   document.getElementById('clAmphi').value = '';
+  document.getElementById('clTeacher').value = '';
 }
 
 function setupEventListeners() {
@@ -267,6 +289,8 @@ function setupEventListeners() {
       room_id: document.getElementById('clRoom').value || null,
       amphitheater_id: document.getElementById('clAmphi').value || null,
     };
+    const teacherRaw = document.getElementById('clTeacher').value;
+    if (teacherRaw) body.teacher_id = Number(teacherRaw);
     if (!body.filiere_id || !body.semestre_id) {
       showToast('Niveau, semestre et filière sont requis.', 'error'); return;
     }
