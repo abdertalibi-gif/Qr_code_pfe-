@@ -107,7 +107,48 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
     } finally {
       setState(() => _loading = false);
     }
+    if (!_isEdit && _selectedClasse != null) {
+      _applyClasseLocation(_selectedClasse!);
+    }
     _fetchAvailability();
+  }
+
+  /// Applique le lieu par défaut de la classe (défini par l'administrateur)
+  /// au formulaire. L'enseignant peut le modifier si nécessaire.
+  void _applyClasseLocation(ClasseModel c) {
+    if (_isEdit) return; // édition : on conserve le lieu de la séance
+    final type = c.locationType;
+    final hasLocation =
+        (c.blockId != null && c.roomId != null) || c.amphitheaterId != null;
+    if (type.isEmpty || !hasLocation) {
+      setState(() {
+        _selectedBlock = null;
+        _selectedRoom = null;
+        _selectedAmphi = null;
+      });
+      return;
+    }
+
+    var location = LocationType.block;
+    if ((type == 'BLOC' || type == 'BOTH_ALLOWED') && c.blockId != null && c.roomId != null) {
+      location = LocationType.block;
+    } else if ((type == 'AMPHI' || type == 'BOTH_ALLOWED') && c.amphitheaterId != null) {
+      location = LocationType.amphitheater;
+    }
+
+    setState(() {
+      _locationType = location;
+      if (location == LocationType.block) {
+        _selectedBlock = _blocks.firstWhereOrNull((b) => b.id == c.blockId);
+        _selectedRoom =
+            _selectedBlock?.rooms.firstWhereOrNull((r) => r.id == c.roomId);
+        _selectedAmphi = null;
+      } else {
+        _selectedAmphi = _amphitheaters.firstWhereOrNull((a) => a.id == c.amphitheaterId);
+        _selectedBlock = null;
+        _selectedRoom = null;
+      }
+    });
   }
 
   Future<void> _fetchAvailability() async {
@@ -248,6 +289,8 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                               _selectedClasse = _classes
                                   .firstWhere((c) => c.id == v);
                             });
+                            _applyClasseLocation(_selectedClasse!);
+                            _fetchAvailability();
                           },
                     validator: (v) => v == null ? 'Classe requise' : null,
                   ),

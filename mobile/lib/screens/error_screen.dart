@@ -430,14 +430,18 @@ class _ErrorScreenState extends State<ErrorScreen>
                   Icon(Icons.error_outline_rounded,
                       size: 14, color: config.color.withOpacity(0.8)),
                   const SizedBox(width: 6),
-                  Text(
-                    'Error code: ${_errorCodeString(errorType)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: config.color.withOpacity(0.8),
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'monospace',
-                      letterSpacing: 0.4,
+                  Flexible(
+                    child: Text(
+                      'Error code: ${_errorCodeString(errorType)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: config.color.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'monospace',
+                        letterSpacing: 0.4,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

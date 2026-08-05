@@ -265,6 +265,18 @@ class SessionSerializer(serializers.ModelSerializer):
                         {"classe": f"Erreur lors de la création automatique de la classe: {str(e)}"}
                     )
 
+            # Lieu par défaut de la classe (défini par l'administrateur) si aucun
+            # lieu n'est fourni — création uniquement (l'édition préserve le lieu existant).
+            if not data.get("location_type") and classe and not self.instance:
+                cls_loc = classe.location_type
+                if cls_loc in ("BLOC", "BOTH_ALLOWED") and classe.block_id and classe.room_id:
+                    data["location_type"] = "block"
+                    data["block"] = classe.block
+                    data["room"] = classe.room
+                elif cls_loc in ("AMPHI", "BOTH_ALLOWED") and classe.amphitheater_id:
+                    data["location_type"] = "amphitheater"
+                    data["amphitheater"] = classe.amphitheater
+
             teacher = data.get("teacher", getattr(self.instance, "teacher", None))
             request = self.context.get("request")
             if request and request.user.role == "teacher" and classe:

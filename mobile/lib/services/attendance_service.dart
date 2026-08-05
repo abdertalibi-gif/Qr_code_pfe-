@@ -34,8 +34,8 @@ class AttendanceService {
         'device_id': request.deviceId,
         'device_fingerprint': request.deviceFingerprint,
         'device_info': request.deviceInfo,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
   }
@@ -56,8 +56,8 @@ class AttendanceService {
         'device_id': deviceId,
         'device_fingerprint': fingerprint,
         'device_info': deviceInfo,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
   }
@@ -98,9 +98,9 @@ class AttendanceService {
             message;
       }
       return AttendanceResult.failure(message: message);
-    } on NetworkException {
+    } on NetworkException catch (e) {
       return AttendanceResult.failure(
-        message: 'Pas de connexion Internet.',
+        message: e.message,
         type: AttendanceErrorType.noInternet,
       );
     } on TimeoutException {

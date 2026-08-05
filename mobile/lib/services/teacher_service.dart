@@ -27,7 +27,7 @@ class TeacherService {
   Future<List<SessionModel>> fetchSessions({int? classeId}) async {
     final response = await _client.get(
       AppConstants.sessionsEndpoint,
-      queryParameters: {if (classeId != null) 'classe': classeId},
+      queryParameters: {'classe': ?classeId},
     );
     final data = _unwrapList(response.data);
     return data.map(SessionModel.fromJson).toList();
@@ -73,8 +73,8 @@ class TeacherService {
         'date': date,
         'start_time': startTime,
         'end_time': endTime,
-        if (locationType != null) 'location_type': locationType,
-        if (excludeSessionId != null) 'exclude_session_id': excludeSessionId,
+        'location_type': ?locationType,
+        'exclude_session_id': ?excludeSessionId,
       },
     );
     final data = response.data;
@@ -97,8 +97,8 @@ class TeacherService {
       data: {
         'expiry_minutes': expiryMinutes,
         'attendance_radius_meters': attendanceRadiusMeters,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
     return SessionQrPayload.fromJson(response.data as Map<String, dynamic>);
@@ -179,7 +179,7 @@ class TeacherService {
   Future<List<StudentItem>> fetchStudents({int? classeId}) async {
     final response = await _client.get(
       '/students/',
-      queryParameters: {if (classeId != null) 'classe_id': classeId},
+      queryParameters: {'classe_id': ?classeId},
     );
     final data = _unwrapList(response.data);
     return data.map(StudentItem.fromJson).toList();

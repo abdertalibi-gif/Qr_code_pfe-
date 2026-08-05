@@ -1,10 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import '../l10n/app_strings.dart';
 import '../models/auth_model.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
-import '../services/connectivity_service.dart';
 
 enum AttendanceValidationStatus {
   idle,
@@ -15,13 +13,9 @@ enum AttendanceValidationStatus {
 
 class AttendanceProvider extends ChangeNotifier {
   final AttendanceService _attendanceService;
-  final ConnectivityService _connectivityService;
 
-  AttendanceProvider({
-    AttendanceService? attendanceService,
-    ConnectivityService? connectivityService,
-  })  : _attendanceService = attendanceService ?? AttendanceService(),
-        _connectivityService = connectivityService ?? ConnectivityService();
+  AttendanceProvider({AttendanceService? attendanceService})
+      : _attendanceService = attendanceService ?? AttendanceService();
 
   // ─── QR State ─────────────────────────────────────────────────────────────
   String? _scannedQrToken;
@@ -134,17 +128,6 @@ class AttendanceProvider extends ChangeNotifier {
     required String lastName,
     required String codeMassar,
   }) async {
-    // Check connectivity first
-    final isConnected = await _connectivityService.isConnected();
-    if (!isConnected) {
-      final result = AttendanceResult.failure(
-        message: 'Pas de connexion Internet.',
-        type: AttendanceErrorType.noInternet,
-      );
-      _applyResult(result);
-      return result;
-    }
-
     _validationStatus = AttendanceValidationStatus.loading;
     _lastResult = null;
     _errorTitle = null;
@@ -176,16 +159,6 @@ class AttendanceProvider extends ChangeNotifier {
 
   /// Authenticated mobile path — uses JWT and linked student profile.
   Future<AttendanceResult> validateFromApp({required String qrToken}) async {
-    final isConnected = await _connectivityService.isConnected();
-    if (!isConnected) {
-      final result = AttendanceResult.failure(
-        message: 'Pas de connexion Internet.',
-        type: AttendanceErrorType.noInternet,
-      );
-      _applyResult(result);
-      return result;
-    }
-
     _validationStatus = AttendanceValidationStatus.loading;
     _lastResult = null;
     _errorTitle = null;
@@ -219,15 +192,6 @@ class AttendanceProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final isConnected = await _connectivityService.isConnected();
-      if (!isConnected) {
-        _historyError = true;
-        _historyErrorMessage = AppStrings.noInternet;
-        _historyLoading = false;
-        notifyListeners();
-        return;
-      }
-
       final rawList = await _attendanceService.fetchMyAttendance();
       _attendanceHistory = rawList
           .map((json) => AttendanceModel.fromJson(json))

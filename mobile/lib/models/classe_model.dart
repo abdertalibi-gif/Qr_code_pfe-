@@ -46,6 +46,10 @@ class ClasseModel {
   final String academicYear;
   final String level;
   final String field;
+  final String locationType;
+  final int? blockId;
+  final int? roomId;
+  final int? amphitheaterId;
 
   const ClasseModel({
     required this.id,
@@ -67,6 +71,10 @@ class ClasseModel {
     this.academicYear = '',
     this.level = '',
     this.field = '',
+    this.locationType = '',
+    this.blockId,
+    this.roomId,
+    this.amphitheaterId,
   });
 
   factory ClasseModel.fromJson(Map<String, dynamic> json) {
@@ -90,6 +98,10 @@ class ClasseModel {
       academicYear: json['academic_year'] as String? ?? '',
       level: json['level'] as String? ?? '',
       field: json['field'] as String? ?? '',
+      locationType: json['location_type'] as String? ?? '',
+      blockId: json['block_id'] as int?,
+      roomId: json['room_id'] as int?,
+      amphitheaterId: json['amphitheater_id'] as int?,
     );
   }
 

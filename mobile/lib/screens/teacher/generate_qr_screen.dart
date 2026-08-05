@@ -36,9 +36,13 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
   }
 
   Future<void> _loadExistingQr() async {
-    final payload = await _teacherService.fetchCurrentQr(widget.sessionId);
-    if (mounted && payload != null && payload.isQrValid) {
-      setState(() => _payload = payload);
+    try {
+      final payload = await _teacherService.fetchCurrentQr(widget.sessionId);
+      if (mounted && payload != null && payload.isQrValid) {
+        setState(() => _payload = payload);
+      }
+    } catch (_) {
+      // QR existant optionnel : on reste sur le formulaire de génération.
     }
   }
 

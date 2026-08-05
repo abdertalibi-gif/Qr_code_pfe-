@@ -411,7 +411,6 @@
       <div class="section-actions">
         <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
         <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
-        <button class="btn admin-only" id="btnOpenAddSession">+ Nouvelle séance</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -424,7 +423,6 @@
             <th>Enseignant</th>
             <th>Date</th>
             <th>Horaire</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="sessionsBody">
@@ -1462,7 +1460,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="/api.js"></script>
 <script src="/i18n-fr.js"></script>
-<script src="/session-form.js"></script>
 <script>
   /* ── Auth guard ── */
   let currentUser = null;
@@ -1622,7 +1619,6 @@
       loadLiveOccupation();
     }
     connectAdminLiveWS();
-    await SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     if (typeof initTeachersTab === 'function') await initTeachersTab(currentUser?.role || 'admin');
     setupRoomsEventListeners();
     if (isAdminOnly()) { loadBlocks(); loadAmphitheaters(); }
@@ -2296,7 +2292,7 @@
       s.date, API.formatDate(s.date), formatSessionWindow(s)
     ));
     if (!filtered.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${query ? 'Aucun résultat.' : 'Aucune séance.'}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${query ? 'Aucun résultat.' : 'Aucune séance.'}</td></tr>`;
       return;
     }
     tbody.innerHTML = filtered.map((s, i) => `
@@ -2307,18 +2303,8 @@
         <td>${esc(s.teacher_name || teacherName(s.teacher))}</td>
         <td>${API.formatDate(s.date)}</td>
         <td>${formatSessionWindow(s)}</td>
-        <td><button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteSession(${s.id})">Supprimer</button></td>
       </tr>
     `).join('');
-  }
-
-  async function deleteSession(id) {
-    if (!confirm('Supprimer cette séance ?')) return;
-    try {
-      await API.apiFetch(`/sessions/${id}/`, { method: 'DELETE' });
-      showToast('Séance supprimée.', 'success');
-      await loadSessionsList();
-    } catch (e) { showToast(e.message, 'error'); }
   }
 
   function teacherName(teacherId) {
@@ -3361,10 +3347,6 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
       await loadClasses();
     } catch (e) { showToast(e.message, 'error'); }
   }
-
-  document.getElementById('btnOpenAddSession').addEventListener('click', () => {
-    SessionForm.open();
-  });
 
   /* ── Export Wizard ── */
   let _exportWizardBound = false;

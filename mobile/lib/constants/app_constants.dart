@@ -23,14 +23,41 @@ class AppConstants {
 
   static const int apiPort = 8000;
 
+  /// Hosts that only work on the dev machine itself (PC browser / emulator),
+  /// never on a physical Android/iOS device.
+  static const List<String> _loopbackHosts = [
+    'localhost',
+    '127.0.0.1',
+    '10.0.2.2',
+    '::1',
+  ];
+
   static String get baseUrl {
     final override = _apiBaseUrlOverride.trim();
     if (override.isNotEmpty) {
-      return override.endsWith('/') ? override.substring(0, override.length - 1) : override;
+      // On mobile, an override pointing to localhost / 10.0.2.2 is useless:
+      // fall back to the PC's LAN IP so the app never silently fails to reach
+      // a backend that is running on the same Wi‑Fi.
+      if (kIsWeb || !_hasLoopbackHost(override)) {
+        return _stripTrailingSlash(override);
+      }
     }
     if (kIsWeb) return 'http://localhost:$apiPort/api/v1';
     // Real phones cannot use localhost or 10.0.2.2 — use your PC's LAN IP.
     return 'http://$devHost:$apiPort/api/v1';
+  }
+
+  static String _stripTrailingSlash(String url) {
+    return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
+
+  static bool _hasLoopbackHost(String url) {
+    try {
+      final host = Uri.parse(url).host.toLowerCase();
+      return _loopbackHosts.contains(host);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// WebSocket root (no trailing slash) derived from [baseUrl].

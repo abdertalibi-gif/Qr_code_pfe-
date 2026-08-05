@@ -41,6 +41,12 @@ class DioClient {
 
   // ─── Convenience wrappers ────────────────────────────────────────────────
 
+  /// Message affiché lorsque le serveur est réellement injoignable.
+  static String get serverUnreachableMessage =>
+      'Serveur inaccessible (${AppConstants.baseUrl}). '
+      'Vérifiez que le backend Django est démarré et que le téléphone est '
+      'connecté au même Wi‑Fi que le PC.';
+
   Future<Response<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -55,7 +61,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -75,7 +81,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -95,7 +101,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -115,7 +121,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -135,7 +141,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -158,7 +164,7 @@ class DioClient {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } on SocketException {
-      throw const NetworkException();
+      throw NetworkException(serverUnreachableMessage);
     }
   }
 
@@ -172,7 +178,7 @@ class DioClient {
         return const TimeoutException();
 
       case DioExceptionType.connectionError:
-        return const NetworkException();
+        return NetworkException(serverUnreachableMessage);
 
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode ?? 0;
@@ -202,7 +208,9 @@ class DioClient {
         return const AppException('SSL certificate error.');
 
       case DioExceptionType.unknown:
-        if (e.error is SocketException) return const NetworkException();
+        if (e.error is SocketException) {
+          return NetworkException(serverUnreachableMessage);
+        }
         return AppException(e.message ?? 'Unknown error.');
     }
   }
@@ -378,12 +386,12 @@ class _LoggingInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     assert(() {
-      // ignore: avoid_print
       final path = response.requestOptions.path;
       final body = response.data;
       final bodyPreview = body == null
           ? ''
           : ' body=${body.toString().length > 200 ? '${body.toString().substring(0, 200)}…' : body}';
+      // ignore: avoid_print
       print(
         '[DIO] <-- ${response.statusCode} '
         '${response.requestOptions.method.toUpperCase()} $path$bodyPreview',
@@ -405,5 +413,4 @@ class _LoggingInterceptor extends Interceptor {
       return true;
     }());
     handler.next(err);
-  }
-}
+  }}

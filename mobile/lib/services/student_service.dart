@@ -21,8 +21,8 @@ class StudentService {
       AppConstants.validateAppAttendanceEndpoint,
       data: {
         'qr_token': qrToken,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -44,8 +44,8 @@ class StudentService {
         'first_name': firstName.trim(),
         'last_name': lastName.trim(),
         'code_massar': codeMassar.trim(),
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
     return response.data as Map<String, dynamic>;

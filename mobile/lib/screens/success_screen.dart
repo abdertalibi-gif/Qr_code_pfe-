@@ -358,12 +358,16 @@ class _SuccessScreenState extends State<SuccessScreen>
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Reçu de présence',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.successColor,
-                      ),
+                Flexible(
+                  child: Text(
+                    'Reçu de présence',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.successColor,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const Spacer(),
                 Container(
@@ -431,21 +435,25 @@ class _SuccessScreenState extends State<SuccessScreen>
                       color: AppTheme.successColor.withOpacity(0.2),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.verified_rounded,
                         color: AppTheme.successColor,
                         size: 18,
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Present — Attendance recorded successfully',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.successColor,
+                      const SizedBox(width: 8),
+                      const Flexible(
+                        child: Text(
+                          'Present — Attendance recorded successfully',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.successColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

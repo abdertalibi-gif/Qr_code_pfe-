@@ -183,6 +183,9 @@
           <option value="block">Bloc / Salle</option>
           <option value="amphitheater">Amphithéâtre</option>
         </select>
+        <p style="font-size:.75rem;color:var(--muted);margin:.25rem 0 0">
+          Lieu par défaut de la classe, modifiable en cas de changement exceptionnel.
+        </p>
       </div>
       <div id="sfBlockGroup" style="display:none">
         <div class="field">
@@ -487,6 +490,69 @@
         moduleEl.value = cls.module_id || '';
         moduleEl.disabled = false;
       }
+      this._applyClassLocation(cls);
+    },
+
+    /**
+     * Charge le lieu par défaut de la classe (défini par l'administrateur)
+     * dans le formulaire. L'enseignant peut le modifier si nécessaire.
+     */
+    _applyClassLocation(cls) {
+      if (this._editingId) return; // édition : le lieu de la séance est appliqué séparément
+      var locTypeEl = document.getElementById('sfLocationType');
+      var blockGroup = document.getElementById('sfBlockGroup');
+      var amphiGroup = document.getElementById('sfAmphiGroup');
+      if (!locTypeEl || !blockGroup || !amphiGroup) return;
+
+      var type = cls.location_type || '';
+      var mapped = null;
+      if ((type === 'BLOC' || type === 'BOTH_ALLOWED') && cls.block_id && cls.room_id) {
+        mapped = 'block';
+      } else if ((type === 'AMPHI' || type === 'BOTH_ALLOWED') && cls.amphitheater_id) {
+        mapped = 'amphitheater';
+      } else if (type === 'BLOC' || type === 'BOTH_ALLOWED') {
+        mapped = 'block';
+      } else if (type === 'AMPHI') {
+        mapped = 'amphitheater';
+      }
+
+      if (!mapped) {
+        locTypeEl.value = '';
+        blockGroup.style.display = 'none';
+        amphiGroup.style.display = 'none';
+        this._resetLocationFields();
+        return;
+      }
+
+      locTypeEl.value = mapped;
+      blockGroup.style.display = mapped === 'block' ? 'block' : 'none';
+      amphiGroup.style.display = mapped === 'amphitheater' ? 'block' : 'none';
+
+      var blockSel = document.getElementById('sfBlock');
+      var roomSel = document.getElementById('sfRoom');
+      var amphiSel = document.getElementById('sfAmphi');
+
+      if (mapped === 'block') {
+        // Valeurs définies AVANT populate pour être conservées par la restauration
+        blockSel.value = cls.block_id ? String(cls.block_id) : '';
+        roomSel.value = '';
+      } else {
+        amphiSel.value = cls.amphitheater_id ? String(cls.amphitheater_id) : '';
+      }
+
+      this._populateLocationSelects();
+      if (mapped === 'block' && cls.room_id) {
+        // Les options de salle sont reconstruites par l'événement change du bloc
+        roomSel.value = String(cls.room_id);
+      }
+      this._fetchAvailableLocations();
+    },
+
+    _resetLocationFields() {
+      document.getElementById('sfBlock').innerHTML = '<option value="">— Sélectionner un bloc —</option>';
+      document.getElementById('sfRoom').innerHTML = "<option value=\"\">— Sélectionner d'abord le bloc —</option>";
+      document.getElementById('sfRoom').disabled = true;
+      document.getElementById('sfAmphi').innerHTML = '<option value="">— Sélectionner un amphithéâtre —</option>';
     },
 
     /* ── UI HELPERS ── */
@@ -552,10 +618,7 @@
       document.getElementById('sfLocationType').value = '';
       document.getElementById('sfBlockGroup').style.display = 'none';
       document.getElementById('sfAmphiGroup').style.display = 'none';
-      document.getElementById('sfBlock').innerHTML = '<option value="">— Sélectionner un bloc —</option>';
-      document.getElementById('sfRoom').innerHTML = "<option value=\"\">— Sélectionner d'abord le bloc —</option>";
-      document.getElementById('sfRoom').disabled = true;
-      document.getElementById('sfAmphi').innerHTML = '<option value="">— Sélectionner un amphithéâtre —</option>';
+      this._resetLocationFields();
       document.getElementById('sfSessionType').value = 'Cours';
       this._availableRooms = null;
       this._availableBlocks = null;

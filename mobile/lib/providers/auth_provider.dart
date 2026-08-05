@@ -85,8 +85,8 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = 'E-mail ou mot de passe incorrect.';
       _setStatus(AuthStatus.unauthenticated);
       return false;
-    } on NetworkException {
-      _errorMessage = AppStrings.noInternet;
+    } on NetworkException catch (e) {
+      _errorMessage = e.message;
       _setStatus(AuthStatus.unauthenticated);
       return false;
     } on TimeoutException {

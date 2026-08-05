@@ -215,7 +215,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: attendees.isEmpty ? 2 : attendees.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (context, i) {
           if (i == 0) {
             return OutlinedButton.icon(
@@ -576,7 +576,7 @@ class _SuspiciousTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: provider.suspiciousAttempts.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         final a = provider.suspiciousAttempts[i];
         final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -77,6 +77,30 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Erreur de chargement du profil ──────────────────────────
+          if (provider.errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.errorColor.withOpacity(.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: AppTheme.errorColor, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // ── Carte identité ───────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(20),
@@ -246,10 +270,18 @@ class _InfoTile extends StatelessWidget {
       leading: Icon(icon, color: AppTheme.primary, size: 22),
       title: Text(label,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      trailing: Text(value,
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 160),
+        child: Text(
+          value,
           style: TextStyle(
               fontSize: 13,
-              color: isDark ? Colors.grey[400] : Colors.grey[700])),
+              color: isDark ? Colors.grey[400] : Colors.grey[700]),
+          textAlign: TextAlign.end,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     );
   }
 }

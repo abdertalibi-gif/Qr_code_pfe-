@@ -90,6 +90,7 @@ class StudentProvider extends ChangeNotifier {
       }
     } catch (e) {
       _scheduleError = e.toString();
+      notifyListeners();
     } finally {
       if (!silent) {
         _scheduleLoading = false;

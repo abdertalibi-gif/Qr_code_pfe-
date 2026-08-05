@@ -13,9 +13,11 @@ class FileShareService {
     final dir = await Directory.systemTemp.createTemp('attendance_export_');
     final file = File('${dir.path}${Platform.pathSeparator}$filename');
     await file.writeAsBytes(bytes, flush: true);
-    await Share.shareXFiles(
-      [XFile(file.path, mimeType: _xlsxMime)],
-      subject: filename,
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: _xlsxMime)],
+        subject: filename,
+      ),
     );
   }
 }

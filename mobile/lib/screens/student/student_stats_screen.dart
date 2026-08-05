@@ -65,6 +65,32 @@ class _StudentStatsScreenState extends State<StudentStatsScreen>
                   child: CircularProgressIndicator(),
                 ),
               )
+            else if (provider.historyError != null && history.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 40),
+                child: Column(
+                  children: [
+                    Icon(Icons.cloud_off_outlined,
+                        size: 56, color: Colors.grey[400]),
+                    const SizedBox(height: 12),
+                    Text(
+                      provider.historyError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () => provider.loadHistory(),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Réessayer'),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.primary),
+                    ),
+                  ],
+                ),
+              )
             else if (history.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 48),

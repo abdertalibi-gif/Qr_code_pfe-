@@ -222,12 +222,20 @@ class _InfoTile extends StatelessWidget {
       leading: Icon(icon, color: AppTheme.primary, size: 22),
       title: Text(label,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      trailing: Text(value,
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 160),
+        child: Text(
+          value,
           style: TextStyle(
               fontSize: 13,
               color: Theme.of(context).brightness == Brightness.dark
                   ? Colors.grey[400]
-                  : Colors.grey[700])),
+                  : Colors.grey[700]),
+          textAlign: TextAlign.end,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     );
   }
 }

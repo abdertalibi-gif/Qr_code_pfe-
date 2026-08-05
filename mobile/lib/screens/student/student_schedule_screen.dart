@@ -95,6 +95,12 @@ class _ScheduleTab extends StatelessWidget {
     if (provider.scheduleLoading && provider.schedule.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (provider.scheduleError != null && provider.schedule.isEmpty) {
+      return _ErrorState(
+        message: provider.scheduleError!,
+        onRetry: () => provider.loadSchedule(),
+      );
+    }
     if (provider.schedule.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => provider.loadSchedule(),
@@ -210,12 +216,16 @@ class _DaySection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  _formatDate(dayLabel, date),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                Flexible(
+                  child: Text(
+                    _formatDate(dayLabel, date),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -367,10 +377,12 @@ class _SessionCard extends StatelessWidget {
                     text: item.locationDisplay,
                   ),
                   const SizedBox(height: 10),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _StatusChip(status: item.status),
-                      const SizedBox(width: 8),
                       if (item.qrOpen) const _QrOpenBadge(),
                     ],
                   ),
@@ -396,6 +408,7 @@ class _TypeBadge extends StatelessWidget {
         color: AppTheme.primaryLight,
         borderRadius: BorderRadius.circular(8),
       ),
+      constraints: const BoxConstraints(maxWidth: 96),
       child: Text(
         type,
         style: const TextStyle(
@@ -403,6 +416,8 @@ class _TypeBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: AppTheme.primary,
         ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -520,6 +535,12 @@ class _HistoryTab extends StatelessWidget {
     if (provider.historyLoading && provider.attendanceHistory.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (provider.historyError != null && provider.attendanceHistory.isEmpty) {
+      return _ErrorState(
+        message: provider.historyError!,
+        onRetry: () => provider.loadHistory(),
+      );
+    }
     if (provider.attendanceHistory.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => provider.loadHistory(),
@@ -551,7 +572,7 @@ class _HistoryTab extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: provider.attendanceHistory.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (context, i) =>
             _HistoryCard(attendance: provider.attendanceHistory[i]),
       ),
@@ -595,6 +616,47 @@ class _HistoryCard extends StatelessWidget {
                   color: AppTheme.successColor,
                   fontWeight: FontWeight.w600)),
         ),
+      ),
+    );
+  }
+}
+
+// ─── État d'erreur partagé ───────────────────────────────────────────────
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: () async => onRetry(),
+      color: AppTheme.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey[500]),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Réessayer'),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+            ),
+          ),
+        ],
       ),
     );
   }

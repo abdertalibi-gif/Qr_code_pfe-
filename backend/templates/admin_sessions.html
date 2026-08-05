@@ -15,7 +15,6 @@
     <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
     <button class="btn outline" id="btnRefreshSessions">🔄 Actualiser</button>
     <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
-    <button class="btn" id="btnOpenAddSession">+ Nouvelle séance</button>
   </div>
 </div>
 <div class="table-wrap">
@@ -29,11 +28,10 @@
         <th>Enseignant</th>
         <th>Salle</th>
         <th>Statut</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody id="sessionsBody">
-      <tr class="empty-row"><td colspan="8">Chargement…</td></tr>
+      <tr class="empty-row"><td colspan="7">Chargement…</td></tr>
     </tbody>
   </table>
 </div>
@@ -156,6 +154,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/session-form.js"></script>
 <script src="/admin-sessions.js"></script>
 {% endblock %}

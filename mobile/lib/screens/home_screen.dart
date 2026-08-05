@@ -213,12 +213,18 @@ class _HomeScreenState extends State<HomeScreen>
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                AppStrings.recentActivity,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              Flexible(
+                                child: Text(
+                                  AppStrings.recentActivity,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
                               ),
                               TextButton.icon(
                                 onPressed: _loadHistory,
