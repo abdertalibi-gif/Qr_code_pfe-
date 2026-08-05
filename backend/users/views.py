@@ -275,24 +275,6 @@ class ClasseViewSet(viewsets.ModelViewSet):
                 )
         serializer.save()
 
-    def create(self, request, *args, **kwargs):
-        try:
-            return super().create(request, *args, **kwargs)
-        except Exception as e:
-            raise
-
-    def update(self, request, *args, **kwargs):
-        try:
-            return super().update(request, *args, **kwargs)
-        except Exception as e:
-            raise
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super().destroy(request, *args, **kwargs)
-        except Exception as e:
-            raise
-
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = (

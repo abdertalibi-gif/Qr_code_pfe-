@@ -39,7 +39,7 @@ async function loadClasses() {
     renderClasses();
   } catch (e) {
     document.getElementById('classesBody').innerHTML =
-      '<tr class="empty-row"><td colspan="8">Erreur: ' + esc(e.message) + '</td></tr>';
+      '<tr class="empty-row"><td colspan="9">Erreur: ' + esc(e.message) + '</td></tr>';
   }
 }
 
@@ -126,53 +126,83 @@ function renderClasses() {
   }).join('');
 }
 
-function cascadeSemestre(niveauId) {
-  const sel = document.getElementById('clSemestre');
+/* ── Cascades async avec restauration ── */
+
+async function cascadeSemestre(niveauId, restoreValue) {
+  var sel = document.getElementById('clSemestre');
+  var spinner = document.getElementById('clSemestreSpinner');
   sel.disabled = true;
   sel.innerHTML = '<option value="">— Sélectionner —</option>';
-  if (!niveauId) { sel.disabled = false; cascadeFiliere(''); return; }
-  API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveauId))
-    .then(function (data) {
-      var sems = Array.isArray(data) ? data : [];
-      sems.forEach(function (s) {
-        sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
-      });
-      sel.disabled = false;
-    })
-    .catch(function () { sel.disabled = false; cascadeFiliere(''); });
+  if (spinner) spinner.style.display = 'inline-block';
+  if (!niveauId) {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+    cascadeFiliere('');
+    return;
+  }
+  try {
+    var data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveauId));
+    var sems = Array.isArray(data) ? data : [];
+    sems.forEach(function (s) {
+      sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    });
+    sel.disabled = false;
+    if (restoreValue) sel.value = restoreValue;
+    if (!restoreValue) cascadeFiliere('');
+  } catch (e) {
+    sel.disabled = false;
+    cascadeFiliere('');
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
 }
 
-function cascadeFiliere(semestreId) {
-  const sel = document.getElementById('clFiliere');
+function cascadeFiliere(semestreId, restoreValue) {
+  var sel = document.getElementById('clFiliere');
   sel.disabled = true;
   sel.innerHTML = '<option value="">— Sélectionner —</option>';
-  if (!semestreId) { sel.disabled = false; cascadeModule(''); return; }
+  if (!semestreId) {
+    sel.disabled = false;
+    cascadeModule('');
+    return;
+  }
   var filtered = allFilieres.filter(function (f) { return String(f.semestre_id) === String(semestreId); });
   filtered.forEach(function (f) {
     sel.innerHTML += '<option value="' + f.id + '">' + esc(f.name) + '</option>';
   });
   sel.disabled = false;
-  cascadeModule('');
+  if (restoreValue) sel.value = restoreValue;
+  if (!restoreValue) cascadeModule('');
 }
 
-function cascadeModule(filiereId) {
-  const sel = document.getElementById('clModule');
+async function cascadeModule(filiereId, restoreValue) {
+  var sel = document.getElementById('clModule');
+  var spinner = document.getElementById('clModuleSpinner');
   sel.disabled = true;
   sel.innerHTML = '<option value="">— Sélectionner —</option>';
-  if (!filiereId) { sel.disabled = false; return; }
-  API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId)
-    .then(function (data) {
-      var mods = Array.isArray(data) ? data : [];
-      mods.forEach(function (m) {
-        sel.innerHTML += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
-      });
-      sel.disabled = false;
-    })
-    .catch(function () { sel.disabled = false; });
+  if (spinner) spinner.style.display = 'inline-block';
+  if (!filiereId) {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+    return;
+  }
+  try {
+    var data = await API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId);
+    var mods = Array.isArray(data) ? data : [];
+    mods.forEach(function (m) {
+      sel.innerHTML += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
+    });
+    sel.disabled = false;
+    if (restoreValue) sel.value = restoreValue;
+  } catch (e) {
+    sel.disabled = false;
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
 }
 
-function cascadeRoom(blockId) {
-  const sel = document.getElementById('clRoom');
+function cascadeRoom(blockId, restoreValue) {
+  var sel = document.getElementById('clRoom');
   sel.innerHTML = '<option value="">— Sélectionner —</option>';
   if (!blockId) return;
   var block = allBlocks.find(function (b) { return b.id == blockId; });
@@ -181,6 +211,7 @@ function cascadeRoom(blockId) {
       sel.innerHTML += '<option value="' + r.id + '">' + esc(r.name) + '</option>';
     });
   }
+  if (restoreValue) sel.value = restoreValue;
 }
 
 function toggleLocation(locationType) {
@@ -190,42 +221,35 @@ function toggleLocation(locationType) {
   document.getElementById('clAmphiGroup').style.display = showAmphi ? '' : 'none';
 }
 
-function openEditClass(id) {
+async function openEditClass(id) {
   var c = allClasses.find(function (x) { return x.id === id; });
   if (!c) return;
   document.getElementById('clId').value = c.id;
   document.getElementById('modalClasseTitle').textContent = 'Modifier la classe';
-  if (c.niveau_id) {
-    document.getElementById('clNiveau').value = c.niveau_id;
-    cascadeSemestre(c.niveau_id);
-    setTimeout(function () {
-      if (c.semestre_id) {
-        document.getElementById('clSemestre').value = c.semestre_id;
-        cascadeFiliere(c.semestre_id);
-        setTimeout(function () {
-          if (c.filiere_id) {
-            document.getElementById('clFiliere').value = c.filiere_id;
-            cascadeModule(c.filiere_id);
-            setTimeout(function () {
-              if (c.module_id) document.getElementById('clModule').value = c.module_id;
-            }, 100);
-          }
-        }, 100);
-      }
-    }, 100);
-  }
   document.getElementById('clYear').value = c.academic_year || '';
+  document.getElementById('clTeacher').value = c.assigned_teacher_id || '';
+
   if (c.location_type) {
     document.getElementById('clLocationType').value = c.location_type;
     toggleLocation(c.location_type);
     if (c.block_id) {
       document.getElementById('clBlock').value = c.block_id;
-      cascadeRoom(c.block_id);
-      if (c.room_id) setTimeout(function () { document.getElementById('clRoom').value = c.room_id; }, 100);
+      cascadeRoom(c.block_id, c.room_id);
     }
     if (c.amphitheater_id) document.getElementById('clAmphi').value = c.amphitheater_id;
   }
-  document.getElementById('clTeacher').value = c.assigned_teacher_id || '';
+
+  if (c.niveau_id) {
+    document.getElementById('clNiveau').value = c.niveau_id;
+    await cascadeSemestre(c.niveau_id, c.semestre_id);
+    if (c.semestre_id) {
+      cascadeFiliere(c.semestre_id, c.filiere_id);
+      if (c.filiere_id) {
+        await cascadeModule(c.filiere_id, c.module_id);
+      }
+    }
+  }
+
   openModal('modalClasse');
 }
 
@@ -279,7 +303,7 @@ function setupEventListeners() {
   document.getElementById('btnSubmitClasse')?.addEventListener('click', async function () {
     var id = document.getElementById('clId').value;
     var body = {
-      niveau: document.getElementById('clNiveau').value || '',
+      niveau_id: document.getElementById('clNiveau').value || '',
       semestre_id: document.getElementById('clSemestre').value || null,
       filiere_id: document.getElementById('clFiliere').value || null,
       module_id: document.getElementById('clModule').value || null,

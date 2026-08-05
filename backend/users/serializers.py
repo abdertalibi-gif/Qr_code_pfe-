@@ -619,6 +619,28 @@ class ClasseSerializer(serializers.ModelSerializer):
                     {"amphitheater_id": "Amphithéâtre requis pour le type 'Les deux'."}
                 )
 
+        # Validate uniqueness — matches the DB constraint unique_classe_per_module_year
+        filiere = data.get("filiere")
+        module = data.get("module")
+        academic_year = data.get("academic_year")
+        if niveau and semestre and filiere and academic_year:
+            qs = Classe.objects.filter(
+                niveau=niveau,
+                semestre=semestre,
+                filiere=filiere,
+                academic_year=academic_year,
+            )
+            if module:
+                qs = qs.filter(module=module)
+            else:
+                qs = qs.filter(module__isnull=True)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Une classe avec ces paramètres existe déjà pour cette année universitaire."]}
+                )
+
         logger.info(f"Validation passed for ClasseSerializer")
         return data
 
