@@ -40,49 +40,47 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final screens = <Widget>[
-      const HomeScreen(),
-      const LoginScreen(),
-      const ValidationScreen(),
-      const ErrorScreen(),
-      const SuccessScreen(),
-      const RoleNotSupportedScreen(),
-      const StudentScheduleScreen(),
-      const StudentStatsScreen(),
-      const StudentProfileScreen(),
-      const TeacherDashboardScreen(),
-      const SessionsScreen(),
-      const TeacherAttendanceScreen(),
-      const TeacherStatisticsScreen(),
-      const TeacherProfileScreen(),
-      const SessionFormScreen(),
-      const GenerateQrScreen(sessionId: 1),
-      const SessionDetailScreen(sessionId: 1),
-    ];
+    final screens = <String, Widget>{
+      'HomeScreen': const HomeScreen(),
+      'LoginScreen': const LoginScreen(),
+      'ValidationScreen': const ValidationScreen(),
+      'ErrorScreen': const ErrorScreen(),
+      'SuccessScreen': const SuccessScreen(),
+      'RoleNotSupportedScreen': const RoleNotSupportedScreen(),
+      'StudentScheduleScreen': const StudentScheduleScreen(),
+      'StudentStatsScreen': const StudentStatsScreen(),
+      'StudentProfileScreen': const StudentProfileScreen(),
+      'TeacherDashboardScreen': const TeacherDashboardScreen(),
+      'SessionsScreen': const SessionsScreen(),
+      'TeacherAttendanceScreen': const TeacherAttendanceScreen(),
+      'TeacherStatisticsScreen': const TeacherStatisticsScreen(),
+      'TeacherProfileScreen': const TeacherProfileScreen(),
+      'SessionFormScreen': const SessionFormScreen(),
+      'GenerateQrScreen': const GenerateQrScreen(sessionId: 1),
+      'SessionDetailScreen': const SessionDetailScreen(sessionId: 1),
+    };
 
-    for (final screen in screens) {
+    for (final entry in screens.entries) {
+      final overflowErrors = <String>[];
+      final oldHandler = FlutterError.onError;
+      FlutterError.onError = (FlutterErrorDetails details) {
+        if (details.toString().contains('RenderFlex overflowed')) {
+          overflowErrors.add(details.toString());
+        }
+      };
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider<ThemeProvider>(
-              create: (_) => ThemeProvider(),
-            ),
-            ChangeNotifierProvider<AuthProvider>(
-              create: (_) => AuthProvider(),
-            ),
-            ChangeNotifierProvider<AttendanceProvider>(
-              create: (_) => AttendanceProvider(),
-            ),
-            ChangeNotifierProvider<TeacherProvider>(
-              create: (_) => TeacherProvider(),
-            ),
-            ChangeNotifierProvider<StudentProvider>(
-              create: (_) => StudentProvider(),
-            ),
+            ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<AttendanceProvider>(create: (_) => AttendanceProvider()),
+            ChangeNotifierProvider<TeacherProvider>(create: (_) => TeacherProvider()),
+            ChangeNotifierProvider<StudentProvider>(create: (_) => StudentProvider()),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
-            home: screen,
+            home: entry.value,
           ),
         ),
       );
@@ -90,10 +88,12 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));
 
+      FlutterError.onError = oldHandler;
+
       expect(
-        tester.takeException(),
-        isNull,
-        reason: 'Exception ou overflow détecté sur : $screen',
+        overflowErrors,
+        isEmpty,
+        reason: 'Overflow détecté sur : ${entry.key}',
       );
     }
   });

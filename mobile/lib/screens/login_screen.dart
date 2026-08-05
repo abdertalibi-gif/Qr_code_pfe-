@@ -285,12 +285,16 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            AppStrings.rememberMe,
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontSize: 13,
-                                    ),
+                          Flexible(
+                            child: Text(
+                              AppStrings.rememberMe,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(fontSize: 13),
+                            ),
                           ),
                         ],
                       ),

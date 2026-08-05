@@ -367,12 +367,16 @@ class _WelcomeBanner extends StatelessWidget {
                     children: [
                       Icon(Icons.circle, size: 8, color: Colors.greenAccent),
                       SizedBox(width: 6),
-                      Text(
-                        AppStrings.readyToScan,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          AppStrings.readyToScan,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -508,12 +512,16 @@ class _ScanQrButton extends StatelessWidget {
                       Icon(Icons.touch_app_rounded,
                           size: 16, color: AppTheme.primary),
                       SizedBox(width: 6),
-                      Text(
-                        AppStrings.tapToOpenScanner,
-                        style: TextStyle(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                      Flexible(
+                        child: Text(
+                          AppStrings.tapToOpenScanner,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],

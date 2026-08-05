@@ -158,13 +158,17 @@ class _LabelContent extends StatelessWidget {
       children: [
         Icon(icon, size: fontSize + 4, color: color),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: fontWeight,
-            color: color,
-            letterSpacing: 0.3,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: fontWeight,
+              color: color,
+              letterSpacing: 0.3,
+            ),
           ),
         ),
       ],

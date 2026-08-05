@@ -18,7 +18,7 @@ class AppConstants {
   /// LAN IP of the machine running Django (must match ALLOWED_HOSTS in backend).
   static const String devHost = String.fromEnvironment(
     'DEV_HOST',
-    defaultValue: '192.168.1.15',
+    defaultValue: '192.168.1.86',
   );
 
   static const int apiPort = 8000;

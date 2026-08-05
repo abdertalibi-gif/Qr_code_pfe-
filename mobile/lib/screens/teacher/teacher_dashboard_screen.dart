@@ -240,10 +240,22 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
         if (action != null)
-          TextButton(onPressed: action, child: const Text('Tout voir')),
+          TextButton(
+            onPressed: action,
+            child: const Text('Tout voir'),
+          ),
       ],
     );
   }

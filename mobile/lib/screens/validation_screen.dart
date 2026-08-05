@@ -209,14 +209,18 @@ class _ValidationScreenState extends State<ValidationScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Text(
-                                  'Student Information',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                Flexible(
+                                  child: Text(
+                                    'Student Information',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
                                 ),
                               ],
                             ),
