@@ -139,7 +139,8 @@ class DioClient {
     }
   }
 
-  /// Fetches a raw binary payload (e.g. an XLSX export) as bytes.
+  /// Performs a `GET` and returns the raw response bytes (binary friendly),
+  /// e.g. for Excel exports. Keeps the auth interceptor active.
   Future<Uint8List> downloadBytes(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -148,7 +149,10 @@ class DioClient {
       final response = await _dio.get<List<int>>(
         path,
         queryParameters: queryParameters,
-        options: Options(responseType: ResponseType.bytes),
+        options: Options(
+          responseType: ResponseType.bytes,
+          validateStatus: (status) => status != null && status < 600,
+        ),
       );
       return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {

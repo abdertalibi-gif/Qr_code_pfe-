@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/attendance_model.dart';
+import '../models/student_schedule_model.dart';
 import '../models/user_model.dart';
 import '../services/student_service.dart';
 
@@ -18,25 +21,30 @@ class StudentProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _historyLoading = false;
+  bool _scheduleLoading = false;
   String? _errorMessage;
   String? _historyError;
+  String? _scheduleError;
 
   List<AttendanceModel> _attendanceHistory = [];
-  List<ClasseScheduleItem> _schedule = [];
-  Map<String, dynamic>? _personalStats;
-  List<Map<String, dynamic>> _modules = [];
+  List<StudentScheduleItem> _schedule = [];
   UserModel? _profile;
+
+  DateTime? _lastScheduleSync;
+
+  Timer? _scheduleTimer;
 
   // ─── Getters ──────────────────────────────────────────────────────────────
   bool get isLoading => _isLoading;
   bool get historyLoading => _historyLoading;
+  bool get scheduleLoading => _scheduleLoading;
   String? get errorMessage => _errorMessage;
   String? get historyError => _historyError;
+  String? get scheduleError => _scheduleError;
   List<AttendanceModel> get attendanceHistory => _attendanceHistory;
-  List<ClasseScheduleItem> get schedule => _schedule;
-  Map<String, dynamic>? get personalStats => _personalStats;
-  List<Map<String, dynamic>> get modules => _modules;
+  List<StudentScheduleItem> get schedule => _schedule;
   UserModel? get profile => _profile;
+  DateTime? get lastScheduleSync => _lastScheduleSync;
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -62,41 +70,53 @@ class StudentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadSchedule() async {
-    _setLoading(true);
-    _clearError();
+  /// Emploi du temps dynamique de l'étudiant.
+  ///
+  /// [silent] évite le spinner plein écran lors des rafraîchissements
+  /// automatiques (timer / retour au premier plan).
+  Future<void> loadSchedule({bool silent = false}) async {
+    if (_scheduleLoading) return;
+    if (!silent) {
+      _scheduleLoading = true;
+      _scheduleError = null;
+      notifyListeners();
+    }
     try {
-      final classes = await _studentService.fetchSchedule();
-      _schedule = classes.map(ClasseScheduleItem.fromClasse).toList();
+      _schedule = await _studentService.fetchMySchedule();
+      _lastScheduleSync = DateTime.now();
+      if (_scheduleError != null) {
+        _scheduleError = null;
+        notifyListeners();
+      }
     } catch (e) {
-      _setError(e.toString());
+      _scheduleError = e.toString();
     } finally {
-      _setLoading(false);
+      if (!silent) {
+        _scheduleLoading = false;
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> loadModules() async {
-    _setLoading(true);
-    _clearError();
-    try {
-      _modules = await _studentService.fetchModules();
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
+  /// Démarre la synchronisation périodique de l'emploi du temps.
+  void startScheduleAutoRefresh({Duration interval = const Duration(seconds: 30)}) {
+    _scheduleTimer?.cancel();
+    _scheduleTimer = Timer.periodic(interval, (_) {
+      if (_currentTab == StudentTab.schedule || _currentTab == StudentTab.home) {
+        loadSchedule(silent: true);
+      }
+    });
   }
 
-  Future<void> loadPersonalStats() async {
-    _setLoading(true);
-    _clearError();
-    try {
-      _personalStats = await _studentService.fetchPersonalStats();
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
+  /// Arrête la synchronisation périodique.
+  void stopScheduleAutoRefresh() {
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
+  }
+
+  /// Rafraîchit l'emploi du temps lors du retour au premier plan.
+  void refreshOnForeground() {
+    loadSchedule(silent: true);
   }
 
   Future<void> loadProfile() async {
@@ -110,6 +130,12 @@ class StudentProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  @override
+  void dispose() {
+    _scheduleTimer?.cancel();
+    super.dispose();
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────
@@ -127,37 +153,5 @@ class StudentProvider extends ChangeNotifier {
   void _clearError() {
     _errorMessage = null;
     notifyListeners();
-  }
-}
-
-/// Item d'emploi du temps (basé sur une classe).
-class ClasseScheduleItem {
-  final int id;
-  final String name;
-  final String? filiereName;
-  final String? moduleName;
-  final String? semestreName;
-  final String? roomName;
-  final String date;
-
-  const ClasseScheduleItem({
-    required this.id,
-    required this.name,
-    this.filiereName,
-    this.moduleName,
-    this.semestreName,
-    this.roomName,
-    this.date = '',
-  });
-
-  factory ClasseScheduleItem.fromClasse(dynamic classe) {
-    return ClasseScheduleItem(
-      id: classe.id as int,
-      name: classe.name as String? ?? '',
-      filiereName: classe.filiereName as String?,
-      moduleName: classe.moduleName as String?,
-      semestreName: classe.semestreName as String?,
-      roomName: classe.roomName as String?,
-    );
   }
 }

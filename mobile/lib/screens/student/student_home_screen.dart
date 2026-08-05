@@ -8,6 +8,9 @@ import 'student_stats_screen.dart';
 import 'student_profile_screen.dart';
 
 /// Écran racine de l'espace Étudiant : Bottom Navigation Bar.
+///
+/// Gère la synchronisation automatique de l'emploi du temps : rafraîchissement
+/// périodique (timer 30 s) et rafraîchissement au retour au premier plan.
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
 
@@ -15,7 +18,35 @@ class StudentHomeScreen extends StatefulWidget {
   State<StudentHomeScreen> createState() => _StudentHomeScreenState();
 }
 
-class _StudentHomeScreenState extends State<StudentHomeScreen> {
+class _StudentHomeScreenState extends State<StudentHomeScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<StudentProvider>();
+      provider.startScheduleAutoRefresh();
+      if (provider.schedule.isEmpty && !provider.scheduleLoading) {
+        provider.loadSchedule();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    context.read<StudentProvider>().stopScheduleAutoRefresh();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<StudentProvider>().refreshOnForeground();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<StudentProvider>();

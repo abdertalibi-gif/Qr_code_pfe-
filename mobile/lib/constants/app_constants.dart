@@ -64,18 +64,16 @@ class AppConstants {
   static const String validateAttendanceEndpoint = '/attendance/validate/';
   static const String validateAppAttendanceEndpoint = '/attendance/validate/app/';
   static const String myAttendanceEndpoint = '/attendance/my/';
+  static const String myScheduleEndpoint = '/attendance/my-schedule/';
   static const String appDeepLinkScheme = 'presenceqr';
 
-  // ─── Teacher / curriculum endpoints ──────────────────────────────────────
+  // ─── Teacher endpoints ─────────────────────────────────────────────────────
   static const String classesEndpoint = '/classes/';
   static const String sessionsEndpoint = '/sessions/';
   static const String sessionAvailableLocationsEndpoint =
       '/sessions/available-locations/';
   static const String teachersEndpoint = '/teachers/';
   static const String attendanceEndpoint = '/attendance/';
-  static const String curriculumEndpoint = '/curriculum/';
-  static const String curriculumModulesEndpoint = '/curriculum/modules/';
-  static const String curriculumNiveauxEndpoint = '/curriculum/niveaux/';
   static const String statisticsEndpoint = '/statistics/';
   static const String blocksEndpoint = '/blocks/';
   static const String amphitheatersEndpoint = '/amphitheaters/';
@@ -90,10 +88,8 @@ class AppConstants {
   static String sessionStatsEndpoint(int id) => '/attendance/session/$id/stats/';
   static String sessionSuspiciousEndpoint(int id) =>
       '/attendance/session/$id/suspicious/';
-  static String sessionExportEndpoint(int id) =>
-      '/attendance/session/$id/export/';
-  static String sessionReportEndpoint(int id) =>
-      '/attendance/session/$id/report/';
+  static String sessionExportEndpoint(int id) => '/attendance/session/$id/export/';
+  static String sessionReportEndpoint(int id) => '/attendance/session/$id/report/';
 
   // ─── SharedPreferences keys ───────────────────────────────────────────────
   static const String accessTokenKey = 'access_token';

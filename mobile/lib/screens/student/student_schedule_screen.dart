@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../constants/app_theme.dart';
 import '../../models/attendance_model.dart';
+import '../../models/student_schedule_model.dart';
 import '../../providers/student_provider.dart';
 
-/// Emploi du temps + Modules + Historique des présences.
+/// Emploi du temps dynamique + Historique des présences.
 class StudentScheduleScreen extends StatefulWidget {
   const StudentScheduleScreen({super.key});
 
@@ -26,7 +27,7 @@ class _StudentScheduleScreenState extends State<StudentScheduleScreen>
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<StudentProvider>();
-      if (provider.schedule.isEmpty && !provider.isLoading) {
+      if (provider.schedule.isEmpty && !provider.scheduleLoading) {
         provider.loadSchedule();
       }
       if (provider.attendanceHistory.isEmpty && !provider.historyLoading) {
@@ -83,7 +84,7 @@ class _StudentScheduleScreenState extends State<StudentScheduleScreen>
   }
 }
 
-// ─── Onglet Cours / Modules ───────────────────────────────────────────────
+// ─── Onglet Emploi du temps ───────────────────────────────────────────────
 
 class _ScheduleTab extends StatelessWidget {
   final StudentProvider provider;
@@ -91,7 +92,7 @@ class _ScheduleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (provider.isLoading && provider.schedule.isEmpty) {
+    if (provider.scheduleLoading && provider.schedule.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
     if (provider.schedule.isEmpty) {
@@ -105,56 +106,404 @@ class _ScheduleTab extends StatelessWidget {
                 size: 56, color: Colors.grey),
             SizedBox(height: 12),
             Center(
-              child: Text('Aucun cours planifié pour le moment',
+              child: Text('Aucune séance planifiée pour le moment',
                   style: TextStyle(color: Colors.grey)),
             ),
           ],
         ),
       );
     }
+
+    final days = _groupByDay(provider.schedule);
+
     return RefreshIndicator(
       onRefresh: () => provider.loadSchedule(),
       color: AppTheme.primary,
-      child: ListView.separated(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: provider.schedule.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, i) {
-          final c = provider.schedule[i];
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Card(
-            elevation: 0,
-            child: ListTile(
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.menu_book_rounded,
-                    color: AppTheme.primary),
-              ),
-              title: Text(c.moduleName ?? c.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(
-                [
-                  if (c.filiereName != null) c.filiereName!,
-                  if (c.semestreName != null) c.semestreName!,
-                ].join(' · '),
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          if (provider.lastScheduleSync != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                'Synchronisé à '
+                '${_formatTime(provider.lastScheduleSync!)} · '
+                'rafraîchi automatiquement',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600]),
-              ),
-              trailing: Chip(
-                label: Text(c.name,
-                    style: const TextStyle(fontSize: 10)),
-                visualDensity: VisualDensity.compact,
+                  fontSize: 11,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[500]
+                      : Colors.grey[600],
+                ),
               ),
             ),
-          );
-        },
+          ...days.entries.map(
+            (entry) => _DaySection(dayLabel: entry.key, items: entry.value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Map<String, List<StudentScheduleItem>> _groupByDay(
+    List<StudentScheduleItem> items,
+  ) {
+    final grouped = <String, List<StudentScheduleItem>>{};
+    for (final item in items) {
+      grouped.putIfAbsent(item.date, () => []).add(item);
+    }
+    final orderedKeys = grouped.keys.toList()
+      ..sort((a, b) => a.compareTo(b));
+    return {for (final k in orderedKeys) k: grouped[k]!};
+  }
+
+  static String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+}
+
+// ─── Section d'un jour ────────────────────────────────────────────────────
+
+class _DaySection extends StatelessWidget {
+  final String dayLabel;
+  final List<StudentScheduleItem> items;
+
+  const _DaySection({required this.dayLabel, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final date = DateTime.tryParse(dayLabel);
+    final isToday = _isToday(date);
+
+    final sorted = [...items]..sort((a, b) => a.startMinutes - b.startMinutes);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isToday
+                        ? AppTheme.primary
+                        : (isDark ? Colors.white10 : Colors.black12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _dayName(dayLabel, date),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isToday ? Colors.white : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _formatDate(dayLabel, date),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...sorted.map((item) => _SessionCard(item: item)),
+        ],
+      ),
+    );
+  }
+
+  static bool _isToday(DateTime? date) {
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  static String _dayName(String iso, DateTime? date) {
+    if (date == null) return iso;
+    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    return days[date.weekday - 1];
+  }
+
+  static String _formatDate(String iso, DateTime? date) {
+    if (date == null) return iso;
+    const months = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+}
+
+// ─── Carte séance ─────────────────────────────────────────────────────────
+
+class _SessionCard extends StatelessWidget {
+  final StudentScheduleItem item;
+  const _SessionCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOngoing = item.status == ScheduleStatus.ongoing;
+    final isCancelled = item.status == ScheduleStatus.cancelled;
+
+    final statusColor = switch (item.status) {
+      ScheduleStatus.upcoming => AppTheme.primary,
+      ScheduleStatus.ongoing => AppTheme.successColor,
+      ScheduleStatus.finished => isDark ? Colors.grey[500]! : Colors.grey[600],
+      ScheduleStatus.cancelled => AppTheme.errorColor,
+    };
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isOngoing
+              ? AppTheme.successColor
+              : (isDark ? Colors.white12 : Colors.black12),
+          width: isOngoing ? 1.5 : 1,
+        ),
+        boxShadow: isOngoing
+            ? [
+                BoxShadow(
+                  color: AppTheme.successColor.withOpacity(.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Créneau horaire vertical.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.startTime,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.endTime,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[500] : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 4,
+              height: 52,
+              decoration: BoxDecoration(
+                color: isCancelled ? AppTheme.errorColor : statusColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppTheme.darkTextPrimary
+                                : AppTheme.lightTextPrimary,
+                            decoration:
+                                isCancelled ? TextDecoration.lineThrough : null,
+                            decorationColor: AppTheme.errorColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _TypeBadge(type: item.sessionTypeLabel),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoRow(
+                    icon: Icons.person_outline_rounded,
+                    text: item.teacherName.isEmpty ? '—' : item.teacherName,
+                  ),
+                  const SizedBox(height: 4),
+                  _InfoRow(
+                    icon: Icons.place_outlined,
+                    text: item.locationDisplay,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _StatusChip(status: item.status),
+                      const SizedBox(width: 8),
+                      if (item.qrOpen) const _QrOpenBadge(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeBadge extends StatelessWidget {
+  final String type;
+  const _TypeBadge({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        type,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: isDark ? Colors.grey[500] : Colors.grey[600]),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: isDark ? Colors.grey[400] : Colors.grey[700],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final ScheduleStatus status;
+  const _StatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      ScheduleStatus.upcoming => AppTheme.primary,
+      ScheduleStatus.ongoing => AppTheme.successColor,
+      ScheduleStatus.finished => Colors.grey,
+      ScheduleStatus.cancelled => AppTheme.errorColor,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (status == ScheduleStatus.ongoing) ...[
+            const SizedBox(
+              width: 8,
+              height: 8,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.successColor),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QrOpenBadge extends StatelessWidget {
+  const _QrOpenBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.qr_code_2_rounded, size: 14, color: AppTheme.primary),
+          SizedBox(width: 6),
+          Text(
+            'Présence ouverte',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.primary,
+            ),
+          ),
+        ],
       ),
     );
   }

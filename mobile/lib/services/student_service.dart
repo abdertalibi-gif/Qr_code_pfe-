@@ -1,6 +1,6 @@
 import '../constants/app_constants.dart';
-import '../models/classe_model.dart';
 import '../models/attendance_model.dart';
+import '../models/student_schedule_model.dart';
 import 'dio_client.dart';
 
 /// Service étudiant : QR, profil, historique, emploi du temps, statistiques.
@@ -59,19 +59,14 @@ class StudentService {
     return response.data as Map<String, dynamic>;
   }
 
-  /// Liste les modules / filières du student (curriculum).
-  Future<List<Map<String, dynamic>>> fetchModules() async {
-    final response = await _client.get(AppConstants.curriculumEndpoint);
+  /// Emploi du temps dynamique de l'étudiant (GET /attendance/my-schedule/).
+  ///
+  /// Renvoie les séances de la classe de l'étudiant avec leur statut calculé
+  /// (a_venir / en_cours / terminee / annulee) et l'indicateur `qrOpen`.
+  Future<List<StudentScheduleItem>> fetchMySchedule() async {
+    final response = await _client.get(AppConstants.myScheduleEndpoint);
     final data = _unwrapList(response.data);
-    return data.cast<Map<String, dynamic>>();
-  }
-
-  /// Charge l'emploi du temps / classes du student.
-  Future<List<ClasseModel>> fetchSchedule() async {
-    // Utiliser /classes/?assigne au teacher du student.
-    final response = await _client.get(AppConstants.classesEndpoint);
-    final data = _unwrapList(response.data);
-    return data.map(ClasseModel.fromJson).toList();
+    return data.map(StudentScheduleItem.fromJson).toList();
   }
 
   // ─── Présences ─────────────────────────────────────────────────────────────
@@ -81,14 +76,6 @@ class StudentService {
     final response = await _client.get(AppConstants.myAttendanceEndpoint);
     final data = _unwrapList(response.data);
     return data.map(AttendanceModel.fromJson).toList();
-  }
-
-  // ─── Statistiques personnelles ─────────────────────────────────────────────
-
-  /// Statistiques personnelles du student (pourrait appeler /statistics/ avec le student id).
-  Future<Map<String, dynamic>> fetchPersonalStats() async {
-    final response = await _client.get(AppConstants.statisticsEndpoint);
-    return response.data as Map<String, dynamic>;
   }
 
   // ─── QR personnel ────────────────────────────────────────────────────────────
