@@ -60,6 +60,9 @@ class SessionSerializer(serializers.ModelSerializer):
     is_closed = serializers.BooleanField(read_only=True)
     report_file = serializers.CharField(read_only=True)
     report_url = serializers.SerializerMethodField()
+    exclude_session_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, write_only=True
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,6 +141,7 @@ class SessionSerializer(serializers.ModelSerializer):
             "is_within_session_window",
             "can_generate_qr",
             "created_at",
+            "exclude_session_ids",
         ]
         read_only_fields = [
             "id",
@@ -203,7 +207,7 @@ class SessionSerializer(serializers.ModelSerializer):
             if date_val:
                 if date_val < now.date():
                     raise serializers.ValidationError(
-                        {"date": "Impossible de créer une séance avec une date passée."}
+                        {"date": "Impossible de repérer une séance avec une date passée."}
                     )
                 if date_val == now.date() and start_val and start_val <= now.time():
                     raise serializers.ValidationError(
@@ -303,16 +307,32 @@ class SessionSerializer(serializers.ModelSerializer):
             if location_type and date_val and st and et:
                 from courses.utils import get_conflicting_sessions
 
+                # Séances créées dans la même opération multi-classes : le front les
+                # transmet via `exclude_session_ids` pour qu'elles ne déclenchent pas
+                # de faux conflit de salle (même enseignant/module/créneau/lieu/type).
+                # Un conflit réel avec une séance hors du lot reste bloqué.
+                provided_excludes = data.pop("exclude_session_ids", None) or []
+                exclude_ids = {i for i in provided_excludes if isinstance(i, int)}
+                if exclude_id:
+                    exclude_ids.add(exclude_id)
+
+                def _apply_excludes(qs):
+                    if exclude_ids:
+                        qs = qs.exclude(id__in=list(exclude_ids))
+                    return qs
+
                 if location_type == "block":
                     room = data.get("room", getattr(self.instance, "room", None))
                     if room:
-                        conflicts = get_conflicting_sessions(
-                            date=date_val,
-                            start_time=st,
-                            end_time=et,
-                            location_type="block",
-                            room_id=room.id if hasattr(room, "id") else room,
-                            exclude_session_id=exclude_id,
+                        conflicts = _apply_excludes(
+                            get_conflicting_sessions(
+                                date=date_val,
+                                start_time=st,
+                                end_time=et,
+                                location_type="block",
+                                room_id=room.id if hasattr(room, "id") else room,
+                                exclude_session_id=exclude_id,
+                            )
                         )
                         if conflicts.exists():
                             conflict = conflicts.first()
@@ -324,13 +344,15 @@ class SessionSerializer(serializers.ModelSerializer):
                 elif location_type == "amphitheater":
                     amphi = data.get("amphitheater", getattr(self.instance, "amphitheater", None))
                     if amphi:
-                        conflicts = get_conflicting_sessions(
-                            date=date_val,
-                            start_time=st,
-                            end_time=et,
-                            location_type="amphitheater",
-                            amphitheater_id=amphi.id if hasattr(amphi, "id") else amphi,
-                            exclude_session_id=exclude_id,
+                        conflicts = _apply_excludes(
+                            get_conflicting_sessions(
+                                date=date_val,
+                                start_time=st,
+                                end_time=et,
+                                location_type="amphitheater",
+                                amphitheater_id=amphi.id if hasattr(amphi, "id") else amphi,
+                                exclude_session_id=exclude_id,
+                            )
                         )
                         if conflicts.exists():
                             conflict = conflicts.first()
@@ -349,7 +371,6 @@ class SessionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"detail": f"Erreur de validation: {str(e)}"}
             )
-
 
 class GenerateQRSerializer(serializers.Serializer):
     expiry_minutes = serializers.IntegerField(min_value=1, max_value=120, default=20)

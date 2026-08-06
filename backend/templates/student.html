@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PrésenceQR — Espace Étudiant</title>
   <link rel="stylesheet" href="/dashboard.css" />
+  <style>
+    .student-app .hero { display: none; }
+    .student-app .how-section { display: none; }
+    .student-app .info-grid { display: none; }
+    .student-app main { max-width: 880px; }
+  </style>
 </head>
 <body class="dashboard-app student-app">
 
@@ -27,18 +33,6 @@
 </nav>
 
 <main>
-  <div class="hero">
-    <div class="hero-icon">📱</div>
-    <div class="hero-text">
-      <h1>Marquez votre présence via l'application mobile</h1>
-      <p>
-        La présence s'enregistre en scannant le QR code affiché par votre enseignant
-        avec l'<strong>application PrésenceQR</strong>. Ce portail affiche votre
-        historique et vos informations de compte.
-      </p>
-    </div>
-  </div>
-
   <div class="profile-card" id="profileCard" style="display:none">
     <div class="profile-avatar" id="profileAvatar">?</div>
     <div class="profile-info">
@@ -48,84 +42,70 @@
     <div class="profile-meta" id="profileMeta"></div>
   </div>
 
-  <div class="how-section">
-    <h2>Comment marquer votre présence</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-text">
-          <strong>Téléchargez l'application mobile</strong>
-          <span>Installez PrésenceQR sur Android ou iOS.</span>
-        </div>
+  <!-- Tabs -->
+  <div class="schedule-tabs">
+    <div class="schedule-tab active" data-tab="schedule" id="tabSchedule">Emploi du temps</div>
+    <div class="schedule-tab" data-tab="attendance" id="tabAttendance">Historique des présences</div>
+  </div>
+
+  <!-- Schedule Tab -->
+  <div class="schedule-tab-content" id="tabContentSchedule" style="display:block">
+    <div class="student-schedule-header">
+      <h2>Emploi du temps</h2>
+      <div class="schedule-sync-bar">
+        <span class="schedule-sync-dot" id="syncDot"></span>
+        <span id="syncStatus">Synchronisation…</span>
+        <button class="btn-icon" onclick="studentPage.refreshSchedule()" title="Actualiser" style="padding:0.3rem 0.7rem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-9-9z"/><path d="M12 8v4l2 2"/></svg>
+          Actualiser
+        </button>
       </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-text">
-          <strong>Connectez-vous</strong>
-          <span>Utilisez les mêmes identifiants que sur ce portail.</span>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text">
-          <strong>Scannez le QR code</strong>
-          <span>Pointez la caméra vers le code affiché en cours.</span>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-text">
-          <strong>Confirmation</strong>
-          <span>Votre présence est enregistrée instantanément.</span>
-        </div>
+    </div>
+    <div id="scheduleContainer">
+      <div class="schedule-empty">
+        <div class="schedule-empty-icon">📅</div>
+        <div>Chargement de l'emploi du temps…</div>
       </div>
     </div>
   </div>
 
-  <div class="info-grid">
-    <div class="info-card">
-      <div class="info-card-icon">⏱️</div>
-      <div class="info-card-body">
-        <h3>QR code limité dans le temps</h3>
-        <p>Chaque code est valide 20 minutes. Scannez-le dès qu'il est affiché.</p>
+  <!-- Attendance History Tab -->
+  <div class="schedule-tab-content" id="tabContentAttendance" style="display:none">
+    <div class="attendance-section">
+      <div class="attendance-section-header">
+        <h3>Historique de présences</h3>
+        <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement…</span>
       </div>
-    </div>
-    <div class="info-card">
-      <div class="info-card-icon">✅</div>
-      <div class="info-card-body">
-        <h3>Un scan par séance</h3>
-        <p>Un seul enregistrement par séance. Les doublons sont ignorés.</p>
-      </div>
-    </div>
-    <div class="info-card">
-      <div class="info-card-icon">📊</div>
-      <div class="info-card-body">
-        <h3>Suivez votre historique</h3>
-        <p>Vos présences apparaissent ci-dessous. Contactez votre enseignant en cas d'erreur.</p>
+      <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Matière</th>
+              <th>Date séance</th>
+              <th>Scanné à</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="attBody">
+            <tr class="empty-row"><td colspan="5">Chargement de l'historique…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <div class="attendance-section">
-    <div class="section-header">
-      <h2>Mon historique de présences</h2>
-      <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement…</span>
+  <!-- Attendance scanning section -->
+  <div class="student-schedule-section" id="scanSection" style="display:none">
+    <div class="student-schedule-header">
+      <h2>Scanner un QR de présence</h2>
     </div>
-    <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Matière</th>
-            <th>Date séance</th>
-            <th>Scanné à</th>
-            <th>Statut</th>
-          </tr>
-        </thead>
-        <tbody id="attBody">
-          <tr class="empty-row"><td colspan="5">Chargement de l'historique…</td></tr>
-        </tbody>
-      </table>
+    <div class="schedule-tab-content">
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+        <input type="text" id="scanToken" placeholder="Collez le token QR ou l'ID de la séance" style="flex:1;min-width:200px;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:var(--radius);font-size:0.9rem">
+        <button class="btn btn-primary" onclick="studentPage.validateScan()" style="padding:0.6rem 1.2rem">Valider la présence</button>
+      </div>
+      <div id="scanResult" style="margin-top:0.75rem;font-size:0.85rem"></div>
     </div>
   </div>
 </main>
@@ -137,72 +117,234 @@
 <script src="/api.js"></script>
 <script src="/i18n-fr.js"></script>
 <script>
-  let currentUser = null;
+  const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const SCHEDULE_POLL_INTERVAL = 30000; // 30s
 
-  (async () => {
-    try {
-      currentUser = await API.requireAuth('student');
-    } catch {
-      try { currentUser = await API.requireAuth(); } catch { return; }
-    }
+  /**
+   * Student page controller.
+   *
+   * Provides a dynamic, real-time schedule for the connected student:
+   *   • WebSocket push from /ws/schedule/{classe_id}/ for immediate updates
+   *   • HTTP polling fallback every 30 s
+   *   • Day-by-day layout (Lundi → Dimanche)
+   */
+  const studentPage = {
+    currentUser: null,
+    schedule: [],
+    ws: null,
+    pollTimer: null,
+    pollRunning: false,
 
-    document.getElementById('navUserName').textContent =
-      `${currentUser.first_name} ${currentUser.last_name}`;
-    document.getElementById('avatarInitials').textContent =
-      (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
+    // ─── Init ──────────────────────────────────────────────────────────────
 
-    showProfile(currentUser);
-    await loadMyAttendance();
-  })();
-
-  function showProfile(user) {
-    const card = document.getElementById('profileCard');
-    card.style.display = 'flex';
-    document.getElementById('profileAvatar').textContent =
-      (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
-    document.getElementById('profileName').textContent =
-      `${user.first_name} ${user.last_name}`;
-    document.getElementById('profileEmail').textContent = user.email || '—';
-
-    const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant' };
-    document.getElementById('profileMeta').innerHTML = `
-      <div class="meta-chip">
-        <span class="meta-chip-label">Rôle</span>
-        <span class="meta-chip-value">${roleLabels[user.role] || user.role || '—'}</span>
-      </div>
-      <div class="meta-chip">
-        <span class="meta-chip-label">ID</span>
-        <span class="meta-chip-value">#${user.id || '—'}</span>
-      </div>
-    `;
-  }
-
-  async function loadMyAttendance() {
-    const tbody = document.getElementById('attBody');
-    const countEl = document.getElementById('attCount');
-
-    try {
-      let records = [];
+    async init() {
+      // Auth guard: must be a student.
       try {
-        const data = await API.apiFetch('/attendance/my/');
-        records = Array.isArray(data) ? data : (data.results || []);
-      } catch { records = []; }
-
-      if (countEl) {
-        countEl.textContent = `${records.length} enregistrement${records.length !== 1 ? 's' : ''}`;
+        this.currentUser = await API.requireAuth('student');
+      } catch {
+        try { this.currentUser = await API.requireAuth(); } catch { return; }
       }
 
-      if (!records.length) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="5">
-          <div class="empty-state-inline">
-            <span class="empty-icon">📋</span>
-            <span>Aucune présence. Scannez un QR en cours pour commencer.</span>
+      this._updateNavBar();
+      this._setupTabs();
+
+      // Load profile, schedule, and attendance history in parallel.
+      await Promise.all([this.loadSchedule(), this.loadHistory()]);
+
+      // Connect real-time WebSocket.
+      this._connectWebSocket();
+
+      // Start polling fallback.
+      this._startPolling();
+    },
+
+    // ─── Auth / Profile ────────────────────────────────────────────────────
+
+    _updateNavBar() {
+      document.getElementById('navUserName').textContent =
+        `${this.currentUser.first_name} ${this.currentUser.last_name}`;
+      document.getElementById('avatarInitials').textContent =
+        (this.currentUser.first_name?.[0] || '') + (this.currentUser.last_name?.[0] || '');
+      this._showProfile(this.currentUser);
+    },
+
+    _showProfile(user) {
+      const card = document.getElementById('profileCard');
+      card.style.display = 'flex';
+      document.getElementById('profileAvatar').textContent =
+        (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+      document.getElementById('profileName').textContent =
+        `${user.first_name} ${user.last_name}`;
+      document.getElementById('profileEmail').textContent = user.email || '—';
+
+      const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant' };
+      document.getElementById('profileMeta').innerHTML = `
+        <div class="meta-chip">
+          <span class="meta-chip-label">Rôle</span>
+          <span class="meta-chip-value">${roleLabels[user.role] || user.role || '—'}</span>
+        </div>
+        <div class="meta-chip">
+          <span class="meta-chip-label">ID</span>
+          <span class="meta-chip-value">#${user.id || '—'}</span>
+        </div>
+      `;
+    },
+
+    // ─── Tabs ──────────────────────────────────────────────────────────────
+
+    _setupTabs() {
+      document.querySelectorAll('.schedule-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-tab');
+          document.querySelectorAll('.schedule-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.schedule-tab-content').forEach(c => c.style.display = 'none');
+          tab.classList.add('active');
+          document.getElementById(`tabContent${target === 'schedule' ? 'Schedule' : 'Attendance'}`).style.display = 'block';
+        });
+      });
+    },
+
+    // ─── Schedule ──────────────────────────────────────────────────────────
+
+    get classeId() {
+      return this.currentUser?.student_profile?.classe_id;
+    },
+
+    async loadSchedule(silent = false) {
+      if (!silent) this._setSyncStatus('syncing');
+      try {
+        const data = await API.apiFetch('/attendance/my-schedule/');
+        this.schedule = Array.isArray(data) ? data : (data.results || []);
+        this._renderSchedule();
+        this._setSyncStatus('connected');
+      } catch (e) {
+        this._setSyncStatus('error', e.message);
+        const container = document.getElementById('scheduleContainer');
+        container.innerHTML = `
+          <div class="schedule-empty">
+            <div class="schedule-empty-icon">⚠️</div>
+            <div>Erreur : ${esc(e.message || 'inconnue')}</div>
+            <button class="btn btn-primary" onclick="studentPage.refreshSchedule()" style="margin-top:0.5rem">Réessayer</button>
           </div>
-        </td></tr>`;
+        `;
+      }
+    },
+
+    refreshSchedule() {
+      this.loadSchedule(false);
+    },
+
+    _renderSchedule() {
+      const container = document.getElementById('scheduleContainer');
+      if (!this.schedule.length) {
+        const classeName = this.currentUser?.student_profile?.classe_name;
+        container.innerHTML = `
+          <div class="schedule-empty">
+            <div class="schedule-empty-icon">📅</div>
+            <div>${classeName ? 'Aucune séance prévue pour cette période.' : window.I18N.scheduleNoClass}</div>
+          </div>
+        `;
         return;
       }
 
-      tbody.innerHTML = records.map((r, i) => `
+      const days = this._groupByDay(this.schedule);
+      let html = '';
+
+      for (const [dayKey, items] of Object.entries(days)) {
+        const date = new Date(dayKey + 'T00:00:00');
+        const isToday = this._isToday(date);
+        const dayName = DAY_NAMES[date.getDay() === 0 ? 6 : date.getDay() - 1];
+        html += `
+          <div class="schedule-day">
+            <div class="schedule-day-header">
+              <div class="schedule-day-label ${isToday ? 'today' : ''}">${dayName.slice(0, 3).toUpperCase()}</div>
+              <div class="schedule-date">${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}</div>
+            </div>
+            ${items.map(item => this._renderSessionCard(item)).join('')}
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    },
+
+    _renderSessionCard(item) {
+      const status = item.status || 'a_venir';
+      const statusClass = this._statusClass(status);
+      const statusLabel = this._statusLabel(status);
+      const typeLabel = this._typeLabel(item.session_type);
+      const isOngoing = status === 'en_cours';
+      const isCancelled = status === 'annulee';
+      const locationDisplay = this._locationDisplay(item);
+
+      let badge = '';
+      if (item.qr_open) {
+        badge = `<span class="schedule-qr-badge">Présence ouverte</span>`;
+      }
+      if (isOngoing) {
+        badge = `<span class="schedule-status-chip ongoing"><span class="dot"></span>En direct</span>` + (item.qr_open ? `<span class="schedule-qr-badge">Présence ouverte</span>` : '');
+      }
+
+      return `
+        <div class="schedule-card ${isOngoing ? 'ongoing' : ''} ${isCancelled ? 'cancelled' : ''}">
+          <div class="schedule-card-body">
+            <div class="schedule-time-col">
+              <div class="schedule-time-start">${this._formatTime(item.start_time)}</div>
+              <div class="schedule-time-end">${this._formatTime(item.end_time)}</div>
+              <div class="schedule-time-line ${isOngoing ? 'ongoing' : isCancelled ? 'cancelled' : ''}"></div>
+            </div>
+            <div class="schedule-content">
+              <div class="schedule-card-title ${isCancelled ? 'cancelled' : ''}">
+                ${esc(item.module_name || item.subject || '?')}
+              </div>
+              <div class="schedule-card-sub">${esc(item.teacher_name || '—')}</div>
+              <div class="schedule-info-grid">
+                <div class="schedule-info-item"><strong>Type :</strong> ${esc(typeLabel)}</div>
+                <div class="schedule-info-item"><strong>Lieu :</strong> ${esc(locationDisplay)}</div>
+                <div class="schedule-info-item"><strong>Classe :</strong> ${esc(item.classe_name || '—')}</div>
+                <div class="schedule-info-item"><strong>Statut :</strong> ${esc(statusLabel)}</div>
+              </div>
+              <div class="schedule-badges">
+                <span class="schedule-status-chip ${statusClass}">${isOngoing ? '<span class="dot"></span>' : ''}${esc(statusLabel)}</span>
+                <span class="schedule-type-badge">${esc(typeLabel)}</span>
+                ${item.qr_open ? '<span class="schedule-qr-badge">Présence ouverte</span>' : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    },
+
+    // ─── Attendance History ────────────────────────────────────────────────
+
+    async loadHistory() {
+      try {
+        const data = await API.apiFetch('/attendance/my/');
+        const records = Array.isArray(data) ? data : (data.results || []);
+        this._renderHistory(records);
+      } catch (e) {
+        document.getElementById('attBody').innerHTML =
+          `<tr class="empty-row"><td colspan="5">Erreur : ${esc(e.message || 'inconnue')}</td></tr>`;
+      }
+    },
+
+    _renderHistory(records) {
+      const countEl = document.getElementById('attCount');
+      if (countEl) countEl.textContent = `${records.length} enregistrement${records.length !== 1 ? 's' : ''}`;
+
+      if (!records.length) {
+        document.getElementById('attBody').innerHTML = `
+          <tr class="empty-row"><td colspan="5">
+            <div class="empty-state-inline">
+              <span class="empty-icon">📋</span>
+              <span>Aucune présence enregistrée. Scannez un QR en cours.</span>
+            </div>
+          </td></tr>`;
+        return;
+      }
+
+      document.getElementById('attBody').innerHTML = records.map((r, i) => `
         <tr>
           <td style="color:var(--muted)">${i + 1}</td>
           <td><strong>${esc(r.subject || '?')}</strong></td>
@@ -211,34 +353,192 @@
           <td><span class="badge badge-present">Présent</span></td>
         </tr>
       `).join('');
-    } catch (e) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Erreur : ${esc(e.message)}</td></tr>`;
-      if (countEl) countEl.textContent = 'Erreur';
-    }
-  }
+    },
 
-  function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleDateString('fr-FR', {
-        day: '2-digit', month: 'short', year: 'numeric'
-      });
-    } catch { return dateStr; }
-  }
+    // ─── WebSocket ─────────────────────────────────────────────────────────
 
-  function formatDateTime(dt) {
-    if (!dt) return '—';
-    try {
-      return new Date(dt).toLocaleString('fr-FR', {
-        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-      });
-    } catch { return dt; }
-  }
+    _connectWebSocket() {
+      if (!this.classeId) {
+        console.warn('Student schedule WS: no classe_id available');
+        return;
+      }
+      const path = `/ws/schedule/${this.classeId}/`;
+      this.ws = API.connectScheduleWs(this.classeId, this._onWsMessage.bind(this), this._onWsStatus.bind(this));
+    },
+
+    _onWsMessage(data) {
+      if (!data || !data.type || data.type !== 'session_change') return;
+
+      const action = data.action;
+      const sessionData = data.data || {};
+
+      // Hard guard: never render a session belonging to another class,
+      // even if it were broadcast on this channel.
+      if (sessionData.classe != null && Number(sessionData.classe) !== Number(this.classeId)) {
+        return;
+      }
+
+      if (action === 'created' || action === 'updated') {
+        const idx = this.schedule.findIndex(s => s.id === sessionData.id);
+        if (idx >= 0) {
+          this.schedule[idx] = sessionData;
+        } else {
+          this.schedule.push(sessionData);
+        }
+        this.schedule.sort((a, b) => {
+          if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+          return a.start_time < b.start_time ? -1 : 1;
+        });
+        this._renderSchedule();
+        this._setSyncStatus('connected');
+      } else if (action === 'deleted') {
+        const idx = this.schedule.findIndex(s => s.id === sessionData.id);
+        if (idx >= 0) {
+          this.schedule.splice(idx, 1);
+          this._renderSchedule();
+        }
+      }
+    },
+
+    _onWsStatus(status) {
+      const dot = document.getElementById('syncDot');
+      if (status === 'connected') {
+        dot.classList.remove('off');
+        dot.classList.add('pulse');
+      } else {
+        dot.classList.add('off');
+        dot.classList.remove('pulse');
+      }
+    },
+
+    // ─── Polling ───────────────────────────────────────────────────────────
+
+    _startPolling() {
+      if (this.pollTimer) clearInterval(this.pollTimer);
+      this.pollTimer = setInterval(() => {
+        if (!this.pollRunning) {
+          this.pollRunning = true;
+          this.loadSchedule(true).finally(() => { this.pollRunning = false; });
+        }
+      }, SCHEDULE_POLL_INTERVAL);
+    },
+
+    // ─── Scan validation ───────────────────────────────────────────────────
+
+    async validateScan() {
+      const token = document.getElementById('scanToken').value.trim();
+      if (!token) return;
+      const result = document.getElementById('scanResult');
+      result.textContent = 'Validation…';
+      result.style.color = 'var(--text-secondary)';
+      try {
+        const data = await API.apiFetch('/attendance/validate/app/', {
+          method: 'POST',
+          body: JSON.stringify({ qr_token: token }),
+        });
+        result.innerHTML = `<span style="color:var(--green)">✓ Présence validée pour ${esc(data.student_name || '?')}</span>`;
+      } catch (e) {
+        result.innerHTML = `<span style="color:var(--red)">✗ ${esc(e.message || 'Erreur')}</span>`;
+      }
+    },
+
+    // ─── Helpers ───────────────────────────────────────────────────────────
+
+    _setSyncStatus(state, message = '') {
+      const dot = document.getElementById('syncDot');
+      const status = document.getElementById('syncStatus');
+      if (state === 'connected') {
+        dot.classList.remove('off');
+        dot.classList.add('pulse');
+        status.textContent = 'Synchronisé en temps réel';
+      } else if (state === 'syncing') {
+        dot.classList.remove('off');
+        dot.classList.remove('pulse');
+        status.textContent = 'Synchronisation…';
+      } else if (state === 'error') {
+        dot.classList.add('off');
+        dot.classList.remove('pulse');
+        status.textContent = `Erreur : ${message}`;
+      }
+    },
+
+    _groupByDay(items) {
+      const grouped = {};
+      for (const item of items) {
+        const dateStr = item.date;
+        (grouped[dateStr] = grouped[dateStr] || []).push(item);
+      }
+      const sortedKeys = Object.keys(grouped).sort();
+      const result = {};
+      for (const k of sortedKeys) result[k] = grouped[k];
+      return result;
+    },
+
+    _isToday(date) {
+      const now = new Date();
+      return date.getFullYear() === now.getFullYear() &&
+             date.getMonth() === now.getMonth() &&
+             date.getDate() === now.getDate();
+    },
+
+    _formatTime(timeStr) {
+      if (!timeStr) return '—';
+      return timeStr.substring(0, 5);
+    },
+
+    _formatDateTime(dt) {
+      if (!dt) return '—';
+      try {
+        return new Date(dt).toLocaleString('fr-FR', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        });
+      } catch { return dt; }
+    },
+
+    _statusClass(status) {
+      switch (status) {
+        case 'en_cours': return 'ongoing';
+        case 'annulee': return 'cancelled';
+        case 'terminee': return 'finished';
+        default: return 'upcoming';
+      }
+    },
+
+    _statusLabel(status) {
+      switch (status) {
+        case 'en_cours': return 'En cours';
+        case 'annulee': return 'Annulée';
+        case 'terminee': return 'Terminée';
+        default: return 'À venir';
+      }
+    },
+
+    _typeLabel(sessionType) {
+      const map = { Cours: 'Cours', TD: 'TD', TP: 'TP', Exam: 'Examen', Other: 'Autre' };
+      return map[sessionType] || 'Cours';
+    },
+
+    _locationDisplay(item) {
+      if (item.amphitheater_name) return `Amphi ${item.amphitheater_name}`;
+      const parts = [];
+      if (item.block_name) parts.push(item.block_name);
+      if (item.room_name) parts.push(item.room_name);
+      return parts.length ? parts.join(' — ') : '—';
+    },
+  };
+
+  // ─── Lifecycle ───────────────────────────────────────────────────────────
+
+  let currentUser = null;
+
+  (async () => {
+    await studentPage.init();
+  })();
 
   function esc(str) {
-    if (str == null) return '';
+    if (str === null || str === undefined) return '';
     return String(str)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/&/g, '&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 </script>

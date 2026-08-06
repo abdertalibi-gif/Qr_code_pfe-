@@ -9,7 +9,7 @@ let allRooms = [];
 let allAmphis = [];
 
 async function initPage() {
-  await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadBlocks(), loadAmphis(), loadTeachers()]);
+  await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadFilieres(), loadBlocks(), loadAmphis(), loadTeachers()]);
   setupEventListeners();
 }
 

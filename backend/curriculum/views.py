@@ -847,7 +847,7 @@ def filiere_list(request):
     cached = _cached_response(cache_key)
     if cached:
         return cached
-    queryset = Filiere.objects.select_related("department", "manager").order_by("name")
+    queryset = Filiere.objects.select_related("department", "manager", "semestre").prefetch_related("modules").order_by("name")
     if semestre_id:
         queryset = queryset.filter(semestre_id=semestre_id)
     if niveau:

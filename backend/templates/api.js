@@ -251,6 +251,24 @@ function connectAttendanceWs(path, onMessage, onStatus) {
   return ws;
 }
 
+function connectScheduleWs(classeId, onMessage, onStatus) {
+  const token = getToken();
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  const ws = new WebSocket(`${getWsBase()}/ws/schedule/${classeId}/${query}`);
+
+  ws.onopen = () => onStatus?.('connected');
+  ws.onerror = () => onStatus?.('error');
+  ws.onclose = () => onStatus?.('disconnected');
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      onMessage(data);
+    } catch {}
+  };
+
+  return ws;
+}
+
 function formatDateTime(value) {
   if (!value) return '—';
   const d = new Date(value);
@@ -299,6 +317,7 @@ window.API = {
   requireAuth,
   getWsBase,
   connectAttendanceWs,
+  connectScheduleWs,
   formatDateTime,
   formatDate,
   esc,

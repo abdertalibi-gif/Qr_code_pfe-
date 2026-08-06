@@ -16,6 +16,26 @@
     .sub-tab-panel.active { display:block; }
     .stat-icon.red { background:var(--red-soft,#fef2f2); }
     .stat-icon.amber { background:var(--amber-soft,#fffbeb); }
+    .badge { display:inline-block; padding:.25rem .6rem; border-radius:999px; font-size:.75rem; font-weight:600; }
+    .badge-active { background:#dcfce7; color:#166534; }
+    .badge-inactive { background:#fee2e2; color:#991b1b; }
+    .details-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+    .detail-item { display:flex; flex-direction:column; gap:.25rem; background:var(--bg-section,#f8fafc); border:1px solid var(--border,#e5e7eb); border-radius:.5rem; padding:.75rem; }
+    .detail-label { font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--text-secondary,#6b7280); }
+    .detail-value { font-size:.9rem; color:var(--text,#12324a); }
+    .multiselect { position:relative; }
+    .multiselect-selected { border:1px solid var(--border,#e5e7eb); border-radius:.5rem; padding:.6rem .8rem; min-height:2.6rem; cursor:pointer; display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; background:#fff; font-size:.85rem; }
+    .multiselect-selected.placeholder { color:var(--text-secondary,#6b7280); }
+    .multiselect-options { position:absolute; top:100%; left:0; right:0; z-index:50; background:#fff; border:1px solid var(--border,#e5e7eb); border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:220px; overflow-y:auto; margin-top:.25rem; padding:.5rem; }
+    .multiselect-option { display:flex; align-items:center; gap:.5rem; padding:.45rem .5rem; border-radius:.35rem; cursor:pointer; font-size:.85rem; }
+    .multiselect-option:hover { background:var(--bg-section,#f8fafc); }
+    .multiselect-loading { padding:.5rem; color:var(--text-secondary,#6b7280); font-size:.85rem; }
+    .multiselect-chip { display:inline-flex; align-items:center; gap:.3rem; background:var(--primary-soft,#e0f2fe); color:var(--primary,#0F7DB8); padding:.2rem .55rem; border-radius:999px; font-size:.78rem; font-weight:500; }
+    .chip-x { cursor:pointer; font-weight:700; opacity:.7; }
+    .chip-x:hover { opacity:1; }
+    .field-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; }
+    .progress-bar-container { width:100%; background:var(--border,#e5e7eb); border-radius:999px; height:10px; overflow:hidden; }
+    .progress-bar-fill { height:100%; background:var(--primary,#0F7DB8); border-radius:999px; transition:width .2s ease; }
   </style>
 </head>
 <body class="dashboard-app">
@@ -364,19 +384,20 @@
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Niveau</th>
-            <th>Filière</th>
-            <th>Semestre</th>
-            <th>Année</th>
-            <th>Localisation</th>
-            <th>Étudiants</th>
-            <th>Enseignant</th>
-            <th>Actions</th>
-          </tr>
+             <th>#</th>
+             <th>Niveau</th>
+             <th>Filière</th>
+             <th>Semestre</th>
+             <th>Année</th>
+             <th>Statut</th>
+             <th>Localisation</th>
+             <th>Étudiants</th>
+             <th>Enseignant</th>
+             <th>Actions</th>
+           </tr>
         </thead>
         <tbody id="classesBody">
-          <tr class="empty-row"><td colspan="9">Chargement…</td></tr>
+          <tr class="empty-row"><td colspan="10">Chargement…</td></tr>
         </tbody>
       </table>
     </div>
@@ -410,6 +431,7 @@
       <h2>Toutes les séances</h2>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
+        <button class="btn" id="btnOpenCreateSession">+ Nouvelle séance</button>
         <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
       </div>
     </div>
@@ -1434,6 +1456,21 @@
   </div>
 </div>
 
+<!-- ── MODAL: Class Details ── -->
+<div class="modal-backdrop" id="modalClasseDetails">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="clDetailsTitle">Détails de la classe</h3>
+      <button class="modal-close" data-close="modalClasseDetails">✕</button>
+    </div>
+    <div class="modal-body" id="clDetailsBody">
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalClasseDetails">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Teacher add/edit reuses modalAddUser / modalEditUser above -->
 
 <!-- TOAST -->
@@ -1460,6 +1497,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="/api.js"></script>
 <script src="/i18n-fr.js"></script>
+<script src="/session-form.js"></script>
 <script>
   /* ── Auth guard ── */
   let currentUser = null;
@@ -1472,6 +1510,7 @@
       document.getElementById('avatarInitials').textContent =
         (currentUser.first_name?.[0] || '') + (currentUser.last_name?.[0] || '');
       updateRoleUI(currentUser);
+      SessionForm.init({ isAdmin: true, userRole: currentUser.role });
     } catch {}
 
     loadAll();
@@ -2199,7 +2238,7 @@
     return '—';
   }
 
-  function renderClasses() {
+   function renderClasses() {
     const tbody = document.getElementById('classesBody');
     const query = searchQuery('searchClasses');
     const filtered = allClasses.filter(c => matchesQuery(
@@ -2207,26 +2246,32 @@
       c.niveau_id, c.filiere_name, c.semestre_name, c.academic_year, c.student_count, c.location_display, c.teacher_name
     ));
     if (!filtered.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${query ? 'Aucun résultat.' : 'Aucune classe.'}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="10">${query ? 'Aucun résultat.' : 'Aucune classe.'}</td></tr>`;
       return;
     }
     const niveauLabel = { LIC: 'Licence', LIC_EXC: 'Licence Excellence', MAS: 'Master', MAS_EXC: 'Master Parcours d\'excellence' };
-    tbody.innerHTML = filtered.map((c, i) => `
-      <tr>
-        <td><span style="color:var(--muted)">${i + 1}</span></td>
-        <td>${esc(niveauLabel[c.niveau_id] || c.niveau_id || '—')}</td>
-        <td>${esc(classFieldLabel(c))}</td>
-        <td>${esc(c.semestre_name || '—')}</td>
-        <td>${esc(c.academic_year)}</td>
-        <td>${esc(locationLabel(c))}</td>
-        <td>${c.student_count ?? '—'}</td>
-        <td>${esc(c.teacher_name || '—')}</td>
-        <td>
-          <button class="btn sm outline admin-only" onclick="openEditClasse(${c.id})">Modifier</button>
-          <button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteClasse(${c.id})">Supprimer</button>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = filtered.map((c, i) => {
+      const active = c.is_active !== false;
+      const statutBadge = active ? '<span class="badge badge-active">Actif</span>' : '<span class="badge badge-inactive">Inactif</span>';
+      return `
+        <tr>
+          <td><span style="color:var(--muted)">${i + 1}</span></td>
+          <td>${esc(niveauLabel[c.niveau_id] || c.niveau_id || '—')}</td>
+          <td>${esc(classFieldLabel(c))}</td>
+          <td>${esc(c.semestre_name || '—')}</td>
+          <td>${esc(c.academic_year)}</td>
+          <td>${statutBadge}</td>
+          <td>${esc(locationLabel(c))}</td>
+          <td>${c.student_count ?? '—'}</td>
+          <td>${esc(c.teacher_name || '—')}</td>
+          <td>
+            <button class="btn sm outline admin-only" onclick="openClasseDetails(${c.id})">👁️ Voir</button>
+            <button class="btn sm outline admin-only" onclick="toggleClasseActive(${c.id})">${active ? '🔒' : '🔓'}</button>
+            <button class="btn sm outline admin-only" onclick="openEditClasse(${c.id})">Modifier</button>
+            <button class="btn sm outline admin-only" style="color:var(--red)" onclick="deleteClasse(${c.id})">Supprimer</button>
+          </td>
+        </tr>`;
+    }).join('');
   }
 
   function populateDeptSelect(selId) {
@@ -4842,20 +4887,10 @@ tbody.innerHTML = list.map(function (d) {
   window.wlUpdateTeacherOptions = function () {
     var sel = document.getElementById('wlTeacher');
     if (!sel) return;
-    var filId = document.getElementById('wlFiliere').value;
-    var modId = document.getElementById('wlModule').value;
     var filtered = window.wlAllTeachers;
-    if (modId && window.wlModules.length) {
-      var mod = window.wlModules.find(function (m) { return String(m.id) === modId; });
-      if (mod && mod.filiere_id) {
-        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(mod.department_id || mod.department); });
-      }
-    } else if (filId && window.wlFilieres.length) {
-      var fil = window.wlFilieres.find(function (f) { return String(f.id) === filId; });
-      if (fil) {
-        filtered = filtered.filter(function (t) { return String(t.department_id || t.department) === String(fil.department_id || fil.department); });
-      }
-    }
+    // Un enseignant peut enseigner plusieurs modules dans plusieurs filières,
+    // niveaux et semestres. On ne le filtre PAS par département du module/filière
+    // afin de ne jamais masquer une affectation multiple.
     sel.innerHTML = '<option value="">Tous les enseignants</option>' +
       filtered.map(function (t) {
         return '<option value="' + t.id + '">' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</option>';
@@ -5083,6 +5118,62 @@ tbody.innerHTML = list.map(function (d) {
       openAddRoom(null);
     });
   }
+
+  /* ════════════════════════════════════════════════════════════════════
+     CLASSES — Détails & Activer/Désactiver
+     ════════════════════════════════════════════════════════════════════ */
+
+  function openClasseDetails(id) {
+    const c = allClasses.find(x => x.id === id);
+    if (!c) return;
+    const niveauLabel = { LIC: 'Licence', LIC_EXC: 'Licence Excellence', MAS: 'Master', MAS_EXC: 'Master Parcours d\'excellence' };
+    const active = c.is_active !== false;
+    const statutBadge = active ? '<span class="badge badge-active">Actif</span>' : '<span class="badge badge-inactive">Inactif</span>';
+    document.getElementById('clDetailsTitle').textContent = 'Détails — ' + (c.name || 'Classe #' + c.id);
+    document.getElementById('clDetailsBody').innerHTML = `
+      <div class="details-grid">
+        <div class="detail-item"><span class="detail-label">Nom</span><span class="detail-value">${esc(c.name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Code</span><span class="detail-value">${esc(c.code || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Niveau</span><span class="detail-value">${esc(niveauLabel[c.niveau_id] || c.niveau_id || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Filière</span><span class="detail-value">${esc(c.filiere_name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Semestre</span><span class="detail-value">${esc(c.semestre_name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Module</span><span class="detail-value">${esc(c.module_name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Année universitaire</span><span class="detail-value">${esc(c.academic_year || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Statut</span><span class="detail-value">${statutBadge}</span></div>
+        <div class="detail-item"><span class="detail-label">Localisation</span><span class="detail-value">${esc(locationLabel(c))}</span></div>
+        <div class="detail-item"><span class="detail-label">Étudiants</span><span class="detail-value">${c.student_count ?? '—'}</span></div>
+        <div class="detail-item"><span class="detail-label">Enseignant</span><span class="detail-value">${esc(c.teacher_name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Département</span><span class="detail-value">${esc(c.department_name || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Niveau d'études</span><span class="detail-value">${esc(c.level || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Domaine d'études</span><span class="detail-value">${esc(c.field || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Description</span><span class="detail-value">${esc(c.description || '—')}</span></div>
+        <div class="detail-item"><span class="detail-label">Créée le</span><span class="detail-value">${esc(API.formatDate(c.created_at))}</span></div>
+      </div>`;
+    openModal('modalClasseDetails');
+  }
+
+  async function toggleClasseActive(id) {
+    const c = allClasses.find(x => x.id === id);
+    if (!c) return;
+    const newActive = c.is_active === false ? true : false;
+    const label = newActive ? 'Activer' : 'Désactiver';
+    if (!confirm(`${label} la classe « ${c.name || c.id} » ?`)) return;
+    try {
+      await API.apiFetch(`/classes/${id}/`, { method: 'PATCH', body: JSON.stringify({ is_active: newActive }) });
+      c.is_active = newActive;
+      renderClasses();
+      showToast(`Classe ${newActive ? 'activée' : 'désactivée'}.`, 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+
+  /* ── SESSIONS — Nouvelle séance : composant partagé session-form.js ── */
+  document.getElementById('btnOpenCreateSession')?.addEventListener('click', function () {
+    SessionForm.open();
+  });
+
 </script>
 <script src="/admin-workload.js"></script>
 </body>

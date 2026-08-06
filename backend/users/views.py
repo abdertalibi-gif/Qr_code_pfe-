@@ -166,7 +166,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class ClasseViewSet(viewsets.ModelViewSet):
     queryset = (
-        Classe.objects.select_related("block", "room", "amphitheater", "filiere", "semestre")
+        Classe.objects.select_related("block", "room", "amphitheater", "filiere", "semestre", "module")
         .all()
         .order_by("-created_at")
     )
@@ -183,6 +183,12 @@ class ClasseViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().annotate(
             _student_count=Count("students", distinct=True),
             _teacher_count=Count("teachers", distinct=True),
+        ).prefetch_related(
+            Prefetch(
+                "teachers",
+                queryset=User.objects.only("id", "first_name", "last_name"),
+                to_attr="first_teacher",
+            )
         )
         user = self.request.user
         if user.role == "teacher":

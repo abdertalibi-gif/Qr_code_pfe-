@@ -567,11 +567,19 @@ class ClasseSerializer(serializers.ModelSerializer):
     def get_location_display(self, obj):
         return obj.location_display()
     def get_teacher_name(self, obj):
+        teachers = getattr(obj, "first_teacher", None)
+        if teachers is not None:
+            if teachers:
+                return teachers[0].full_name
+            return None
         teacher = obj.teachers.first()
         if teacher:
             return teacher.full_name
         return None
     def get_assigned_teacher_id(self, obj):
+        teachers = getattr(obj, "first_teacher", None)
+        if teachers is not None:
+            return teachers[0].pk if teachers else None
         teacher = obj.teachers.first()
         return teacher.pk if teacher else None
     def validate(self, data):

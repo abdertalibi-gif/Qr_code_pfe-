@@ -13,8 +13,9 @@ from rest_framework.response import Response
 from config.site_url import build_attend_url
 from users.permissions import (
     IsAdminOrTeacher,
-    IsTeacher,
     apply_role_filtering,
+    get_user_department,
+    get_user_filiere_ids,
 )
 
 from users.models import Amphitheater, Block, Room
@@ -50,15 +51,6 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         user = getattr(self.request, "user", None)
-        if self.action in (
-            "create",
-            "update",
-            "partial_update",
-            "destroy",
-            "generate_qr",
-            "close",
-        ):
-            return [IsAuthenticated(), IsTeacher()]
         if user and user.is_authenticated and user.role in ("department_head", "program_manager"):
             return [IsAuthenticated()]
         return super().get_permissions()
@@ -66,7 +58,23 @@ class SessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         try:
             user = self.request.user
-            session = serializer.save(teacher=user)
+            if user.role == "department_head":
+                dept = get_user_department(user)
+                classe = serializer.validated_data.get("classe")
+                if classe and dept:
+                    if classe.department_id != dept.id and classe.filiere.department_id != dept.id:
+                        raise serializers.ValidationError({"classe": "Cette classe ne fait pas partie de votre département."})
+            if user.role == "program_manager":
+                filiere_ids = get_user_filiere_ids(user)
+                classe = serializer.validated_data.get("classe")
+                if classe and filiere_ids and classe.filiere_id not in filiere_ids:
+                    raise serializers.ValidationError({"classe": "Cette classe ne fait pas partie de vos filières."})
+            if user.role == "teacher":
+                session = serializer.save(teacher=user)
+            else:
+                if "teacher" not in serializer.validated_data or not serializer.validated_data.get("teacher"):
+                    raise serializers.ValidationError({"teacher": "Un enseignant doit être sélectionné."})
+                session = serializer.save()
             teacher = session.teacher
             if teacher.role == "teacher":
                 teacher.assigned_classes.add(session.classe)

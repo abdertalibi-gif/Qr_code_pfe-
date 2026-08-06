@@ -204,12 +204,13 @@ class MyAttendanceListView(ListAPIView):
 class MyScheduleListView(ListAPIView):
     """Emploi du temps de l'étudiant (lecture seule).
 
-    Renvoie les séances de la classe de l'étudiant (filière / semestre /
-    groupe implicites via sa classe), triées par date puis heure de début,
-    avec un statut calculé (a_venir / en_cours / terminee / annulee) et
-    l'indicateur qr_open (QR de présence ouvert par l'enseignant).
+    Renvoie exclusivement les séances de la classe de l'étudiant connecté.
+    Si l'étudiant possède des inscriptions module (StudentModuleEnrollment),
+    seules les séances de ces modules sont retournées — jamais celles des
+    autres classes ou d'autres modules.
 
-    Le token QR de validation n'est jamais exposé ici.
+    Tous les filtres sont appliqués côté backend (Django).  Le token QR de
+    validation n'est jamais exposé.
     """
 
     serializer_class = StudentScheduleSerializer
@@ -224,19 +225,48 @@ class MyScheduleListView(ListAPIView):
         if student is None or student.classe_id is None:
             return Session.objects.none()
 
-        qs = Session.objects.select_related(
-            "module",
-            "teacher",
-            "classe",
-            "block",
-            "room",
-            "amphitheater",
-        ).filter(classe_id=student.classe_id)
+        qs = (
+            Session.objects
+            .select_related(
+                "module",
+                "module__filiere",
+                "module__filiere__semestre",
+                "teacher",
+                "classe",
+                "classe__filiere",
+                "classe__filiere__semestre",
+                "classe__department",
+                "block",
+                "room",
+                "amphitheater",
+            )
+            .filter(classe_id=student.classe_id)
+        )
 
-        # Filtres optionnels (date, module) pour le confort de l'étudiant.
+        # Filter by the student's enrolled modules if explicit enrollments exist.
+        # If the student has no StudentModuleEnrollment rows, all sessions for
+        # their class are returned (backward compatible).
+        enrolled_module_ids = list(
+            student.modules.values_list("id", flat=True)
+        )
+        if enrolled_module_ids:
+            qs = qs.filter(module_id__in=enrolled_module_ids)
+
         date_filter = self.request.query_params.get("date")
         if date_filter:
             qs = qs.filter(date=date_filter)
+
+        start_date = self.request.query_params.get("start_date")
+        if start_date:
+            qs = qs.filter(date__gte=start_date)
+
+        end_date = self.request.query_params.get("end_date")
+        if end_date:
+            qs = qs.filter(date__lte=end_date)
+
+        module_id = self.request.query_params.get("module_id")
+        if module_id:
+            qs = qs.filter(module_id=module_id)
 
         return qs.order_by("date", "start_time")
 
