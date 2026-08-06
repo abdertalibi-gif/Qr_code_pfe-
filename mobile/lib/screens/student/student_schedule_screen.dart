@@ -51,6 +51,27 @@ class _StudentScheduleScreenState extends State<StudentScheduleScreen>
       appBar: AppBar(
         title: const Text('Emploi du temps'),
         actions: [
+          if (provider.wsConnected)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle, size: 8, color: AppTheme.successColor),
+                  SizedBox(width: 4),
+                  Text('En direct',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.successColor,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
@@ -132,17 +153,29 @@ class _ScheduleTab extends StatelessWidget {
           if (provider.lastScheduleSync != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(
-                'Synchronisé à '
-                '${_formatTime(provider.lastScheduleSync!)} · '
-                'rafraîchi automatiquement',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[500]
-                      : Colors.grey[600],
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (provider.wsConnected)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Icon(Icons.circle, size: 8, color: AppTheme.successColor),
+                    ),
+                  Flexible(
+                    child: Text(
+                      'Synchronisé à '
+                      '${_formatTime(provider.lastScheduleSync!)} · '
+                      '${provider.wsConnected ? 'en temps réel' : 'rafraîchi automatiquement'}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[500]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ...days.entries.map(

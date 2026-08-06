@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/student_provider.dart';
 import '../home_screen.dart';
 import 'student_schedule_screen.dart';
@@ -26,6 +27,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<StudentProvider>();
+      final authProvider = context.read<AuthProvider>();
+      // Propagate the already-authenticated user so the WebSocket can
+      // resolve the student's class ID without an extra API call.
+      if ((authProvider.user?.isStudent ?? false) && provider.profile == null) {
+        provider.setUserProfile(authProvider.user!);
+      }
       provider.startScheduleAutoRefresh();
       if (provider.schedule.isEmpty && !provider.scheduleLoading) {
         provider.loadSchedule();

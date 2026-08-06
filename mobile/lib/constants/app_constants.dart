@@ -83,6 +83,7 @@ class AppConstants {
   // ─── WebSocket paths ──────────────────────────────────────────────────────
   static String wsTeacherLiveUri(int teacherId) => '$wsServerRoot/ws/attendance/live/teacher/$teacherId/';
   static String wsSessionUri(int sessionId) => '$wsServerRoot/ws/attendance/$sessionId/';
+  static String wsStudentScheduleUri(int classeId) => '$wsServerRoot/ws/schedule/$classeId/';
 
   // ─── Endpoints ────────────────────────────────────────────────────────────
   static const String loginEndpoint = '/auth/login/';
