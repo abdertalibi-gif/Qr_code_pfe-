@@ -7,6 +7,7 @@
 - Seuls les utilisateurs avec `role=program_manager` peuvent être responsables de filière.
 - Suppression de la passerelle enseignant → chef de département / responsable filière.
 - **Isolation enseignant** : un enseignant ne voit QUE les classes explicitement affectées par l'admin (`assigned_classes`). Jamais de classes de collègues, jamais de classes « de tout le département ». Retrait/ajout d'affectation → visible immédiatement. Nouvel enseignant = 0 classe.
+- **Affectations multiples enseignant** : un enseignant n'est JAMAIS limité à un seul niveau, un seul semestre, une seule filière ou un seul module. Il peut enseigner plusieurs modules (Java, Python, IA, …) dans plusieurs filières/niveaux/semestres, en Cours + TD + TP, chaque séance étant liée à une classe différente. Une affectation = combinaison (année, filière, niveau, semestre, module, type de séance, …). Aucune liste, filtre, formulaire ou écran ne doit masquer un enseignant sous prétexte qu'il « n'appartient pas » au département/module filtré — le backend agrège déjà par (teacher, module) avec des ensembles multi-filières (`users/views.py:1855+`).
 
 ## Key Details
 - 5 user roles: admin, teacher, student, department_head, program_manager (dynamic field visibility)
@@ -21,6 +22,49 @@
 
 ## Completed
 
+### Admin — Formulaire de séance unifié sur le composant partagé session-form.js (2026-08-06)
+- **`admin.html`** : le bouton « + Nouvelle séance » (`btnOpenCreateSession`) ouvre désormais le **même composant** que l'enseignant : `<script src="/session-form.js">` ajouté, `SessionForm.init({ isAdmin:true, userRole: currentUser.role })` dans le guard d'auth, listener `btnOpenCreateSession → SessionForm.open()`.
+- **Suppression du modal admin dupliqué** : `modalCreateSession` (cascade selects Niveau/Semestre/Filière + multiselect classes + checkbox « toute la promotion » + progression + résultats/retry) et tout le bloc inline associé (`cs*`, `openCreateSessionForm`, `createSelectedSessions`, `retryFailedSessions`, `toggleMultiSelect`, `toggleAllPromotion`, …) retirés d'`admin.html` (syntaxe inline vérifiée : `node --check` OK).
+- **`session_form.js` — branche non-enseignant activée (admin/department_head/program_manager)** :
+  - `_loadAllClasses()` : `/classes/` (scopé rôle côté backend) chargé une fois ; nouvelle étape **Classe** dans `_refreshNonTeacherLevel()` — classes filtrées strictement par la combinaison cochée (AND niveau ∩ semestre ∩ filière ∩ module), jamais fusionnées.
+  - Champ Classe (`sfTeacherClassField`) affiché pour les non-enseignants (`_reset` → `display:block`).
+  - `_submit` non-enseignant : création **multi-classes** (POST `/sessions/` séquentiel, module = `module_id` de chaque classe) ; en édition → PATCH simple inchangé ; validation « Veuillez sélectionner au moins une classe. » pour la création.
+  - `edit()` non-enseignant : préremplit aussi `_sel.classe` et charge `_allClasses`.
+- ✅ Correction connexe (2026-08-06) : la permission `IsTeacher` (403 admin) issue du commit `39d0a97` a été **retirée** de `SessionViewSet` ; admin/teacher/department_head/program_manager peuvent désormais créer/modifier/supprimer (`generate_qr`/`close` sous contrôle granulaire `teacher_can_manage`). Le toast « n créée(s), m échec(s) » ne concerne plus que les véritables échecs de validation.
+- `session-created` (déjà écouté dans admin.html) → `loadSessionsList()` : refresh auto des séances après création.
+- Validation : `node --check` session-form.js OK, script inline admin extrait et vérifié OK, `/admin-ui/` (HTTP 200, include session-form.js + init + `SessionForm.open` présents, zéro occurrence `modalCreateSession`), `/teacher/` et `/session-form.js` HTTP 200.
+
+### Enseignant — Formulaire de séance en MultiSelect à cases à cocher (2026-08-06)
+- **`session_form.js`** : les 5 listes déroulantes **Niveau, Semestre, Filière, Module, Classe** du formulaire enseignant sont remplacées par des **MultiSelect à cases à cocher** (même modal, même design — aucun Radio Button / Tabs / Segmented Button, aucun champ ajouté/supprimé ; Type de lieu, Bloc/Salle/Amphi, Type de séance, Date/Heures restent des selects/inputs classiques inchangés).
+  - Widget identique à l'admin : barre `.multiselect-selected` cliquable (chips supprimables ✕) + panneau `.multiselect-options` de `<label class="multiselect-option"><input type="checkbox">` ; CSS ajouté à `dashboard.css` (`.multiselect*`, `.chip-x`).
+  - Cascade alimentée UNIQUEMENT par les affectations réelles de l'enseignant (`_refreshTeacherCascade` depuis `/classes/`) avec **dépendance hiérarchique stricte** : Niveau (toujours listé) → Semestre (rempli seulement si ≥1 niveau coché) → Filière (si ≥1 semestre coché) → Module (si ≥1 filière cochée) → Classe (si ≥1 module coché). Chaque valeur d'une liste existe dans une affectation réelle conforme aux cases cochées des niveaux précédents (OR intra-niveau, AND inter-niveaux) — **jamais fusionnée entre affectations** (ex. Java LIC_EXC S6 SDIA et Machine Learning Master M1 IA restent deux combinaisons distinctes ; une combinaison inexistante n'apparaît jamais).
+  - États : `_sel` (arrays par niveau), `_setLevelOptions` (re-rendu + élagage des valeurs devenues invalides), `_renderMlSummary` (chips), `_removeMlValue` (✕), `_toggleMlOptions` (ouverture/fermeture), délégation `change` par panneau.
+  - Préssélection : `SessionForm.open(classeId)` / classe unique / `edit()` → `_preselectClassCombo(cls)` coche la combinaison complète de la classe + applique le lieu par défaut (`_applyClassLocation`).
+  - **Création multi-séances** : plusieurs classes cochées → POST `/sessions/` séquentiel (module = celui de chaque classe), bouton « Création… (i/n) », toast récapitulatif (« n séance(s) créée(s) » ou « n créée(s), m échec(s) — détails ») ; classe unique ou édition → POST/PATCH simple inchangé ; `session-created` dispatché (refresh automatique des séances enseignant).
+  - Branche non-enseignant (code mort, non chargée) adaptée aux multiselects : cascade via APIs curriculum (union multi-valeurs) ; `edit()` préremplit via `classe.niveau_id/semestre_id/filiere_id/module_id`.
+  - **Conflits de salle par lot multi-classes (2026-08-06)** : le POST `/sessions/` séquentiel du lot accumule les ids des séances déjà créées (`lotIds`, `data.id`) et les transmet via `exclude_session_ids: IntList` au payload suivant. Backend (`SessionSerializer.validate`) : nouveau champ `write_only` `exclude_session_ids` (ajouté à `Meta.fields`) ; dans le contrôle de conflit la liste est popped de `data` puis `.exclude(id__in=exclude_ids ∪ {self.instance.id})` (`_apply_excludes`). → Une classe du même lot (même enseignant/module/date/heure/salle/type) ne déclenche plus de faux conflit, tandis qu'un conflit réel avec une séance hors lot reste bloqué (« Cette salle/Cet amphithéâtre est déjà occupé… »).
+- Validation : `node --check` OK, `/session-form.js` et `/dashboard.css` servis en live (HTTP 200, helpers multiselect + submit multi présents), page teacher HTTP 200.
+
+### Enseignant — Cascade de création de séance strictement par affectations (2026-08-06)
+- **`session_form.js`** : la sélection au formulaire de séance enseignant suit désormais la hiérarchie **Niveau → Semestre → Filière → Module → Type de séance → Classe(s)**, alimentée UNIQUEMENT par les affectations réelles de l'enseignant (ses classes `/classes/`), jamais par le curriculum complet, jamais fusionnée entre niveaux (Java LIC S5 / Java Master M1 restent deux combinaisons distinctes).
+  - La cascade `sfCascadeFields` (auparavant masquée pour teacher) est maintenant toujours affichée ; `_loadNiveaux` (teacher = niveaux des classes affectées), `_loadSemestres`/`_loadFilieres` (filtrage par combinaison niveau, semestre), `_loadModules(filiereId, niveauId, semestreId)` (filtrage par combinaison complète) — aucune requête `/curriculum/…` côté teacher.
+  - Nouvelle étape « Classe » (`sfTeacherClassField`, déplacée juste après « Type de séance ») : `_refreshTeacherClassSelect()` affiche la/les classe(s) correspondant à la combinaison choisie ; sélection automatique si une seule classe (lieu appliqué via `_applyClassLocation` sinon au changement).
+  - `_setCascade`/`_openForTeacher`/`edit()` : préssélection par cascade depuis `cls.niveau_id/semestre_id/filiere_id/module_id` (`SessionForm.open(classeId)` et édition enseignant préservés).
+  - `_preselectClass` ne détruit plus les options de la cascade (injecte uniquement si la cascade n'était pas chargée).
+  - `_submit` : validation « Veuillez sélectionner une classe. » si teacher sans `classeId`.
+  - Correction connexe en `edit()` (branche non-enseignant, code mort) : champs `classe.niveau_id/semestre_id/filiere_id/module_id` (avant `classe.niveau/semestre/filiere/module` erronés).
+- Validation : `node --check` OK, `/session-form.js` servi en live (HTTP 200, helpers présents, cascade sans `display:none`), page teacher HTTP 200.
+
+### Admin — Création de séances multi-classes + Détails de classe (2026-08-06)
+- **`admin.html` — Classes tab** : nouvelle colonne « Statut » (badge Actif/Inactif) + boutons « 👁️ Voir » et « 🔒/🔓 » par ligne.
+  - `openClasseDetails(id)` → modal `modalClasseDetails` avec fiche complète (nom, code, niveau, filière, semestre, module, année, statut, localisation, étudiants, enseignant, département, niveau d'études, domaine, description, création).
+  - `toggleClasseActive(id)` → PATCH `/classes/{id}/` avec `is_active`. Le modèle Classe n'a PAS de champ `is_active` : DRF ignore silencieusement le champ, l'état est géré localement côté UI (recharge de la page → statut d'origine).
+- **`admin.html` — Sessions tab** : bouton « + Nouvelle séance » (`btnOpenCreateSession`) sur le dashboard admin.
+  - Modal `modalCreateSession` : cascade Niveau → Semestre → Filière, **MultiSelect de classes** (`csClassesSelected`/`csClassesOptions`, chips supprimables), checkbox « Affecter à toutes les classes de cette promotion », module (filtre `/curriculum/modules/?filiere_id=`), enseignant (TOUS les teachers via `/users/?role=teacher` — aucun filtre par niveau/semestre/module), date/heures, type de séance (Cours/TD/TP), lieu (Bloc+Salle / Amphi avec cascade bloc→salle), notes.
+  - `createSelectedSessions()` : POST `/sessions/` séquentiel pour CHAQUE classe sélectionnée, **barre de progression**, **résumé des résultats** (✅/❌ par classe avec message), bouton **« Réessayer les échecs »** (`retryFailedSessions`). ⚠️ Ce modal a depuis été **remplacé par le composant partagé `session-form.js`** (section « Admin — Formulaire de séance unifié ») ; les échecs granulaire+retry ne s'appliquaient qu'aux erreurs de validation (permission `IsTeacher` depuis retirée, voir section « Permission création de séances restaurée »).
+- **`wlUpdateTeacherOptions`** (`admin.html`, section workload inline) : suppression du filtre enseignant basé sur `department_id` du module/filière — il masquait à tort un enseignant enseignant le même module dans plusieurs filières/départements. Désormais TOUS les enseignants restent listés.
+- Validation : `node --check` OK (inline admin.html, admin-workload.js, session_form.js), servie en live via `serve_template` (test HTTP 200 sur `/admin-ui/`, tous les ID/modal vérifiés présents).
+
 ### Isolation enseignant — classes assignées (Web + Mobile + Backend)
 - **`UserCreateSerializer.create`** / **`UserUpdateSerializer.update`** (`backend/users/serializers.py`) : suppression de l'auto-affectation de TOUTES les classes du département (`Classe.objects.filter(Q(department=...) | Q(filiere__department=...))`). Seules les classes explicitement fournies via `assigned_class_ids` sont assignées. Update sans `assigned_class_ids` → classes inchangées (PATCH partiel sûr).
 - **`teacher_import.py`** (`backend/users/services/teacher_import.py`) : suppression du bloc « Assign department classes to all imported users » (les enseignants importés n'ont plus aucune classe par défaut) + nettoyage imports/variables morts (`Q`, `Classe`, `user_dept_map`).
@@ -33,16 +77,14 @@
 - **Mobile** : aucune modif nécessaire — `TeacherService.fetchClasses()` → `/classes/` (backend scopé), état vide « Aucune classe assignée » déjà présent (`sessions_screen.dart`).
 - Validation : `django check` OK, `compileall` OK, `node --check` OK. Tests backend bloqués (DB test Neon verrouillée, problème préexistant).
 
-### Séances créées UNIQUEMENT par les enseignants (2026-08-05)
-- **Nouvelle permission `IsTeacher`** (`backend/users/permissions.py`) : `role == "teacher"`.
-- **`SessionViewSet.get_permissions()`** (`backend/courses/views.py`) : actions d'écriture `create`, `update`, `partial_update`, `destroy` **+ `generate_qr` + `close`** → `[IsAuthenticated(), IsTeacher()]` (403 pour admin, department_head, program_manager). Lecture (`list`, `retrieve`, `current_qr`, `available-*`) inchangée : admin/dept_head/program_manager peuvent toujours consulter/exporter.
-- **`perform_create` simplifié** : branches department_head/program_manager supprimées (code mort), imports `IsAdmin`, `get_user_department`, `get_user_filiere_ids` nettoyés.
-- **UI admin (`admin.html`)** : bouton « + Nouvelle séance » supprimé, colonne « Actions » (Supprimer) retirée du tableau des séances, `deleteSession()`, listener `btnOpenAddSession`, `SessionForm.init(...)` et `<script src="/session-form.js">` retirés.
-- **`admin_sessions.html`** : bouton « + Nouvelle séance » et script session-form.js retirés ; tableau sans colonne Actions.
-- **`admin-sessions.js`** : `openEditSession`/`deleteSession`/listener d'ajout supprimés (reste : liste, recherche, actualiser, export Excel).
-- `session-form.js` ne reste chargé que par `teacher.html` (création de séance côté enseignant).
-- **Workflow** : admin crée la classe → admin affecte l'enseignant (`assigned_class_ids`) → classe visible dans le dashboard de l'enseignant → l'enseignant crée ses séances (la classe est ajoutée automatiquement à `assigned_classes` à la création de séance) → les étudiants voient les séances via `/attendance/my-schedule/` et scannent le QR.
-- Vérifié en direct : admin POST/PATCH/DELETE/generate-qr/close sur `/sessions/` → **403** ; teacher POST → 201 ; dept_head POST → 403 ; lecture admin → OK.
+### Permission création de séances restaurée (admin + enseignant + dept_head + program_manager) (2026-08-06)
+- **Régression corrigée** : le commit `39d0a97` (« séances gérées par les enseignants », 2026-08-05) avait restreint les actions d'écriture `create/update/partial_update/destroy/generate_qr/close` de `SessionViewSet` à `[IsAuthenticated(), IsTeacher()]` → **403 pour admin / department_head / program_manager**. Restauré le comportement d'origine : `permission_classes = [IsAuthenticated, IsAdminOrTeacher]` (les 4 rôles peuvent écrire), la branche `get_permissions()` ne conservant que l'exception lecture pour dept_head/pm.
+- **`SessionViewSet.get_permissions()`** (`backend/courses/views.py`) : le bloc `IsTeacher` est supprimé ; seul reste `if user.role in (department_head, program_manager): return [IsAuthenticated()]` puis `super().get_permissions()`.
+- **`perform_create` restauré** : branches par rôle (department_head → classe du département, program_manager → classe de ses filières, teacher → `save(teacher=user)`, sinon `teacher` obligatoire dans le payload) + `assigned_classes.add(session.classe)` si `teacher.role == "teacher"`. Imports `get_user_department`/`get_user_filiere_ids`/`IsAdminOrTeacher` de nouveau utilisés.
+- **`generate_qr`/`close`** : demeurent sous `IsAdminOrTeacher` + contrôle granulaire `_check_session_access`/`teacher_can_manage` (changements exceptionnels gérés séparément).
+- Vérifié en base réelle via `APIClient.force_authenticate` : **ADMIN POST → 201, TEACHER POST → 201, DEPT_HEAD POST/PM → permission OK (validation 400, plus de 403), ADMIN PATCH → 200, DELETE → 204**. `compileall` OK, `django check` OK.
+
+### Séances créées par admin + teacher (workflow multi-classes unifié, 2026-08-06)
 
 ### Lieu par défaut de la classe (2026-08-05)
 - **Déjà en place** : `Classe` a `location_type` (BLOC/AMPHI/BOTH_ALLOWED), `block`, `room`, `amphitheater` (`backend/users/models.py:261-290`), exposés par `ClasseSerializer` (`location_type`, `block_id`, `room_id`, `amphitheater_id`). Le formulaire admin (`admin-classes.js` → `clLocationType`/`clBlock`/`clRoom`/`clAmphi`) définit déjà ce lieu à la création de la classe.
@@ -88,6 +130,17 @@
 ## Tested
 - **7 tests d'import étudiant** : tous OK
 - **9 tests d'import teacher** : échecs préexistants (`relation "departments" does not exist` dans la DB de test, non lié aux changements)
+
+## Fix: formulaire Classe — restauration des valeurs sélectionnées
+- **Problème** : les valeurs des cascades (Niveau→Semestre→Filière→Module) et du lieu (Type→Bloc→Salle / Amphi) étaient perdues après modification, erreur de validation ou rechargement.
+- **Cause** : les fonctions cascade utilisaient `setTimeout(100)` pour restaurer les valeurs après un appel API asynchrone — si l'API mettait >100ms, la valeur n'existait pas encore dans le select. De plus, `cascadeFiliere('')` était appelé en fin de `cascadeSemestre` même avec une valeur à restaurer, écrasant la restauration.
+- **Correction** (`admin-classes.js`) :
+  - `cascadeSemestre(id, restoreValue)` → retourne une Promise, restaure la valeur après le chargement API, n'appelle `cascadeFiliere('')` que si aucune valeur à restaurer.
+  - `cascadeFiliere(id, restoreValue)` → restaure la valeur, n'appelle `cascadeModule('')` que si aucune valeur à restaurer.
+  - `cascadeModule(id, restoreValue)` → Promise + restauration.
+  - `cascadeRoom(blockId, restoreValue)` → restauration synchronisée.
+  - `openEditClass(id)` → chaînage `await cascadeSemestre → cascadeFiliere → cascadeModule` au lieu de `setTimeout` imbriqués.
+  - Après erreur de validation : le formulaire reste ouvert avec toutes les valeurs intactes (pas de `resetClassForm` sur erreur).
 
 ## Feature: Rapport Excel mensuel — Charge horaire enseignants
 
