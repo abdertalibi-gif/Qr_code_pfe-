@@ -33,14 +33,18 @@
     <a href="/admin/settings/" class="nav-link" data-page="settings">⚙️ Paramètres</a>
   </div>
   <div class="nav-right">
+    <button class="nav-toggle" id="navToggle" type="button" aria-controls="navLinks" aria-expanded="false" aria-label="Ouvrir le menu">
+      <span class="nav-icon-open" aria-hidden="true">☰</span>
+      <span class="nav-icon-close" aria-hidden="true">✕</span>
+    </button>
     <div class="user-pill">
       <div class="user-avatar" id="avatarInitials">?</div>
       <span id="navUserName">Chargement…</span>
       <span class="badge" id="navRoleBadge">Administrateur</span>
     </div>
-    <button class="btn-icon" onclick="API.logout()" title="Déconnexion" style="border:1.5px solid var(--border);border-radius:8px">
+    <button class="btn-icon" onclick="API.logout()" title="Déconnexion" aria-label="Déconnexion" style="border:1.5px solid var(--border);border-radius:8px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Déconnexion
+      <span class="logout-label">Déconnexion</span>
     </button>
   </div>
 </nav>
@@ -49,6 +53,8 @@
 <main>
 {% block content %}{% endblock %}
 </main>
+
+{% block modals %}{% endblock %}
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -96,7 +102,7 @@
     try {
       const d = await API.apiFetch('/dashboard/counts/');
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val != null ? val : '—'; };
-      set('navCntAttendance', d.attendances);
+      set('navCntAttendance', d.live_attendances);
       set('navCntPresent', d.present);
       set('navCntAbsent', d.absent);
       set('navCntUsers', d.users);
@@ -137,6 +143,37 @@
       document.querySelectorAll('.admin-only').forEach(function(el) { el.style.display = 'none'; });
     }
   }
+
+  /* ── Mobile navigation menu ── */
+  (function initNavToggle() {
+    const toggle = document.getElementById('navToggle');
+    const links = document.getElementById('navLinks');
+    if (!toggle || !links) return;
+
+    const setOpen = (open) => {
+      links.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+    };
+
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(!links.classList.contains('open'));
+    });
+    links.addEventListener('click', (e) => {
+      if (e.target.closest('a')) setOpen(false);
+    });
+    document.addEventListener('click', (e) => {
+      if (links.classList.contains('open') && !links.contains(e.target) && !toggle.contains(e.target)) {
+        setOpen(false);
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  })();
 </script>
+
+{% block extra_js %}{% endblock %}
 </body>
 </html>

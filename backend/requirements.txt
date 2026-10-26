@@ -3,7 +3,7 @@ anyio==4.13.0
 argon2-cffi==25.1.0
 argon2-cffi-bindings==25.1.0
 arrow==1.4.0
-asgiref==3.8.1
+asgiref>=3.9.1
 asttokens==3.0.1
 async-lru==2.3.0
 attrs==26.1.0
@@ -33,10 +33,9 @@ debugpy==1.8.21
 decorator==5.3.1
 defusedxml==0.7.1
 dj-database-url==1.0.0
-Django==5.1.4
+Django==6.0.5
 django-axes==7.0.1
 django-cors-headers==4.6.0
-django-debug-toolbar==7.0.0
 django-environ==0.11.2
 django-extensions==4.1
 django-filter==25.2
@@ -117,7 +116,6 @@ networkx==3.6.1
 notebook==7.5.6
 notebook_shim==0.2.4
 numpy==2.4.6
-opencv-python==4.13.0.92
 opencv-python-headless==5.0.0.93
 openpyxl==3.1.5
 packaging==24.2

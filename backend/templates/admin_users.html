@@ -10,7 +10,10 @@
 </div>
 
 <div class="section-head">
-  <h2>Tous les utilisateurs</h2>
+  <div>
+    <h2>Tous les utilisateurs</h2>
+    <p id="usersCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre d’utilisateurs…</p>
+  </div>
   <div class="section-actions">
     <input type="search" class="search-input" id="searchUsers" placeholder="Rechercher nom, e-mail, rôle…" />
     <button class="btn" id="btnOpenAddUser">+ Nouvel utilisateur</button>
@@ -33,6 +36,7 @@
     </tbody>
   </table>
 </div>
+<div class="pagination-bar hidden" id="usersPagination"></div>
 {% endblock %}
 
 {% block modals %}

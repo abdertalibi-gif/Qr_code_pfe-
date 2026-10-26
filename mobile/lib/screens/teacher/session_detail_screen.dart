@@ -138,10 +138,20 @@ class _SessionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -153,7 +163,7 @@ class _SessionHeader extends StatelessWidget {
             '${session.date} · ${session.timeRange}',
             style: TextStyle(
               fontSize: 13,
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              color: secondaryColor,
             ),
           ),
           const SizedBox(height: 4),
@@ -161,7 +171,7 @@ class _SessionHeader extends StatelessWidget {
             'Lieu : ${session.locationDisplay} · Type : ${session.sessionType}',
             style: TextStyle(
               fontSize: 12,
-              color: isDark ? Colors.grey[500] : Colors.grey[500],
+              color: muted,
             ),
           ),
         ],
@@ -204,13 +214,16 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     if (provider.sessionDetailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final attendees = provider.sessionAttendees;
     return RefreshIndicator(
       onRefresh: () => provider.loadSessionDetail(widget.sessionId),
-      color: AppTheme.primary,
+      color: brandColor,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -221,17 +234,19 @@ class _AttendanceTabState extends State<_AttendanceTab> {
             return OutlinedButton.icon(
               onPressed: _exporting ? null : _exportXlsx,
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
+                foregroundColor: brandColor,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               icon: _exporting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: brandColor,
+                      ),
                     )
-                  : const Icon(Icons.grid_on_rounded,
-                      color: AppTheme.primary),
+                  : Icon(Icons.grid_on_rounded, color: brandColor),
               label: Text(_exporting
                   ? 'Génération en cours…'
                   : 'Exporter la feuille de présence (Excel)'),
@@ -244,20 +259,19 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 24),
                 child: Column(
-                  children: const [
+                  children: [
                     Icon(Icons.people_outline_rounded,
-                        size: 48, color: Colors.grey),
-                    SizedBox(height: 12),
+                        size: 48, color: muted),
+                    const SizedBox(height: 12),
                     Text(
                       'Aucune présence enregistrée pour l\'instant',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: muted),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Les étudiants scannent le QR pour être enregistrés.',
-                      style:
-                          TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: muted, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -266,7 +280,6 @@ class _AttendanceTabState extends State<_AttendanceTab> {
             );
           }
           final a = attendees[i - 1];
-          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Card(
             elevation: 0,
             child: ListTile(
@@ -287,7 +300,9 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                     : a.validationTime,
                 style: TextStyle(
                   fontSize: 12,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
                 ),
               ),
             ),
@@ -307,6 +322,11 @@ class _MapTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     final located = provider.sessionAttendees
         .where((a) => a.latitude != null && a.longitude != null)
         .toList();
@@ -319,15 +339,18 @@ class _MapTab extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_off_rounded,
-                size: 56, color: Colors.grey),
+            Icon(Icons.location_off_rounded, size: 56, color: muted),
             const SizedBox(height: 12),
-            const Text('Aucune position GPS enregistrée',
-                style: TextStyle(color: Colors.grey)),
+            Text('Aucune position GPS enregistrée',
+                style: TextStyle(color: muted), textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(
-              'Activez la localisation lors du scan pour voir la carte.',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Activez la localisation lors du scan pour voir la carte.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: secondaryColor, fontSize: 12),
+              ),
             ),
           ],
         ),
@@ -343,8 +366,8 @@ class _MapTab extends StatelessWidget {
                 message: a.studentName.isNotEmpty
                     ? a.studentName
                     : a.studentDetail?.fullName ?? 'Étudiant',
-                child: const Icon(Icons.location_on_rounded,
-                    color: AppTheme.primary, size: 34),
+                child: Icon(Icons.location_on_rounded,
+                    color: brandColor, size: 34),
               ),
             ))
         .toList();
@@ -389,10 +412,15 @@ class _QrTabState extends State<_QrTab> {
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherProvider>();
     final payload = provider.qrPayload;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchCurrentQr(widget.sessionId),
-      color: AppTheme.primary,
+      color: brandColor,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -407,17 +435,16 @@ class _QrTabState extends State<_QrTab> {
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: Column(
                 children: [
-                  const Icon(Icons.qr_code_2_rounded,
-                      size: 72, color: Colors.grey),
+                  Icon(Icons.qr_code_2_rounded, size: 72, color: muted),
                   const SizedBox(height: 12),
                   const Text('Aucun QR actif pour cette séance',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center),
                   const SizedBox(height: 4),
                   Text(
                     'Générez un QR pour permettre aux étudiants de scanner.',
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: secondaryColor, fontSize: 12),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
@@ -436,8 +463,10 @@ class _QrTabState extends State<_QrTab> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.primary.withOpacity(.2)),
+                borderRadius: BorderRadius.circular(AppTheme.radius),
+                border: Border.all(
+                  color: AppTheme.primary.withOpacity(.2),
+                ),
               ),
               child: Column(
                 children: [
@@ -454,12 +483,13 @@ class _QrTabState extends State<_QrTab> {
                   const SizedBox(height: 12),
                   Text(
                     'Expire le : ${payload.expiresAt?.toString() ?? '—'}',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.lightTextSecondary),
                   ),
                   Text(
                     'Rayon : ${payload.attendanceRadiusMeters} m',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey[600]),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.lightTextSecondary),
                   ),
                 ],
               ),
@@ -544,7 +574,8 @@ class _StatsTab extends StatelessWidget {
                           fontSize: 20, fontWeight: FontWeight.w700)),
                   Text(i.$1,
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey[600])),
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodySmall?.color)),
                 ],
               ),
             ),
@@ -564,13 +595,15 @@ class _SuspiciousTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     if (provider.sessionDetailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (provider.suspiciousAttempts.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('Aucune tentative suspecte',
-            style: TextStyle(color: Colors.grey)),
+            style: TextStyle(color: muted), textAlign: TextAlign.center),
       );
     }
     return ListView.separated(
@@ -579,7 +612,6 @@ class _SuspiciousTab extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         final a = provider.suspiciousAttempts[i];
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Card(
           elevation: 0,
           child: ListTile(
@@ -598,7 +630,9 @@ class _SuspiciousTab extends StatelessWidget {
                   '${a.codeMassar != null ? ' · ${a.codeMassar}' : ''}',
                   style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary),
                 ),
                 if (a.errorMessage != null && a.errorMessage!.isNotEmpty)
                   Text(

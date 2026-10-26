@@ -93,11 +93,19 @@ class _SessionsScreenState extends State<SessionsScreen>
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(
-                          c.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        label: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.72,
+                          ),
+                          child: Text(
+                            c.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         selected: selected,
@@ -116,11 +124,16 @@ class _SessionsScreenState extends State<SessionsScreen>
                   ),
                 )
               else if (provider.sessions.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(32),
+                Padding(
+                  padding: const EdgeInsets.all(32),
                   child: Center(
-                    child: Text('Aucune séance pour cette classe',
-                        style: TextStyle(color: Colors.grey)),
+                    child: Text(
+                      'Aucune séance pour cette classe',
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 )
               else
@@ -156,55 +169,111 @@ class _SessionTile extends StatelessWidget {
     final inWindow = session.isWithinSessionWindow;
     final isPast = (session.dateTimeEnd ?? DateTime(2000)).isBefore(now);
 
+    /// « 20:14:57 » -> « 20:14 » : évite que l'horaire soit tronqué sur les
+    /// petits écrans (320–430 px).
+    String short(String value) {
+      final parts = value.split(':');
+      return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : value;
+    }
+
+    final timeRange =
+        '${short(session.startTime)}–${short(session.endTime)}';
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
+      child: InkWell(
         onTap: onTap,
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: session.isActive && inWindow
-                ? AppTheme.successColor.withOpacity(.12)
-                : isPast
-                    ? Colors.grey.withOpacity(.15)
-                    : AppTheme.warningColor.withOpacity(.12),
-            borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: session.isActive && inWindow
+                      ? AppTheme.successColor.withOpacity(.12)
+                      : isPast
+                          ? muted.withOpacity(.15)
+                          : AppTheme.warningColor.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  session.isActive && inWindow
+                      ? Icons.play_circle_rounded
+                      : isPast
+                          ? Icons.done_all_rounded
+                          : Icons.schedule_rounded,
+                  color: session.isActive && inWindow
+                      ? AppTheme.successColor
+                      : isPast
+                          ? muted
+                          : AppTheme.warningColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.subject,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: brandColor.withOpacity(isDark ? .18 : .10),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            session.sessionType,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: brandColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${session.date} · $timeRange',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: onEdit,
+                tooltip: 'Modifier',
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              ),
+            ],
           ),
-          child: Icon(
-            session.isActive && inWindow
-                ? Icons.play_circle_rounded
-                : isPast
-                    ? Icons.done_all_rounded
-                    : Icons.schedule_rounded,
-            color: session.isActive && inWindow
-                ? AppTheme.successColor
-                : isPast
-                    ? Colors.grey
-                    : AppTheme.warningColor,
-          ),
-        ),
-        title: Text(session.subject,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-          '${session.date} · ${session.timeRange}',
-          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Chip(
-              label: Text(session.sessionType,
-                  style: const TextStyle(fontSize: 10)),
-              visualDensity: VisualDensity.compact,
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              onPressed: onEdit,
-              tooltip: 'Modifier',
-            ),
-          ],
         ),
       ),
     );
@@ -216,11 +285,16 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.all(40),
       child: Column(
         children: [
-          Icon(Icons.school_outlined, size: 56, color: Colors.grey[400]),
+          Icon(
+            Icons.school_outlined,
+            size: 56,
+            color: isDark ? AppTheme.darkMuted : AppTheme.lightMuted,
+          ),
           const SizedBox(height: 12),
           const Text('Aucune classe assignée',
               style: TextStyle(fontWeight: FontWeight.w600)),
@@ -228,7 +302,12 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Contactez l\'administration pour vous assigner des classes.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            style: TextStyle(
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+              fontSize: 13,
+            ),
           ),
         ],
       ),

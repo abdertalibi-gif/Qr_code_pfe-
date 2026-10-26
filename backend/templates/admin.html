@@ -51,9 +51,9 @@
       <span id="navUserName">Chargement…</span>
       <span class="badge" id="navRoleBadge">Administrateur</span>
     </div>
-    <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
+    <button class="btn-icon" onclick="API.logout()" title="Déconnexion" aria-label="Déconnexion">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Déconnexion
+      <span class="logout-label">Déconnexion</span>
     </button>
   </div>
 </nav>
@@ -182,7 +182,10 @@
   <!-- USERS PANEL -->
   <div class="tab-panel active" id="tab-users">
     <div class="section-head">
-      <h2>Tous les utilisateurs</h2>
+      <div>
+        <h2>Tous les utilisateurs</h2>
+        <p id="usersCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre d’utilisateurs…</p>
+      </div>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchUsers" placeholder="Rechercher nom, e-mail, rôle…" />
         <button class="btn admin-only" id="btnOpenAddUser">+ Nouvel utilisateur</button>
@@ -205,12 +208,16 @@
         </tbody>
       </table>
     </div>
+    <div id="usersPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
   </div>
 
   <!-- TEACHERS PANEL -->
   <div class="tab-panel hidden" id="tab-teacher-import">
     <div class="section-head">
-      <h2>Tous les enseignants</h2>
+      <div>
+        <h2>Tous les enseignants</h2>
+        <p id="teachersCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre d’enseignants…</p>
+      </div>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
         <button class="btn admin-only" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
@@ -239,6 +246,8 @@
         </tbody>
       </table>
     </div>
+
+    <div id="teachersPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
 
     <!-- Teacher Import Panel -->
     <div class="import-panel admin-only" style="margin-top:1.5rem">
@@ -374,7 +383,10 @@
   <!-- CLASSES PANEL -->
   <div class="tab-panel" id="tab-classes">
     <div class="section-head">
-      <h2>Toutes les classes</h2>
+      <div>
+        <h2>Toutes les classes</h2>
+        <p id="classesCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre de classes…</p>
+      </div>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchClasses" placeholder="Rechercher niveau, filière, année…" />
         <button class="btn" id="btnOpenAddClasse">+ Nouvelle classe</button>
@@ -401,6 +413,7 @@
         </tbody>
       </table>
     </div>
+    <div id="classesPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
   </div>
 
   <!-- CURRICULUM PANEL -->
@@ -428,7 +441,10 @@
   <!-- SESSIONS PANEL -->
   <div class="tab-panel" id="tab-sessions">
     <div class="section-head">
-      <h2>Toutes les séances</h2>
+      <div>
+        <h2>Toutes les séances</h2>
+        <p id="adminSessionsCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre de séances…</p>
+      </div>
       <div class="section-actions">
         <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
         <button class="btn" id="btnOpenCreateSession">+ Nouvelle séance</button>
@@ -452,6 +468,7 @@
         </tbody>
       </table>
     </div>
+    <div id="adminSessionsPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
   </div>
 
   <!-- DEPARTMENTS PANEL -->
@@ -1520,6 +1537,18 @@
   let allUsers    = [];
   let allStudents = [];
   let allClasses  = [];
+  let classesCatalogue = [];
+  let classesTableItems = [];
+  let classesTotal = 0;
+  let classesCurrentPage = 1;
+  let classesSearchTimer = null;
+  let classesRequestSeq = 0;
+  const CLASSES_PAGE_SIZE = 10;
+  let usersTotal = 0;
+  let usersCurrentPage = 1;
+  let usersSearchTimer = null;
+  let usersRequestSeq = 0;
+  const USERS_PAGE_SIZE = 10;
   let allDepartments = [];
   let allFilieres = [];
   let allSessions = [];
@@ -1641,6 +1670,15 @@
     el.addEventListener('input', renderFn);
   }
 
+  function debounce(fn, wait) {
+    let timer = null;
+    return function () {
+      const args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
   function isAdminOnly() { return currentUser.role === 'admin'; }
 
   async function loadAll() {
@@ -1678,7 +1716,13 @@
       set('cntCurriculum', d.modules);
       set('cntDepartments', d.departments);
       set('cntTeacherImport', d.teachers);
+      set('cntUsers', d.users);
+      set('cntClasses', d.classes);
+      set('cntSessions', d.sessions);
+      // « Présences en direct » = séances en cours (jamais le total historique).
+      set('cntAttendance', d.live_attendances);
       set('heroUserCount', d.users);
+      set('heroClassCount', d.classes);
       set('cntRooms', d.rooms);
       set('heroRoomCount', d.rooms);
       set('heroBlockCount', d.blocks);
@@ -1697,16 +1741,44 @@
     } catch (e) { /* ignore */ }
   }
 
-  /* ── Load Users ── */
-  async function loadUsers() {
+  /* ── Load Users (pagination + recherche côté serveur) ── */
+  async function loadUsers(page) {
+    if (!Number.isInteger(page)) page = usersCurrentPage || 1;
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(USERS_PAGE_SIZE),
+    });
+    const search = (document.getElementById('searchUsers')?.value || '').trim();
+    if (search) params.set('search', search);
+
+    const tbody = document.getElementById('usersBody');
+    if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chargement…</td></tr>';
+
+    const requestId = ++usersRequestSeq;
     try {
-      const data = await API.apiFetch('/users/');
-      allUsers = Array.isArray(data) ? data : (data.results || []);
+      const data = await API.apiFetch('/users/?' + params.toString());
+      if (requestId !== usersRequestSeq) return;
+      const results = Array.isArray(data) ? data : (data.results || []);
+      usersTotal = Array.isArray(data) ? results.length : (data.count ?? results.length);
+      const totalPages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+      if (page > totalPages && totalPages >= 1 && usersTotal > 0) {
+        return loadUsers(totalPages);
+      }
+      usersCurrentPage = page;
+      allUsers = results;
       renderUsers();
-      document.getElementById('cntUsers').textContent = allUsers.length;
+      if (!search) {
+        const setCounter = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setCounter('cntUsers', usersTotal);
+        setCounter('heroUserCount', usersTotal);
+      }
     } catch (e) {
-      document.getElementById('usersBody').innerHTML =
-        `<tr class="empty-row"><td colspan="4">Failed to load users: ${e.message}</td></tr>`;
+      if (requestId !== usersRequestSeq) return;
+      if (tbody) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Erreur: ${esc(e.message)}</td></tr>`;
+      }
+      const countLabel = document.getElementById('usersCountLabel');
+      if (countLabel) countLabel.textContent = 'Erreur de chargement.';
     }
   }
 
@@ -1747,18 +1819,32 @@
   function renderUsers() {
     const tbody = document.getElementById('usersBody');
     const query = searchQuery('searchUsers');
-    const filtered = allUsers.filter(u => matchesQuery(
-      query,
-      u.first_name, u.last_name, `${u.first_name} ${u.last_name}`,
-      u.email, u.role, roleLabel[u.role]
-    ));
-    if (!filtered.length) {
+    const totalPages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+    const countLabel = document.getElementById('usersCountLabel');
+    const startIdx = (usersCurrentPage - 1) * USERS_PAGE_SIZE;
+
+    if (!allUsers.length) {
       tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${query ? 'Aucun résultat.' : 'Aucun utilisateur.'}</td></tr>`;
+      if (countLabel) {
+        countLabel.textContent = query
+          ? `0 utilisateur trouvé sur un total de ${usersTotal}`
+          : '0 utilisateur au total';
+      }
+      renderServerPagination('usersPagination', usersCurrentPage, totalPages, (newPage) => loadUsers(newPage));
       return;
     }
-    tbody.innerHTML = filtered.map((u, i) => `
+
+    if (countLabel) {
+      const from = startIdx + 1;
+      const to = Math.min(startIdx + USERS_PAGE_SIZE, usersTotal);
+      countLabel.textContent = query
+        ? `Affichage de ${from} à ${to} sur ${usersTotal} résultat(s) trouvé(s)`
+        : `Affichage des utilisateurs ${from} à ${to} sur ${usersTotal} au total (Page ${usersCurrentPage} sur ${totalPages})`;
+    }
+
+    tbody.innerHTML = allUsers.map((u, i) => `
       <tr>
-        <td><span style="color:var(--muted)">${i + 1}</span></td>
+        <td><span style="color:var(--muted)">${startIdx + i + 1}</span></td>
         <td><strong>${esc(u.first_name)} ${esc(u.last_name)}</strong></td>
         <td style="color:var(--muted)">${esc(u.email)}</td>
         <td><span class="badge badge-${u.role}">${roleLabel[u.role] || u.role}</span></td>
@@ -1770,6 +1856,8 @@
         </td>
       </tr>
     `).join('');
+
+    renderServerPagination('usersPagination', usersCurrentPage, totalPages, (newPage) => loadUsers(newPage));
   }
 
   async function openEditUser(id) {
@@ -1788,7 +1876,11 @@
     populateRoleSelects('eu');
     showFieldsForRole(u.role, 'eu');
     const deptSel = document.getElementById('euDepartment');
-    if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
+    if (deptSel) {
+      if (u.department_id != null) deptSel.value = String(u.department_id);
+      else if (u.managed_department) deptSel.value = u.managed_department.id;
+      else deptSel.value = '';
+    }
     const filSel = document.getElementById('euFiliere');
     if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
     openModal('modalEditUser');
@@ -2023,7 +2115,6 @@
       moduleStudentsPage = page;
       moduleStudentsTotalPages = Math.max(1, Math.ceil(moduleStudentsCount / 20));
       renderModuleStudents();
-      document.getElementById('cntStudents').textContent = moduleStudentsCount;
       pagination.classList.toggle('hidden', moduleStudentsTotalPages <= 1);
       document.getElementById('modulePageInfo').textContent =
         `Page ${moduleStudentsPage} / ${moduleStudentsTotalPages} (${moduleStudentsCount} étudiant(s))`;
@@ -2220,16 +2311,58 @@
 
   // Students tab — no standalone student list; module student list is loaded on-demand
 
-  async function loadClasses() {
+  async function loadClassesCatalogue(force) {
+    if (classesCatalogue.length && !force) return;
     try {
-      const data = await API.apiFetch('/classes/');
-      allClasses = Array.isArray(data) ? data : (data.results || []);
-      renderClasses();
-      document.getElementById('cntClasses').textContent = allClasses.length;
+      const data = await API.apiFetch('/classes/?page_size=200');
+      classesCatalogue = Array.isArray(data) ? data : (data.results || []);
+      // Conservé pour les listes déroulantes et les lookups (catalogue complet).
+      allClasses = classesCatalogue;
       populateClasseSelects();
+    } catch (e) { /* le tableau affichera l'erreur de sa propre requête */ }
+  }
+
+  async function loadClasses(page, forceCatalogue) {
+    if (!Number.isInteger(page)) page = classesCurrentPage || 1;
+    const params = new URLSearchParams({
+      paginate: '1',
+      page: String(page),
+      page_size: String(CLASSES_PAGE_SIZE),
+    });
+    const search = (document.getElementById('searchClasses')?.value || '').trim();
+    if (search) params.set('search', search);
+
+    const tbody = document.getElementById('classesBody');
+    if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Chargement…</td></tr>';
+
+    const requestId = ++classesRequestSeq;
+    try {
+      const [data] = await Promise.all([
+        API.apiFetch('/classes/?' + params.toString()),
+        loadClassesCatalogue(Boolean(forceCatalogue)),
+      ]);
+      if (requestId !== classesRequestSeq) return;
+      const results = Array.isArray(data) ? data : (data.results || []);
+      classesTotal = Array.isArray(data) ? results.length : (data.count ?? results.length);
+      const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+      if (page > totalPages && totalPages >= 1 && classesTotal > 0) {
+        return loadClasses(totalPages, false);
+      }
+      classesCurrentPage = page;
+      classesTableItems = results;
+      renderClasses();
+      if (!search) {
+        const setCounter = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setCounter('cntClasses', classesTotal);
+        setCounter('heroClassCount', classesTotal);
+      }
     } catch (e) {
-      document.getElementById('classesBody').innerHTML =
-        `<tr class="empty-row"><td colspan="8">Erreur: ${esc(e.message)}</td></tr>`;
+      if (requestId !== classesRequestSeq) return;
+      if (tbody) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">Erreur: ${esc(e.message)}</td></tr>`;
+      }
+      const countLabel = document.getElementById('classesCountLabel');
+      if (countLabel) countLabel.textContent = 'Erreur de chargement.';
     }
   }
 
@@ -2241,21 +2374,36 @@
    function renderClasses() {
     const tbody = document.getElementById('classesBody');
     const query = searchQuery('searchClasses');
-    const filtered = allClasses.filter(c => matchesQuery(
-      query,
-      c.niveau_id, c.filiere_name, c.semestre_name, c.academic_year, c.student_count, c.location_display, c.teacher_name
-    ));
-    if (!filtered.length) {
+    const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+    const countLabel = document.getElementById('classesCountLabel');
+    const startIdx = (classesCurrentPage - 1) * CLASSES_PAGE_SIZE;
+
+    if (!classesTableItems.length) {
       tbody.innerHTML = `<tr class="empty-row"><td colspan="10">${query ? 'Aucun résultat.' : 'Aucune classe.'}</td></tr>`;
+      if (countLabel) {
+        countLabel.textContent = query
+          ? `0 classe trouvée sur un total de ${classesTotal}`
+          : '0 classe au total';
+      }
+      renderServerPagination('classesPagination', classesCurrentPage, totalPages, (newPage) => loadClasses(newPage));
       return;
     }
+
+    if (countLabel) {
+      const from = startIdx + 1;
+      const to = Math.min(startIdx + CLASSES_PAGE_SIZE, classesTotal);
+      countLabel.textContent = query
+        ? `Affichage de ${from} à ${to} sur ${classesTotal} résultat(s) trouvé(s)`
+        : `Affichage des classes ${from} à ${to} sur ${classesTotal} au total (Page ${classesCurrentPage} sur ${totalPages})`;
+    }
+
     const niveauLabel = { LIC: 'Licence', LIC_EXC: 'Licence Excellence', MAS: 'Master', MAS_EXC: 'Master Parcours d\'excellence' };
-    tbody.innerHTML = filtered.map((c, i) => {
+    tbody.innerHTML = classesTableItems.map((c, i) => {
       const active = c.is_active !== false;
       const statutBadge = active ? '<span class="badge badge-active">Actif</span>' : '<span class="badge badge-inactive">Inactif</span>';
       return `
         <tr>
-          <td><span style="color:var(--muted)">${i + 1}</span></td>
+          <td><span style="color:var(--muted)">${startIdx + i + 1}</span></td>
           <td>${esc(niveauLabel[c.niveau_id] || c.niveau_id || '—')}</td>
           <td>${esc(classFieldLabel(c))}</td>
           <td>${esc(c.semestre_name || '—')}</td>
@@ -2272,6 +2420,8 @@
           </td>
         </tr>`;
     }).join('');
+
+    renderServerPagination('classesPagination', classesCurrentPage, totalPages, (newPage) => loadClasses(newPage));
   }
 
   function populateDeptSelect(selId) {
@@ -2315,34 +2465,184 @@
     });
   }
 
+  let sessionsCurrentPage = 1;
+  const SESSIONS_PAGE_SIZE = 10;
+
+  function sortSessionsDesc(list) {
+    return list.slice().sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+      if (timeA !== timeB) return timeB.localeCompare(timeA);
+
+      return (b.id || 0) - (a.id || 0);
+    });
+  }
+
   async function loadSessionsList() {
     try {
       const data = await API.apiFetch('/sessions/');
-      allSessions = Array.isArray(data) ? data : (data.results || []);
+      const rawList = Array.isArray(data) ? data : (data.results || []);
+      allSessions = sortSessionsDesc(rawList);
+      sessionsCurrentPage = 1;
       renderSessionsList();
-      document.getElementById('cntSessions').textContent = allSessions.length;
+      const cntEl = document.getElementById('cntSessions');
+      if (cntEl) cntEl.textContent = allSessions.length;
       populateAttendanceFilters();
     } catch (e) {
       document.getElementById('sessionsBody').innerHTML =
-        `<tr class="empty-row"><td colspan="7">Erreur: ${esc(e.message)}</td></tr>`;
+        `<tr class="empty-row"><td colspan="6">Erreur: ${esc(e.message)}</td></tr>`;
+      const countLabel = document.getElementById('adminSessionsCountLabel');
+      if (countLabel) countLabel.textContent = 'Erreur de chargement.';
     }
+  }
+
+  function renderServerPagination(containerId, current, totalPages, onPageChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const pageSet = new Set([1, totalPages]);
+    const radius = 2;
+    for (let p = Math.max(1, current - radius); p <= Math.min(totalPages, current + radius); p++) {
+      pageSet.add(p);
+    }
+    const pages = Array.from(pageSet).sort((a, b) => a - b);
+
+    let html = '<div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">';
+    const isFirst = current <= 1;
+    html += `<button class="btn sm outline" id="${containerId}Prev" ${isFirst ? 'disabled style="opacity:.45;cursor:not-allowed"' : ''}>← Précédent</button>`;
+
+    let previous = 0;
+    pages.forEach(p => {
+      if (previous && p - previous > 1) {
+        html += '<span style="color:var(--muted);padding:0 .2rem">…</span>';
+      }
+      const isActive = p === current;
+      const style = isActive
+        ? 'background:var(--primary,#0F7DB8);color:#fff;border-color:var(--primary,#0F7DB8);font-weight:700;box-shadow:0 1px 3px rgba(15,125,184,0.3);'
+        : '';
+      html += `<button class="btn sm outline" style="${style}" data-page="${p}">${p}</button>`;
+      previous = p;
+    });
+
+    const isLast = current >= totalPages;
+    html += `<button class="btn sm outline" id="${containerId}Next" ${isLast ? 'disabled style="opacity:.45;cursor:not-allowed"' : ''}>Suivant →</button>`;
+    html += `<span style="margin-left:.75rem;font-size:.85rem;color:var(--text-secondary,#6B7280)">Page ${current} sur ${totalPages}</span>`;
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    const prevBtn = document.getElementById(`${containerId}Prev`);
+    if (prevBtn && !isFirst) prevBtn.addEventListener('click', () => onPageChange(current - 1));
+    const nextBtn = document.getElementById(`${containerId}Next`);
+    if (nextBtn && !isLast) nextBtn.addEventListener('click', () => onPageChange(current + 1));
+    container.querySelectorAll('button[data-page]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const page = parseInt(e.currentTarget.getAttribute('data-page'), 10);
+        if (page && page !== current) onPageChange(page);
+      });
+    });
+  }
+
+  function renderAdminSessionsPagination(containerId, current, totalPages, onPageChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = '<div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">';
+
+    const isFirst = current <= 1;
+    html += `<button class="btn sm outline" id="${containerId}Prev" ${isFirst ? 'disabled style="opacity:.45;cursor:not-allowed"' : ''}>← Précédent</button>`;
+
+    for (let p = 1; p <= totalPages; p++) {
+      const isActive = p === current;
+      const style = isActive
+        ? 'background:var(--primary,#0F7DB8);color:#fff;border-color:var(--primary,#0F7DB8);font-weight:700;box-shadow:0 1px 3px rgba(15,125,184,0.3);'
+        : '';
+      html += `<button class="btn sm outline ${isActive ? 'active' : ''}" style="${style}" data-page="${p}">${p}</button>`;
+    }
+
+    const isLast = current >= totalPages;
+    html += `<button class="btn sm outline" id="${containerId}Next" ${isLast ? 'disabled style="opacity:.45;cursor:not-allowed"' : ''}>Suivant →</button>`;
+
+    html += `<span style="margin-left:.75rem;font-size:.85rem;color:var(--text-secondary,#6B7280)">Page ${current} sur ${totalPages}</span>`;
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    const prevBtn = document.getElementById(`${containerId}Prev`);
+    if (prevBtn && !isFirst) {
+      prevBtn.addEventListener('click', () => onPageChange(current - 1));
+    }
+    const nextBtn = document.getElementById(`${containerId}Next`);
+    if (nextBtn && !isLast) {
+      nextBtn.addEventListener('click', () => onPageChange(current + 1));
+    }
+    container.querySelectorAll('button[data-page]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const page = parseInt(e.currentTarget.getAttribute('data-page'), 10);
+        if (page && page !== current) {
+          onPageChange(page);
+        }
+      });
+    });
   }
 
   function renderSessionsList() {
     const tbody = document.getElementById('sessionsBody');
+    const countLabel = document.getElementById('adminSessionsCountLabel');
+    if (!tbody) return;
+
     const query = searchQuery('searchSessions');
     const filtered = allSessions.filter(s => matchesQuery(
       query,
       s.subject, s.classe_name, s.teacher_name, teacherName(s.teacher),
       s.date, API.formatDate(s.date), formatSessionWindow(s)
     ));
-    if (!filtered.length) {
+
+    const total = allSessions.length;
+    const filteredCount = filtered.length;
+
+    if (!filteredCount) {
       tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${query ? 'Aucun résultat.' : 'Aucune séance.'}</td></tr>`;
+      if (countLabel) {
+        countLabel.textContent = query ? `0 séance trouvée sur un total de ${total} séances` : `0 séance au total`;
+      }
+      const paginationEl = document.getElementById('adminSessionsPagination');
+      if (paginationEl) paginationEl.innerHTML = '';
       return;
     }
-    tbody.innerHTML = filtered.map((s, i) => `
+
+    const totalPages = Math.ceil(filteredCount / SESSIONS_PAGE_SIZE) || 1;
+    if (sessionsCurrentPage > totalPages) sessionsCurrentPage = totalPages;
+    if (sessionsCurrentPage < 1) sessionsCurrentPage = 1;
+
+    const startIdx = (sessionsCurrentPage - 1) * SESSIONS_PAGE_SIZE;
+    const pageItems = filtered.slice(startIdx, startIdx + SESSIONS_PAGE_SIZE);
+
+    if (countLabel) {
+      const from = startIdx + 1;
+      const to = Math.min(startIdx + SESSIONS_PAGE_SIZE, filteredCount);
+      if (query) {
+        countLabel.textContent = `Affichage de ${from} à ${to} sur ${filteredCount} résultat(s) trouvé(s) (Total général : ${total} séances)`;
+      } else {
+        countLabel.textContent = `Affichage des séances ${from} à ${to} sur ${total} au total (Page ${sessionsCurrentPage} sur ${totalPages})`;
+      }
+    }
+
+    tbody.innerHTML = pageItems.map((s, idx) => `
       <tr>
-        <td><span style="color:var(--muted)">${i + 1}</span></td>
+        <td><span style="color:var(--muted)">${startIdx + idx + 1}</span></td>
         <td><strong>${esc(s.subject)}</strong></td>
         <td>${esc(s.classe_name || '—')}</td>
         <td>${esc(s.teacher_name || teacherName(s.teacher))}</td>
@@ -2350,6 +2650,11 @@
         <td>${formatSessionWindow(s)}</td>
       </tr>
     `).join('');
+
+    renderAdminSessionsPagination('adminSessionsPagination', sessionsCurrentPage, totalPages, (newPage) => {
+      sessionsCurrentPage = newPage;
+      renderSessionsList();
+    });
   }
 
   function teacherName(teacherId) {
@@ -2765,7 +3070,6 @@
       allAttendance = Array.isArray(data) ? data : (data.results || []);
       renderAttendanceTable();
       updateAttendanceStats();
-      document.getElementById('cntAttendance').textContent = allAttendance.length;
     } catch (e) {
       document.getElementById('attendanceBody').innerHTML =
         `<tr class="empty-row"><td colspan="9">Échec du chargement: ${API.esc(e.message)}</td></tr>`;
@@ -2867,7 +3171,6 @@
     if (allAttendance.some(r => r.id === record.id)) return;
 
     allAttendance.unshift(record);
-    document.getElementById('cntAttendance').textContent = allAttendance.length;
     updateAttendanceStats();
     renderAttendanceTable();
 
@@ -2901,9 +3204,12 @@
     loadAttendance();
   });
   document.getElementById('filterSession')?.addEventListener('change', loadAttendance);
-  bindSearchInput('searchUsers', renderUsers);
-  bindSearchInput('searchClasses', renderClasses);
-  bindSearchInput('searchSessions', renderSessionsList);
+  bindSearchInput('searchUsers', debounce(() => loadUsers(1), 350));
+  bindSearchInput('searchClasses', debounce(() => loadClasses(1), 350));
+  bindSearchInput('searchSessions', () => {
+    sessionsCurrentPage = 1;
+    renderSessionsList();
+  });
   bindSearchInput('searchAttendance', renderAttendanceTable);
 
   /* ── Modals ── */
@@ -3380,7 +3686,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
       }
       closeModal('modalClasse');
       showToast('Classe enregistrée.', 'success');
-      await loadClasses();
+      await loadClasses(null, true);
     } catch (e) { showToast(e.message, 'error'); }
   });
 
@@ -3389,7 +3695,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
     try {
       await API.apiFetch(`/classes/${id}/`, { method: 'DELETE' });
       showToast('Classe supprimée.', 'success');
-      await loadClasses();
+      await loadClasses(null, true);
     } catch (e) { showToast(e.message, 'error'); }
   }
 
@@ -5161,6 +5467,8 @@ tbody.innerHTML = list.map(function (d) {
     try {
       await API.apiFetch(`/classes/${id}/`, { method: 'PATCH', body: JSON.stringify({ is_active: newActive }) });
       c.is_active = newActive;
+      const rowItem = classesTableItems.find(x => x.id === id);
+      if (rowItem) rowItem.is_active = newActive;
       renderClasses();
       showToast(`Classe ${newActive ? 'activée' : 'désactivée'}.`, 'success');
     } catch (e) {

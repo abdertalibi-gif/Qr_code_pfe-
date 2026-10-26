@@ -36,49 +36,75 @@ class LoadingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveBg = backgroundColor ?? AppTheme.primary;
     final effectiveFg = foregroundColor ?? Colors.white;
+    final gradient = backgroundColor == null
+        ? AppTheme.primaryGradient
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              effectiveBg,
+              Color.lerp(effectiveBg, Colors.black, 0.12)!,
+            ],
+          );
 
     return SizedBox(
       width: width ?? double.infinity,
       height: height,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: effectiveBg,
-          foregroundColor: effectiveFg,
-          disabledBackgroundColor: effectiveBg.withOpacity(0.7),
-          disabledForegroundColor: effectiveFg.withOpacity(0.8),
-          elevation: isLoading ? 0 : 2,
-          shadowColor: effectiveBg.withOpacity(0.4),
-          shape: RoundedRectangleBorder(
+      child: Opacity(
+        opacity: isLoading ? 0.72 : 1,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: gradient,
             borderRadius: BorderRadius.circular(borderRadius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          animationDuration: const Duration(milliseconds: 200),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.8, end: 1.0).animate(animation),
-                child: child,
+            boxShadow: [
+              BoxShadow(
+                color: effectiveBg.withOpacity(0.28),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            );
-          },
-          child: isLoading
-              ? _LoadingContent(
-                  key: const ValueKey('loading'),
-                  color: effectiveFg,
-                )
-              : _LabelContent(
-                  key: const ValueKey('label'),
-                  label: label,
-                  icon: icon,
-                  fontSize: fontSize,
-                  fontWeight: fontWeight,
-                  color: effectiveFg,
-                ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: isLoading ? null : onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: effectiveFg,
+              disabledBackgroundColor: Colors.transparent,
+              disabledForegroundColor: effectiveFg.withOpacity(0.75),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              animationDuration: const Duration(milliseconds: 200),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.8, end: 1.0).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: isLoading
+                  ? _LoadingContent(
+                      key: const ValueKey('loading'),
+                      color: effectiveFg,
+                    )
+                  : _LabelContent(
+                      key: const ValueKey('label'),
+                      label: label,
+                      icon: icon,
+                      fontSize: fontSize,
+                      fontWeight: fontWeight,
+                      color: effectiveFg,
+                    ),
+            ),
+          ),
         ),
       ),
     );

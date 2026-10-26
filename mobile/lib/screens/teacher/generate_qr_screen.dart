@@ -114,6 +114,8 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     return Scaffold(
       appBar: AppBar(title: const Text('Générer le QR')),
       body: ListView(
@@ -125,7 +127,10 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.errorColor.withOpacity(.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(
+                  color: AppTheme.errorColor.withOpacity(.2),
+                ),
               ),
               child: Row(
                 children: [
@@ -188,7 +193,7 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
                           : Icons.gps_off_rounded,
                       color: _latitude != null
                           ? AppTheme.successColor
-                          : Colors.grey,
+                          : muted,
                     ),
               title: const Text('Localisation de la salle'),
               subtitle: Text(
@@ -226,8 +231,10 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.primary.withOpacity(.2)),
+                borderRadius: BorderRadius.circular(AppTheme.radius),
+                border: Border.all(
+                  color: AppTheme.primary.withOpacity(.2),
+                ),
               ),
               child: Column(
                 children: [
@@ -241,12 +248,13 @@ class _GenerateQrScreenState extends State<GenerateQrScreen> {
                   const SizedBox(height: 12),
                   Text(
                     'Expire : ${_payload!.expiresAt?.toString() ?? '—'}',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.lightTextSecondary),
                   ),
                   Text(
                     'Rayon : ${_payload!.attendanceRadiusMeters} m',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey[600]),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.lightTextSecondary),
                   ),
                 ],
               ),

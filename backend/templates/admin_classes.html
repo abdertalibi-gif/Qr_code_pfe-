@@ -10,7 +10,10 @@
 </div>
 
 <div class="section-head">
-  <h2>Toutes les classes</h2>
+  <div>
+    <h2>Toutes les classes</h2>
+    <p id="classesCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre de classes…</p>
+  </div>
   <div class="section-actions">
     <input type="search" class="search-input" id="searchClasses" placeholder="Rechercher niveau, filière, année…" />
     <button class="btn" id="btnOpenAddClasse">+ Nouvelle classe</button>
@@ -36,6 +39,7 @@
     </tbody>
   </table>
 </div>
+<div class="pagination-bar hidden" id="classesPagination"></div>
 {% endblock %}
 
 {% block modals %}

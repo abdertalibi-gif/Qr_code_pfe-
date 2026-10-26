@@ -116,43 +116,46 @@ class CustomTextField extends StatelessWidget {
                 ? AppTheme.darkSurface.withOpacity(0.5)
                 : AppTheme.lightBackground),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           borderSide: BorderSide(
-            color: isDark ? Colors.white24 : AppTheme.lightDivider,
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+            width: 1.5,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           borderSide: BorderSide(
-            color: isDark ? Colors.white24 : AppTheme.lightDivider,
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+            width: 1.5,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: AppTheme.primary,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          borderSide: BorderSide(
+            color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
             width: 2,
           ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           borderSide: const BorderSide(
             color: AppTheme.errorColor,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           borderSide: const BorderSide(
             color: AppTheme.errorColor,
             width: 2,
           ),
         ),
         disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           borderSide: BorderSide(
             color: isDark
-                ? Colors.white12
-                : AppTheme.lightDivider.withOpacity(0.5),
+                ? AppTheme.darkBorder.withOpacity(0.6)
+                : AppTheme.lightBorder.withOpacity(0.6),
+            width: 1.5,
           ),
         ),
         contentPadding: const EdgeInsets.symmetric(

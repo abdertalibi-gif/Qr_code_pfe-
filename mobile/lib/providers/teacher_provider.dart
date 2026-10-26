@@ -27,6 +27,10 @@ class TeacherProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   List<SessionModel> _sessions = [];
+  /// Séances récentes (dashboard) — séparées de `_sessions`, qui contient la
+  /// liste filtrée par classe de l'écran « Mes séances ». Les deux écrans sont
+  /// construits en même temps (IndexedStack) et écrasaient la même liste.
+  List<SessionModel> _recentSessions = [];
   List<SessionAttendance> _liveAttendance = [];
   GlobalStats? _globalStats;
   ClasseModel? _selectedClasse;
@@ -62,6 +66,7 @@ class TeacherProvider extends ChangeNotifier {
   String? get qrError => _qrError;
 
   List<SessionModel> get sessions => _sessions;
+  List<SessionModel> get recentSessions => _recentSessions;
   List<SessionAttendance> get liveAttendance => _liveAttendance;
   GlobalStats? get globalStats => _globalStats;
   ClasseModel? get selectedClasse => _selectedClasse;
@@ -99,9 +104,9 @@ class TeacherProvider extends ChangeNotifier {
       final allSessions = await _teacherService.fetchSessions();
       _allSessions = allSessions;
 
-      // Sessions des 24 dernières heures seulement
+      // Sessions des 24 dernières heures seulement (dashboard)
       final now = DateTime.now();
-      _sessions = allSessions.where((s) {
+      _recentSessions = allSessions.where((s) {
         final sessionDateTime = s.dateTime;
         if (sessionDateTime == null) return false;
         final diff = now.difference(sessionDateTime).inHours;
@@ -130,11 +135,38 @@ class TeacherProvider extends ChangeNotifier {
       final allSessions = await _teacherService.fetchSessions();
       _allSessions = allSessions;
 
-      _selectedClasse = classes.isNotEmpty ? classes.first : null;
+      // Conserve la classe déjà choisie par l'utilisateur si elle existe
+      // toujours, sinon retombe sur la première classe.
+      final current = _selectedClasse;
+      _selectedClasse =
+          (current != null && classes.any((c) => c.id == current.id))
+              ? current
+              : (classes.isNotEmpty ? classes.first : null);
+
+      // Première ouverture : si la classe par défaut n'a aucune séance, on
+      // sélectionne la classe de la séance la plus récente (la liste est
+      // triée par date décroissante) pour ne pas afficher un écran vide alors
+      // que l'enseignant a bien des séances ailleurs.
+      if (current == null && _selectedClasse != null && allSessions.isNotEmpty) {
+        final hasSessions =
+            allSessions.any((s) => s.classe == _selectedClasse!.id);
+        if (!hasSessions) {
+          for (final s in allSessions) {
+            final match = classes.where((c) => c.id == s.classe);
+            if (match.isNotEmpty) {
+              _selectedClasse = match.first;
+              break;
+            }
+          }
+        }
+      }
+
       if (_selectedClasse != null) {
         _sessions = allSessions
             .where((s) => s.classe == _selectedClasse!.id)
             .toList();
+      } else {
+        _sessions = [];
       }
     } catch (e) {
       _setSessionsError(e.toString());

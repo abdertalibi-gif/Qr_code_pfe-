@@ -24,19 +24,20 @@ class AttendanceService {
     double? latitude,
     double? longitude,
   }) async {
+    final payload = <String, dynamic>{
+      'qr_token': request.qrToken,
+      'first_name': request.firstName.trim(),
+      'last_name': request.lastName.trim(),
+      'code_massar': request.codeMassar.trim(),
+      'device_id': request.deviceId,
+      'device_fingerprint': request.deviceFingerprint,
+      'device_info': request.deviceInfo,
+    };
+    if (latitude != null) payload['latitude'] = latitude;
+    if (longitude != null) payload['longitude'] = longitude;
     return _submitValidation(
       endpoint: AppConstants.validateAttendanceEndpoint,
-      payload: {
-        'qr_token': request.qrToken,
-        'first_name': request.firstName.trim(),
-        'last_name': request.lastName.trim(),
-        'code_massar': request.codeMassar.trim(),
-        'device_id': request.deviceId,
-        'device_fingerprint': request.deviceFingerprint,
-        'device_info': request.deviceInfo,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      },
+      payload: payload,
     );
   }
 
@@ -49,16 +50,17 @@ class AttendanceService {
     final deviceInfo = await _getDeviceInfo();
     final fingerprint = _computeFingerprint(deviceId, deviceInfo);
 
+    final payload = <String, dynamic>{
+      'qr_token': qrToken,
+      'device_id': deviceId,
+      'device_fingerprint': fingerprint,
+      'device_info': deviceInfo,
+    };
+    if (latitude != null) payload['latitude'] = latitude;
+    if (longitude != null) payload['longitude'] = longitude;
     return _submitValidation(
       endpoint: AppConstants.validateAppAttendanceEndpoint,
-      payload: {
-        'qr_token': qrToken,
-        'device_id': deviceId,
-        'device_fingerprint': fingerprint,
-        'device_info': deviceInfo,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      },
+      payload: payload,
     );
   }
 

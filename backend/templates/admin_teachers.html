@@ -10,7 +10,10 @@
 </div>
 
 <div class="section-head">
-  <h2>Tous les enseignants</h2>
+  <div>
+    <h2>Tous les enseignants</h2>
+    <p id="teachersCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre d’enseignants…</p>
+  </div>
   <div class="section-actions">
     <input type="search" class="search-input" id="searchTeachers" placeholder="Rechercher nom, e-mail…" />
     <button class="btn admin-only" id="btnOpenAddTeacher">+ Nouvel enseignant</button>
@@ -64,6 +67,7 @@
     </tbody>
   </table>
 </div>
+<div id="teachersPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
 {% endblock %}
 
 {% block modals %}

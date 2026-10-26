@@ -10,9 +10,13 @@
 </div>
 
 <div class="section-head">
-  <h2>Toutes les séances</h2>
+  <div>
+    <h2>Toutes les séances</h2>
+    <p id="sessionsCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre de séances…</p>
+  </div>
   <div class="section-actions">
     <input type="search" class="search-input" id="searchSessions" placeholder="Rechercher matière, classe, enseignant…" />
+    <button class="btn" id="btnOpenCreateSession">+ Nouvelle séance</button>
     <button class="btn outline" id="btnRefreshSessions">🔄 Actualiser</button>
     <button class="btn outline" id="btnExportWizard">📥 Export Excel</button>
   </div>
@@ -35,6 +39,7 @@
     </tbody>
   </table>
 </div>
+<div id="sessionsPagination" style="margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem"></div>
 {% endblock %}
 
 {% block modals %}
@@ -154,5 +159,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/session-form.js"></script>
 <script src="/admin-sessions.js"></script>
 {% endblock %}

@@ -2,6 +2,7 @@ import os
 import re
 import secrets
 from datetime import datetime, time
+from django.core.exceptions import ValidationError
 from io import BytesIO
 
 from django.db import models
@@ -24,6 +25,13 @@ class Session(models.Model):
         ("Other", "Autre"),
     ]
 
+    NIVEAU_CHOICES = [
+        ("LIC", "Licence"),
+        ("LIC_EXC", "Licence Excellence"),
+        ("MAS", "Master"),
+        ("MAS_EXC", "Master Parcours d'excellence"),
+    ]
+
     subject = models.CharField(max_length=200, verbose_name="Matière", blank=True, default="")
     module = models.ForeignKey(
         "curriculum.Module",
@@ -44,6 +52,68 @@ class Session(models.Model):
         on_delete=models.CASCADE,
         related_name="sessions",
     )
+    niveau = models.CharField(
+        max_length=10,
+        verbose_name="Niveau",
+        choices=NIVEAU_CHOICES,
+        blank=True,
+        default="",
+    )
+    semestre = models.ForeignKey(
+        "curriculum.Semestre",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions",
+        verbose_name="Semestre",
+    )
+    filiere = models.ForeignKey(
+        "curriculum.Filiere",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions",
+        verbose_name="Filière",
+    )
+
+    def clean(self):
+        """Validate the academic combination: Niveau-Semestre-Filiere-Module."""
+        super().clean()
+        niveau = self.niveau
+        semestre = self.semestre
+        filiere = self.filiere
+        module = self.module
+
+        # If all four fields are filled, check consistency
+        if niveau and semestre and filiere and module:
+            # Check that the filiere's niveau matches the selected niveau
+            if filiere.niveau != niveau:
+                raise ValidationError(
+                    {"niveau": f"La filière '{filiere.name}' ne correspond pas au niveau '{niveau}'."}
+                )
+            # Check that the filiere's semestre matches the selected semestre
+            if filiere.semestre_id != semestre.id:
+                raise ValidationError(
+                    {"semestre": f"La filière '{filiere.name}' n'est pas associée au semestre '{semestre.name}'."}
+                )
+            # Check that the module belongs to the selected filiere
+            if module.filiere_id != filiere.id:
+                raise ValidationError(
+                    {"module": f"Le module '{module.name}' ne appartient pas à la filière '{filiere.name}'."}
+                )
+            # Check that the semestre is allowed for the niveau
+            # using the NIVEAU_SEMESTRE_MAP
+            from users.models import NIVEAU_SEMESTRE_MAP
+            allowed_sems = NIVEAU_SEMESTRE_MAP.get(niveau, frozenset())
+            if allowed_sems and semestre.name not in allowed_sems:
+                raise ValidationError(
+                    {"semestre": f"Le semestre '{semestre.name}' n'est pas autorisé pour le niveau '{niveau}'."}
+                )
+
+    def save(self, *args, **kwargs):
+        """Always run full_clean before saving to validate academic combination."""
+        self.full_clean(exclude=None)  # This will call clean() and validate fields
+        super().save(*args, **kwargs)
     location_type = models.CharField(
         max_length=20,
         choices=LOCATION_TYPE_CHOICES,
@@ -105,7 +175,7 @@ class Session(models.Model):
 
     class Meta:
         db_table = "sessions"
-        ordering = ["-date"]
+        ordering = ["-date", "-start_time", "-id"]
 
     def __str__(self):
         return f"{self.subject} — {self.classe} ({self.date})"
@@ -182,9 +252,31 @@ class Session(models.Model):
         1. Marque les absents (étudiants sans enregistrement de présence confirmée).
         2. Génère le fichier Excel récapitulatif.
         3. Sauvegarde le fichier et marque is_closed=True, is_active=False.
+        
+        Utilise queryset.update() pour éviter de déclencher la validation académique
+        (full_clean dans save()), ce qui permettrait de clôturer des sessions
+        historiques aux données académiques incohérentes.
         """
+        import logging
         from attendance.models import Attendance
         from django.conf import settings
+        from django.db import transaction
+
+        logger = logging.getLogger(__name__)
+
+        # Vérifier si la session a des données académiques invalides (pour logging)
+        academic_errors = []
+        try:
+            # On ne lève pas l'exception, on collecte juste les erreurs
+            self.clean()
+        except ValidationError as e:
+            academic_errors = [f"{k}: {v}" for k, v in e.message_dict.items()]
+
+        if academic_errors:
+            logger.warning(
+                f"Session {self.id} ({self.subject}) a des données académiques incohérentes "
+                f"mais va être clôturée quand même: {academic_errors}"
+            )
 
         # Récupérer tous les étudiants de la classe
         all_students = list(self.classe.students.all())
@@ -230,11 +322,24 @@ class Session(models.Model):
         with open(filepath, "wb") as f:
             f.write(buffer.getvalue())
 
-        # Mise à jour du modèle
-        self.report_file = f"reports/{filename}"
-        self.is_closed = True
-        self.is_active = False
-        self.save(update_fields=["report_file", "is_closed", "is_active"])
+        # Mise à jour du modèle via queryset.update() pour éviter save() + full_clean()
+        # Ceci évite de valider la combinaison académique (niveau/semestre/filière/module)
+        # qui peut être incohérente sur d'anciennes sessions
+        updated = Session.objects.filter(pk=self.pk).update(
+            report_file=f"reports/{filename}",
+            is_closed=True,
+            is_active=False,
+        )
+
+        if updated:
+            # Mettre à jour l'instance locale pour cohérence
+            self.report_file = f"reports/{filename}"
+            self.is_closed = True
+            self.is_active = False
+            logger.info(f"Session {self.id} clôturée avec succès, rapport: {filename}")
+        else:
+            logger.error(f"Échec clôture session {self.id}: session introuvable ou déjà modifiée")
+            raise Exception("Session introuvable lors de la clôture")
 
         return filename
 

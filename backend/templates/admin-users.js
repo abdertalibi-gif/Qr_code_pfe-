@@ -3,20 +3,52 @@ let allUsers = [];
 let allClasses = [];
 let allDepartments = [];
 let allFilieres = [];
+let usersCurrentPage = 1;
+let usersTotal = 0;
+let usersRequestSeq = 0;
+let usersSearchTimer = null;
+const USERS_PAGE_SIZE = 10;
 
 async function initPage() {
   await Promise.all([loadUsers(), loadDepartments(), loadFilieres(), loadClasses()]);
   setupEventListeners();
 }
 
-async function loadUsers() {
+async function loadUsers(page) {
+  if (!Number.isInteger(page)) page = usersCurrentPage || 1;
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(USERS_PAGE_SIZE),
+  });
+  const search = (document.getElementById('searchUsers')?.value || '').trim();
+  if (search) params.set('search', search);
+
+  const tbody = document.getElementById('usersBody');
+  if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chargement…</td></tr>';
+
+  const requestId = ++usersRequestSeq;
   try {
-    const data = await API.apiFetch('/users/');
+    const data = await API.apiFetch('/users/?' + params.toString());
+    if (requestId !== usersRequestSeq) return;
     allUsers = Array.isArray(data) ? data : (data.results || []);
+    usersTotal = Array.isArray(data) ? allUsers.length : (data.count ?? allUsers.length);
+    const totalPages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+    if (page > totalPages && totalPages >= 1 && usersTotal > 0) {
+      return loadUsers(totalPages);
+    }
+    usersCurrentPage = page;
     renderUsers();
+    if (!search) {
+      const navCount = document.getElementById('navCntUsers');
+      if (navCount) navCount.textContent = usersTotal;
+    }
   } catch (e) {
-    document.getElementById('usersBody').innerHTML =
-      '<tr class="empty-row"><td colspan="6">Erreur: ' + esc(e.message) + '</td></tr>';
+    if (requestId !== usersRequestSeq) return;
+    if (tbody) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+    const countLabel = document.getElementById('usersCountLabel');
+    if (countLabel) countLabel.textContent = 'Erreur de chargement.';
   }
 }
 
@@ -41,7 +73,7 @@ async function loadClasses() {
   } catch (e) { allClasses = []; }
 }
 
-const roleLabel = {
+const userRoleLabel = {
   admin: 'Admin',
   teacher: 'Enseignant',
   student: 'Étudiant',
@@ -51,21 +83,35 @@ const roleLabel = {
 
 function renderUsers() {
   const tbody = document.getElementById('usersBody');
-  const query = searchQuery('searchUsers');
-  const filtered = allUsers.filter(u => matchesQuery(
-    query,
-    u.first_name, u.last_name, u.first_name + ' ' + u.last_name,
-    u.email, u.role, roleLabel[u.role]
-  ));
-  if (!filtered.length) {
+  const query = (document.getElementById('searchUsers')?.value || '').trim();
+  const totalPages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+  const countLabel = document.getElementById('usersCountLabel');
+  const startIdx = (usersCurrentPage - 1) * USERS_PAGE_SIZE;
+
+  if (!allUsers.length) {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="6">' + (query ? 'Aucun résultat.' : 'Aucun utilisateur.') + '</td></tr>';
+    if (countLabel) {
+      countLabel.textContent = query
+        ? '0 utilisateur trouvé sur un total de ' + usersTotal
+        : '0 utilisateur au total';
+    }
+    createPaginationControls('usersPagination', usersCurrentPage, totalPages, loadUsers);
     return;
   }
-  tbody.innerHTML = filtered.map((u, i) => '<tr>' +
-    '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+
+  if (countLabel) {
+    const from = startIdx + 1;
+    const to = Math.min(startIdx + USERS_PAGE_SIZE, usersTotal);
+    countLabel.textContent = query
+      ? 'Affichage de ' + from + ' à ' + to + ' sur ' + usersTotal + ' résultat(s) trouvé(s)'
+      : 'Affichage des utilisateurs ' + from + ' à ' + to + ' sur ' + usersTotal + ' au total (Page ' + usersCurrentPage + ' sur ' + totalPages + ')';
+  }
+
+  tbody.innerHTML = allUsers.map((u, i) => '<tr>' +
+    '<td><span style="color:var(--muted)">' + (startIdx + i + 1) + '</span></td>' +
     '<td><strong>' + esc(u.first_name) + ' ' + esc(u.last_name) + '</strong></td>' +
     '<td style="color:var(--muted)">' + esc(u.email) + '</td>' +
-    '<td><span class="badge badge-' + u.role + '">' + (roleLabel[u.role] || u.role) + '</span></td>' +
+    '<td><span class="badge badge-' + u.role + '">' + (userRoleLabel[u.role] || u.role) + '</span></td>' +
     '<td><span class="badge ' + (u.is_active ? 'badge-present' : 'badge-absent') + '">' + (u.is_active ? 'Actif' : 'Inactif') + '</span></td>' +
     '<td class="actions-cell">' +
       '<button class="btn sm outline" onclick="openEditUser(' + u.id + ')">Modifier</button>' +
@@ -73,6 +119,8 @@ function renderUsers() {
       '<button class="btn sm outline" style="color:var(--red)" onclick="deleteUser(' + u.id + ')">Supprimer</button>' +
     '</td>' +
   '</tr>').join('');
+
+  createPaginationControls('usersPagination', usersCurrentPage, totalPages, loadUsers);
 }
 
 /* ─── Role-based field visibility ─── */
@@ -131,7 +179,11 @@ async function openEditUser(id) {
   showFieldsForRole(u.role, 'eu');
 
   const deptSel = document.getElementById('euDepartment');
-  if (u.managed_department && deptSel) deptSel.value = u.managed_department.id;
+  if (deptSel) {
+    if (u.department_id != null) deptSel.value = String(u.department_id);
+    else if (u.managed_department) deptSel.value = u.managed_department.id;
+    else deptSel.value = '';
+  }
   const filSel = document.getElementById('euFiliere');
   if (u.managed_filieres && u.managed_filieres.length && filSel) filSel.value = u.managed_filieres[0].id;
 
@@ -227,7 +279,13 @@ function setupProgManagerCascade(prefix) {
 }
 
 function setupEventListeners() {
-  bindSearchInput('searchUsers', renderUsers);
+  const searchEl = document.getElementById('searchUsers');
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      clearTimeout(usersSearchTimer);
+      usersSearchTimer = setTimeout(function () { loadUsers(1); }, 350);
+    });
+  }
 
   /* Create form role change */
   document.getElementById('uRole')?.addEventListener('change', function (e) {
@@ -270,7 +328,7 @@ function setupEventListeners() {
         const el = document.getElementById(id);
         if (el) el.value = '';
       });
-      await loadUsers();
+      await loadUsers(1);
     } catch (e) { showToast(e.message, 'error'); }
   });
 

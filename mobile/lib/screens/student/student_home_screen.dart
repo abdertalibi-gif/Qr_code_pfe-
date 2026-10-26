@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/student_provider.dart';
+import '../../widgets/app_bottom_navigation.dart';
 import '../home_screen.dart';
 import 'student_schedule_screen.dart';
 import 'student_stats_screen.dart';
@@ -67,7 +68,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
     return Scaffold(
       body: IndexedStack(index: provider.currentTab.index, children: pages),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: AppBottomNavigation(
         selectedIndex: provider.currentTab.index,
         onDestinationSelected: (i) => provider.setTab(StudentTab.values[i]),
         destinations: const [

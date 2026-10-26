@@ -66,7 +66,10 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
                 child: Column(
                   children: [
                     Icon(Icons.radar_rounded,
-                        size: 56, color: Colors.grey[400]),
+                        size: 56,
+                        color: isDark
+                            ? AppTheme.darkMuted
+                            : AppTheme.lightMuted),
                     const SizedBox(height: 12),
                     const Text('Aucun scan pour l\'instant',
                         style: TextStyle(fontWeight: FontWeight.w600)),
@@ -76,7 +79,11 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
                       'lorsque les étudiants scannent le QR.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.grey[600], fontSize: 12),
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -104,7 +111,9 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
                       '${a.sessionDate.isNotEmpty ? a.sessionDate : ''}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -113,7 +122,9 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
                       a.validationTime.substring(11, 16),
                       style: TextStyle(
                           fontSize: 11,
-                          color: isDark ? Colors.grey[500] : Colors.grey[500]),
+                          color: isDark
+                              ? AppTheme.darkMuted
+                              : AppTheme.lightMuted),
                     ),
                   ),
                 );

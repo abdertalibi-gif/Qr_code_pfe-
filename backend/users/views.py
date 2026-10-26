@@ -56,6 +56,12 @@ class ModuleStudentPagination(PageNumberPagination):
     max_page_size = 100
 
 
+class AdminListPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -79,11 +85,12 @@ class LoginView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = (
-        User.objects.select_related("student_profile__classe")
+        User.objects.select_related("student_profile__classe", "department")
         .prefetch_related("assigned_classes", "headed_department", "managed_filieres")
         .order_by("-created_at")
     )
     permission_classes = [IsAuthenticated, IsAdmin]
+    pagination_class = AdminListPagination
 
     def get_serializer_class(self) -> Type[BaseSerializer]:
         if self.action == "create":
@@ -133,6 +140,20 @@ class UserViewSet(viewsets.ModelViewSet):
                 ).distinct()
             else:
                 qs = qs.none()
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            from django.db.models import Value
+            from django.db.models.functions import Concat
+
+            qs = qs.annotate(
+                _full_name=Concat("first_name", Value(" "), "last_name")
+            ).filter(
+                Q(_full_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone__icontains=search)
+                | Q(cin__icontains=search)
+                | Q(role__icontains=search)
+            )
         return qs
 
     def get_permissions(self):
@@ -178,6 +199,14 @@ class ClasseViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsAdminOrDepartmentHeadOrFiliereManager()]
         return super().get_permissions()
 
+    def paginate_queryset(self, queryset):
+        # Pagination opt-in : les nombreux appels /classes/ utilisés pour les
+        # listes déroulantes continuent de recevoir le catalogue complet, tandis
+        # que les tableaux demandent explicitement `paginate=1` (10 par page).
+        if self.request.query_params.get("paginate") in ("1", "true", "yes"):
+            self.pagination_class = AdminListPagination
+        return super().paginate_queryset(queryset)
+
     def get_queryset(self):
         from django.db.models import Count
         qs = super().get_queryset().annotate(
@@ -212,6 +241,22 @@ class ClasseViewSet(viewsets.ModelViewSet):
         academic_year = self.request.query_params.get("academic_year")
         if academic_year:
             qs = qs.filter(academic_year=academic_year)
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(code__icontains=search)
+                | Q(niveau__icontains=search)
+                | Q(academic_year__icontains=search)
+                | Q(filiere__name__icontains=search)
+                | Q(semestre__name__icontains=search)
+                | Q(module__name__icontains=search)
+                | Q(block__name__icontains=search)
+                | Q(room__name__icontains=search)
+                | Q(amphitheater__name__icontains=search)
+                | Q(teachers__first_name__icontains=search)
+                | Q(teachers__last_name__icontains=search)
+            ).distinct()
         return qs
 
     def perform_create(self, serializer):
@@ -284,7 +329,7 @@ class ClasseViewSet(viewsets.ModelViewSet):
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = (
-        Student.objects.select_related("classe", "user")
+        Student.objects.select_related("classe__filiere", "classe__semestre", "user")
         .prefetch_related("modules")
         .order_by("last_name", "first_name")
     )
@@ -554,9 +599,33 @@ def teacher_import_template(request):
 def teacher_list(request):
     user = request.user
 
-    teachers = User.objects.filter(role="teacher", is_active=True).prefetch_related(
-        Prefetch("assigned_classes", queryset=Classe.objects.select_related("department", "filiere__department"))
-    ).order_by("last_name", "first_name")
+    from curriculum.models import Module
+    from courses.models import Session
+
+    teachers = User.objects.filter(role="teacher").select_related(
+        "department"
+    ).prefetch_related(
+        Prefetch(
+            "assigned_classes",
+            queryset=Classe.objects.select_related("department", "filiere__department"),
+        ),
+        Prefetch("headed_department"),
+        Prefetch(
+            "taught_modules",
+            queryset=Module.objects.select_related("filiere__department"),
+        ),
+        Prefetch(
+            "sessions",
+            queryset=Session.objects.select_related(
+                "classe__department",
+                "classe__filiere__department",
+                "module__filiere__department",
+            ),
+        ),
+    ).order_by("-created_at", "-id")
+
+    if request.query_params.get("include_inactive") not in ("1", "true", "yes"):
+        teachers = teachers.filter(is_active=True)
 
     if user.role == "department_head":
         teachers = apply_role_filtering(teachers, "teacher_list", request)
@@ -571,18 +640,57 @@ def teacher_list(request):
             Q(assigned_classes__id=classe_id) | Q(sessions__classe_id=classe_id)
         ).distinct()
 
+    search = request.query_params.get("search", "").strip()
+    if search:
+        from django.db.models import Value
+        from django.db.models.functions import Concat
+
+        teachers = teachers.annotate(
+            _full_name=Concat("first_name", Value(" "), "last_name")
+        ).filter(
+            Q(_full_name__icontains=search)
+            | Q(email__icontains=search)
+            | Q(cin__icontains=search)
+            | Q(phone__icontains=search)
+        )
+
     data = []
     for t in teachers:
-        ac = list(t.assigned_classes.all())
-        departments = sorted(set(
-            c.department.name for c in ac if c.department and c.department.name
-        ))
-        if not departments:
-            departments = sorted(set(
-                c.filiere.department.name for c in ac
-                if c.filiere and c.filiere.department and c.filiere.department.name
-            ))
-        dept_name = departments[0] if departments else None
+        departments: set[str] = set()
+        if t.department_id and t.department:
+            # Relation explicite : elle est prioritaire sur toute déduction.
+            departments.add(t.department.name)
+        else:
+            for headed in t.headed_department.all():
+                if headed.name:
+                    departments.add(headed.name)
+            for c in t.assigned_classes.all():
+                if c.department_id and c.department:
+                    departments.add(c.department.name)
+                if c.filiere_id and c.filiere.department_id and c.filiere.department:
+                    departments.add(c.filiere.department.name)
+            for module in t.taught_modules.all():
+                if module.filiere_id and module.filiere.department_id and module.filiere.department:
+                    departments.add(module.filiere.department.name)
+            for session in t.sessions.all():
+                if session.classe_id and session.classe:
+                    if session.classe.department_id and session.classe.department:
+                        departments.add(session.classe.department.name)
+                    if (
+                        session.classe.filiere_id
+                        and session.classe.filiere.department_id
+                        and session.classe.filiere.department
+                    ):
+                        departments.add(session.classe.filiere.department.name)
+                if (
+                    session.module_id
+                    and session.module
+                    and session.module.filiere_id
+                    and session.module.filiere.department_id
+                    and session.module.filiere.department
+                ):
+                    departments.add(session.module.filiere.department.name)
+
         data.append({
             "id": t.id,
             "full_name": t.full_name,
@@ -591,10 +699,46 @@ def teacher_list(request):
             "cin": t.cin,
             "grade": t.grade,
             "speciality": t.speciality,
-            "department_name": dept_name,
+            "department_id": t.department_id,
+            "department_name": ", ".join(sorted(departments)) or None,
             "is_active": t.is_active,
+            "created_at": t.created_at,
         })
-    return Response(data)
+    # Pagination opt-in : les listes déroulantes continuent de recevoir la
+    # liste complète, seuls les tableaux demandent `paginate=1`.
+    if request.query_params.get("paginate") not in ("1", "true", "yes"):
+        return Response(data)
+
+    # Pagination manuelle sur la liste serialisee
+    try:
+        page_num = int(request.query_params.get('page', 1))
+    except (TypeError, ValueError):
+        page_num = 1
+    page_size_param = request.query_params.get('page_size', '')
+    try:
+        page_size = min(int(page_size_param), 200) if page_size_param else 10
+    except (TypeError, ValueError):
+        page_size = 10
+    total_count = len(data)
+    start = (page_num - 1) * page_size
+    end = start + page_size
+    page_data = data[start:end]
+    base_url = request.build_absolute_uri(request.path)
+    query_params = request.query_params.copy()
+    query_params['page_size'] = page_size
+    query_params['page'] = page_num + 1
+    next_url = base_url + '?' + query_params.urlencode() if end < total_count else None
+    if page_num > 1:
+        query_params['page'] = page_num - 1
+        prev_url = base_url + '?' + query_params.urlencode()
+    else:
+        prev_url = None
+    return Response({
+        'count': total_count,
+        'next': next_url,
+        'previous': prev_url,
+        'results': page_data,
+    })
 
 
 @api_view(["GET", "POST"])
@@ -1326,7 +1470,10 @@ def teacher_workload_dashboard(request):
     filiere_totals = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0, "eq": 0.0})
     monthly = defaultdict(lambda: {"cm": 0.0, "td": 0.0, "tp": 0.0})
 
-    for s in qs.iterator():
+    # NOTE: avoid .iterator() here: it opens a server-side cursor which is not
+    # supported by the Neon/PgBouncer connection pooler (error: portal does
+    # not exist). A regular query keeps everything in a single fetch.
+    for s in qs:
         tid = s.teacher_id
         row = rows[tid]
         if not row["first_name"]:
@@ -1508,11 +1655,28 @@ def dashboard_counts(request):
     user = request.user
 
     from django.db.models import Count, Q
+    from django.utils import timezone
     from curriculum.views import _cache_key, _cached_response
+
+    # « Présences en direct » = présences confirmées rattachées à une séance
+    # réellement en cours (active, non clôturée, aujourd'hui, dans la plage
+    # horaire). Ce n'est pas le total historique des présences.
+    now = timezone.localtime()
+    live_filter = Q(
+        attendance_status=Attendance.STATUS_CONFIRMED,
+        session__is_active=True,
+        session__is_closed=False,
+        session__date=now.date(),
+        session__start_time__lte=now.time(),
+        session__end_time__gte=now.time(),
+    )
 
     cache_key = _cache_key("dash-counts", str(user.role), str(user.id))
     cached = _cached_response(cache_key, ttl=60)
     if cached:
+        # Les autres compteurs peuvent être servis depuis le cache, mais
+        # « Présences en direct » doit refléter l'état courant.
+        cached.data["live_attendances"] = Attendance.objects.filter(live_filter).count()
         return cached
 
     if user.role == "admin":
@@ -1535,6 +1699,7 @@ def dashboard_counts(request):
             attendances=Count("id"),
             present=Count("id", filter=Q(attendance_status="confirmed")),
             absent=Count("id", filter=Q(attendance_status="absent")),
+            live_attendances=Count("id", filter=live_filter),
         )
         return Response({
             **user_agg,
@@ -1862,7 +2027,10 @@ def teacher_monthly_report(request):
         "total_hours": 0.0, "total_sessions": 0,
     })
 
-    for s in qs.iterator():
+    # NOTE: avoid .iterator() here: it opens a server-side cursor which is not
+    # supported by the Neon/PgBouncer connection pooler (error: portal does
+    # not exist).
+    for s in qs:
         tid = s.teacher_id
         mid = s.module_id
         key = (tid, mid)
@@ -2035,6 +2203,7 @@ def landing_stats(request):
             attendances=Count("id"),
             present=Count("id", filter=Q(attendance_status="confirmed")),
             absent=Count("id", filter=Q(attendance_status="absent")),
+            live_attendances=Count("id", filter=live_filter),
         )
     except Exception:
         pass

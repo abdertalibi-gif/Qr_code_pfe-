@@ -121,6 +121,26 @@ class _AttendanceAppState extends State<AttendanceApp> {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
 
+            // Keep the system bars aligned with the current Web colours.
+            builder: (context, child) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness:
+                      isDark ? Brightness.light : Brightness.dark,
+                  statusBarBrightness:
+                      isDark ? Brightness.dark : Brightness.light,
+                  systemNavigationBarColor: isDark
+                      ? AppTheme.darkSurface
+                      : AppTheme.lightSurface,
+                  systemNavigationBarIconBrightness:
+                      isDark ? Brightness.light : Brightness.dark,
+                ),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+
             // ── Initial route ────────────────────────────────────────────
             initialRoute: AppConstants.routeSplash,
 

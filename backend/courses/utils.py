@@ -2,6 +2,46 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+TEACHER_SESSION_OVERLAP_MESSAGE = (
+    "Vous avez déjà une séance prévue pendant ce créneau. "
+    "Terminez-la ou choisissez un autre horaire."
+)
+
+
+def get_teacher_conflicting_sessions(
+    teacher_id,
+    date,
+    start_time,
+    end_time,
+    exclude_session_id=None,
+):
+    """Return not-closed sessions of ``teacher_id`` overlapping the slot.
+
+    Overlap rule (same as room conflicts): an existing session overlaps when
+    ``existing.start_time < new.end_time`` AND ``existing.end_time > new.start_time``.
+    This detects any partial overlap, not only identical start times.
+
+    Sessions already closed (``is_closed=True``) are ignored: they are finished,
+    their attendance has been finalised and their report generated.
+    """
+    from .models import Session
+
+    if not teacher_id or not date or not start_time or not end_time:
+        return Session.objects.none()
+
+    qs = Session.objects.filter(
+        teacher_id=teacher_id,
+        date=date,
+        is_closed=False,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    )
+
+    if exclude_session_id:
+        qs = qs.exclude(pk=exclude_session_id)
+
+    return qs.order_by("start_time")
+
 
 def get_conflicting_sessions(
     date,

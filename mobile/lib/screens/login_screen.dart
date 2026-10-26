@@ -356,25 +356,32 @@ class _LoginScreenState extends State<LoginScreen>
   // ─── Footer ───────────────────────────────────────────────────────────────
 
   Widget _buildFooter() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTint = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
+
     return Column(
       children: [
         // Info chip
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.primaryLight,
-            borderRadius: BorderRadius.circular(12),
+            color: isDark
+                ? AppTheme.primary.withOpacity(0.16)
+                : AppTheme.primaryLight,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             border: Border.all(
-              color: AppTheme.primary.withOpacity(0.2),
+              color: isDark
+                  ? AppTheme.primary.withOpacity(0.35)
+                  : AppTheme.primaryBorder,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.info_outline_rounded,
                 size: 16,
-                color: AppTheme.primary,
+                color: primaryTint,
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -382,7 +389,7 @@ class _LoginScreenState extends State<LoginScreen>
                   AppStrings.loginInfo,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.primary.withOpacity(0.9),
+                    color: primaryTint,
                     fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,

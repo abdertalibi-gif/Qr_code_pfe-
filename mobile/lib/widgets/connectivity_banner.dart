@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../constants/app_theme.dart';
 import '../services/connectivity_service.dart';
 
 /// A slim animated banner that slides down from the top of the screen
@@ -132,6 +133,14 @@ class _BannerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = isDark
+        ? Color.lerp(AppTheme.darkCard, AppTheme.warningColor, 0.08)!
+        : AppTheme.warningSoft;
+    final titleColor =
+        isDark ? const Color(0xFFFCD34D) : AppTheme.warningInk;
+    final subtitleColor = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.warningInk.withOpacity(0.72);
 
     return Material(
       elevation: 4,
@@ -140,12 +149,13 @@ class _BannerContent extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF37474F)
-              : const Color(0xFF455A64),
+          color: background,
+          border: Border(
+            bottom: BorderSide(color: AppTheme.warningBorder, width: 1),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.12),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -166,10 +176,10 @@ class _BannerContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'No Internet Connection',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: titleColor,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         height: 1.2,
@@ -179,7 +189,7 @@ class _BannerContent extends StatelessWidget {
                     Text(
                       'Some features may be unavailable.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
+                        color: subtitleColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w400,
                         height: 1.3,
@@ -199,7 +209,7 @@ class _BannerContent extends StatelessWidget {
                   padding: const EdgeInsets.all(4),
                   child: Icon(
                     Icons.close_rounded,
-                    color: Colors.white.withOpacity(0.7),
+                    color: subtitleColor,
                     size: 18,
                   ),
                 ),
@@ -247,6 +257,9 @@ class _PulsingIconState extends State<_PulsingIcon>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor =
+        isDark ? const Color(0xFFFCD34D) : AppTheme.warningColor;
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (context, child) {
@@ -259,12 +272,12 @@ class _PulsingIconState extends State<_PulsingIcon>
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: AppTheme.warningColor.withOpacity(isDark ? 0.2 : 0.14),
           shape: BoxShape.circle,
         ),
-        child: const Icon(
+        child: Icon(
           Icons.wifi_off_rounded,
-          color: Colors.white,
+          color: iconColor,
           size: 17,
         ),
       ),

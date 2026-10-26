@@ -85,6 +85,12 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = 'E-mail ou mot de passe incorrect.';
       _setStatus(AuthStatus.unauthenticated);
       return false;
+    } on ValidationException {
+      // Le backend renvoie un 400 « Invalid email or password. » : on affiche
+      // un message clair en français plutôt que la réponse brute du serveur.
+      _errorMessage = 'E-mail ou mot de passe incorrect.';
+      _setStatus(AuthStatus.unauthenticated);
+      return false;
     } on NetworkException catch (e) {
       _errorMessage = e.message;
       _setStatus(AuthStatus.unauthenticated);

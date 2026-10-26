@@ -1,5 +1,5 @@
 // Test de non-débordement : tous les écrans s'affichent sans RenderFlex
-// Overflow sur une résolution Android étroite (360x800).
+// Overflow sur les largeurs de téléphone courantes (320, 360, 375, 390, 430).
 //
 // Les services HTTP échouent volontairement en environnement de test
 // (flutter_test renvoie 400 pour toute requête) : les écrans doivent donc
@@ -33,14 +33,14 @@ import 'package:attendance_app/screens/teacher/teacher_dashboard_screen.dart';
 import 'package:attendance_app/screens/teacher/teacher_profile_screen.dart';
 import 'package:attendance_app/screens/teacher/teacher_statistics_screen.dart';
 
-void main() {
-  testWidgets('Tous les écrans s\'affichent sans overflow sur 360x800',
-      (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(360, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+/// Largeurs logiques testées (px) : petits Android, iPhone SE, iPhone 13/14,
+/// Pixel et grands iPhone Pro Max.
+const List<double> _phoneWidths = [320, 360, 375, 390, 430];
 
-    final screens = <String, Widget>{
+/// Hauteur logique représentative d'un téléphone en portrait.
+const double _phoneHeight = 800;
+
+Map<String, Widget> _screens() => <String, Widget>{
       'HomeScreen': const HomeScreen(),
       'LoginScreen': const LoginScreen(),
       'ValidationScreen': const ValidationScreen(),
@@ -60,41 +60,94 @@ void main() {
       'SessionDetailScreen': const SessionDetailScreen(sessionId: 1),
     };
 
-    for (final entry in screens.entries) {
-      final overflowErrors = <String>[];
-      final oldHandler = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails details) {
-        if (details.toString().contains('RenderFlex overflowed')) {
-          overflowErrors.add(details.toString());
+Widget _app(Widget screen, ThemeData theme) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+      ChangeNotifierProvider<AttendanceProvider>(
+          create: (_) => AttendanceProvider()),
+      ChangeNotifierProvider<TeacherProvider>(create: (_) => TeacherProvider()),
+      ChangeNotifierProvider<StudentProvider>(create: (_) => StudentProvider()),
+    ],
+    child: MaterialApp(
+      theme: theme,
+      home: screen,
+    ),
+  );
+}
+
+Future<void> _pumpScreen(
+  WidgetTester tester,
+  Widget screen,
+  ThemeData theme,
+) async {
+  await tester.pumpWidget(_app(screen, theme));
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pump(const Duration(seconds: 1));
+}
+
+void main() {
+  for (final width in _phoneWidths) {
+    testWidgets(
+      'Tous les écrans s\'affichent sans overflow sur ${width.toInt()}x'
+      '${_phoneHeight.toInt()}',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = Size(width, _phoneHeight);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        for (final entry in _screens().entries) {
+          final overflowErrors = <String>[];
+          final oldHandler = FlutterError.onError;
+          FlutterError.onError = (FlutterErrorDetails details) {
+            if (details.toString().contains('RenderFlex overflowed')) {
+              overflowErrors.add(details.toString());
+            }
+          };
+
+          await _pumpScreen(tester, entry.value, AppTheme.lightTheme);
+
+          FlutterError.onError = oldHandler;
+
+          expect(
+            overflowErrors,
+            isEmpty,
+            reason: 'Overflow détecté sur ${entry.key} en ${width.toInt()} px',
+          );
         }
-      };
+      },
+    );
+  }
 
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
-            ChangeNotifierProvider<AttendanceProvider>(create: (_) => AttendanceProvider()),
-            ChangeNotifierProvider<TeacherProvider>(create: (_) => TeacherProvider()),
-            ChangeNotifierProvider<StudentProvider>(create: (_) => StudentProvider()),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.lightTheme,
-            home: entry.value,
-          ),
-        ),
-      );
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pump(const Duration(seconds: 1));
+  testWidgets(
+    'Les écrans principaux s\'affichent sans overflow en thème sombre '
+    '(390x800)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, _phoneHeight);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-      FlutterError.onError = oldHandler;
+      for (final entry in _screens().entries) {
+        final overflowErrors = <String>[];
+        final oldHandler = FlutterError.onError;
+        FlutterError.onError = (FlutterErrorDetails details) {
+          if (details.toString().contains('RenderFlex overflowed')) {
+            overflowErrors.add(details.toString());
+          }
+        };
 
-      expect(
-        overflowErrors,
-        isEmpty,
-        reason: 'Overflow détecté sur : ${entry.key}',
-      );
-    }
-  });
+        await _pumpScreen(tester, entry.value, AppTheme.darkTheme);
+
+        FlutterError.onError = oldHandler;
+
+        expect(
+          overflowErrors,
+          isEmpty,
+          reason: 'Overflow détecté sur ${entry.key} (thème sombre)',
+        );
+      }
+    },
+  );
 }

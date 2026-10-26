@@ -84,7 +84,9 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    department_name = serializers.CharField(source="department.name", read_only=True)
+    department_name = serializers.CharField(
+        source="department.name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = User
@@ -254,6 +256,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         validated_data.pop("is_program_manager", None)
         password = validated_data.pop("password")
         user = User(**validated_data)
+        if department and role in ("teacher", "department_head"):
+            user.department = department
         user.set_password(password)
         user.save()
         if role == "teacher":
@@ -355,13 +359,16 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         assigned_classes = validated_data.pop("assigned_classes", None)
-        department = validated_data.pop("department", None)
+        department_missing = object()
+        department = validated_data.pop("department", department_missing)
         filiere = validated_data.pop("filiere", None)
         validated_data.pop("is_department_head", None)
         validated_data.pop("is_program_manager", None)
         password = validated_data.pop("password", None)
         role = validated_data.get("role", instance.role)
         old_role = instance.role
+        if department is not department_missing and role in ("teacher", "department_head"):
+            instance.department = department
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
@@ -372,7 +379,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 instance.assigned_classes.set(assigned_classes)
         elif assigned_classes is not None:
             instance.assigned_classes.set(assigned_classes)
-        if department is not None and role == "department_head":
+        if department is not department_missing and department is not None and role == "department_head":
             if department.head and department.head != instance:
                 raise serializers.ValidationError(
                     {"department_id": "Ce département a déjà un chef."}

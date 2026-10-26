@@ -5,6 +5,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Tableau de bord enseignant — PrésenceQR</title>
         <link rel="stylesheet" href="/dashboard.css" />
+        <style>
+            /* Étudiant absent : ligne et texte en rouge */
+            tr.row-absent,
+            tr.row-absent:hover { background: var(--red-soft); }
+            tr.row-absent td,
+            tr.row-absent td strong { color: var(--red) !important; }
+        </style>
         <link
             rel="stylesheet"
             href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -24,9 +31,9 @@
                     <span id="navUserName">Chargement…</span>
                     <span class="badge badge-teacher" id="navRoleBadge">Enseignant</span>
                 </div>
-                <button class="btn-icon" onclick="API.logout()" title="Déconnexion">
+                <button class="btn-icon" onclick="API.logout()" title="Déconnexion" aria-label="Déconnexion">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Déconnexion
+                    <span class="logout-label">Déconnexion</span>
                 </button>
             </div>
         </nav>
@@ -484,10 +491,26 @@
                 return Array.from(set);
             }
 
-            /* ── Session created event: auto-refresh ── */
-            document.addEventListener('session-created', function (e) {
+            /* ── Session created/updated event: auto-refresh ── */
+            document.addEventListener('session-created', async function (e) {
                 if (activeClasseId) {
-                    loadSessions(activeClasseId);
+                    await loadSessions(activeClasseId);
+                }
+
+                // Après une modification (detail sans id), rafraîchir le panneau
+                // de la séance affichée pour refléter les nouvelles données.
+                const isEdit = !e.detail || !e.detail.id;
+                if (isEdit && activeSessionId && activeClasseId) {
+                    try {
+                        const fresh = await API.apiFetch(`/sessions/${activeSessionId}/`);
+                        const classe = allClasses.find((c) => c.id === activeClasseId);
+                        activeSession = fresh;
+                        renderSessionPanel(fresh, classe);
+                        loadAttendance(activeSessionId);
+                        if (fresh.qr_token) restoreSessionQR(activeSessionId);
+                    } catch {
+                        // Séance supprimée ou devenue inaccessible : on garde le panneau.
+                    }
                 }
             });
 
@@ -550,7 +573,18 @@
                 updateTeacherLiveWsUI(teacherLiveWS?.readyState === WebSocket.OPEN ? "connected" : "disconnected");
             }
 
-            function renderLiveAttendance() {
+            function sortAttendanceRows(rows) {
+                // Présents d'abord, absents ensuite. Le tri est stable : l'ordre
+                // existant (plus récent d'abord) est conservé dans chaque groupe.
+                return (Array.isArray(rows) ? rows.slice() : []).sort((a, b) => {
+                    const aAbsent = (a.attendance_status || "confirmed") !== "confirmed";
+                    const bAbsent = (b.attendance_status || "confirmed") !== "confirmed";
+                    if (aAbsent === bAbsent) return 0;
+                    return aAbsent ? 1 : -1;
+                });
+            }
+
+            function renderLiveAttendance(newId) {
                 const tbody = document.getElementById("liveAttendanceBody");
                 const countEl = document.getElementById("liveAttendanceCount");
                 if (!tbody) return;
@@ -564,19 +598,24 @@
                     return;
                 }
 
-                tbody.innerHTML = liveAttendanceRows.map((r, i) => liveAttendanceRowHtml(r, i + 1)).join("");
+                tbody.innerHTML = sortAttendanceRows(liveAttendanceRows)
+                    .map((r, i) => liveAttendanceRowHtml(r, i + 1, newId))
+                    .join("");
             }
 
-            function liveAttendanceRowHtml(r, idx) {
+            function liveAttendanceRowHtml(r, idx, newId) {
+                var isAbsent = (r.attendance_status || 'confirmed') !== 'confirmed';
+                var isNew = newId != null && r.id === newId;
+                var rowClass = `${isAbsent ? 'row-absent' : ''}${isNew ? ' new-row' : ''}`.trim();
                 return `
-    <tr>
+    <tr class="${rowClass}">
       <td style="color:var(--muted)">${idx}</td>
       <td><strong>${esc(r.student_name)}</strong></td>
       <td style="font-family:monospace;color:var(--accent)">${esc(r.student_code_massar)}</td>
       <td>${esc(r.subject || '—')} <span style="color:var(--muted);font-size:.78rem">(${esc(r.classe_session || r.classe_name || '')})</span></td>
       <td style="color:var(--muted)">${formatDate(r.session_date)}</td>
       <td style="color:var(--muted);font-size:.8rem">${formatDateTime(r.validation_time)}</td>
-      <td><span class="badge badge-present">Present</span></td>
+      <td><span class="badge ${isAbsent ? 'badge-absent' : 'badge-present'}">${isAbsent ? 'Absent' : 'Présent'}</span></td>
     </tr>
   `;
             }
@@ -584,32 +623,7 @@
             function handleTeacherLiveRecord(record) {
                 if (liveAttendanceRows.some((r) => r.id === record.id)) return;
                 liveAttendanceRows.unshift(record);
-
-                const liveBody = document.getElementById("liveAttendanceBody");
-                if (liveBody) {
-                    const empty = liveBody.querySelector(".empty-row");
-                    if (empty) empty.remove();
-                    const tr = document.createElement("tr");
-                    tr.className = "new-row";
-                    tr.innerHTML = `
-      <td style="color:var(--muted)">1</td>
-      <td><strong>${esc(record.student_name)}</strong></td>
-      <td style="font-family:monospace;color:var(--accent)">${esc(record.student_code_massar)}</td>
-      <td>${esc(record.subject || '—')} <span style="color:var(--muted);font-size:.78rem">(${esc(record.classe_session || '')})</span></td>
-      <td style="color:var(--muted)">${formatDate(record.session_date)}</td>
-      <td style="color:var(--muted);font-size:.8rem">${formatDateTime(record.validation_time)}</td>
-      <td><span class="badge badge-present">Present</span></td>
-    `;
-                    liveBody.prepend(tr);
-                    liveBody.querySelectorAll("tr:not(.empty-row)").forEach((row, i) => {
-                        const cell = row.querySelector("td");
-                        if (cell) cell.textContent = i + 1;
-                    });
-                    const countEl = document.getElementById("liveAttendanceCount");
-                    if (countEl) {
-                        countEl.textContent = `${liveAttendanceRows.length} scan${liveAttendanceRows.length !== 1 ? "s" : ""}`;
-                    }
-                }
+                renderLiveAttendance(record.id);
 
                 if (activeSessionId && String(record.session) === String(activeSessionId)) {
                     addAttendanceRow(record);
@@ -692,6 +706,8 @@
         <div class="dropdown" style="position:relative;display:inline-block">
           <button class="btn outline" id="btnExport">📥 Export Excel</button>
         </div>
+        <button class="btn outline" id="btnEditSession" title="Modifier cette séance">✏️ Modifier</button>
+        <button class="btn outline" id="btnDeleteSession" title="Supprimer cette séance" style="color:var(--red)">🗑️ Supprimer</button>
       </div>
     </div>
     ${windowNotice}
@@ -764,6 +780,30 @@
                 if (btnGen && canGenQR) btnGen.addEventListener("click", () => openGenQRModal(session.id));
 
                 document.getElementById("btnExport")?.addEventListener("click", () => openExportWizard());
+
+                document.getElementById("btnEditSession")?.addEventListener("click", () => {
+                    if (session?.id) SessionForm.edit(session.id);
+                });
+
+                document.getElementById("btnDeleteSession")?.addEventListener("click", async () => {
+                    if (!session?.id) return;
+                    const label = `${session.subject || "cette séance"} du ${formatDate(session.date)} (${formatSessionWindow(session)})`;
+                    if (!confirm(`Supprimer ${label} ? Cette action est irréversible.`)) return;
+                    try {
+                        await API.apiFetch(`/sessions/${session.id}/`, { method: "DELETE" });
+                        showToast("Séance supprimée.", "success");
+                        if (activeWS) { activeWS.close(); activeWS = null; }
+                        activeSessionId = null;
+                        activeSession = null;
+                        sessionStorage.removeItem("teacherActiveSession");
+                        const classeId = activeClasseId;
+                        if (classeId) await loadSessions(classeId);
+                        await loadLiveAttendance();
+                        showLiveDashboard();
+                    } catch (e) {
+                        showToast("Erreur : " + (e.message || "Suppression impossible."), "error");
+                    }
+                });
             }
 
             /* ═══════════════════════════════════════════════════════════
@@ -1265,29 +1305,36 @@
                 }
             }
 
-            function renderAttendance(rows) {
+            function renderAttendance(rows, newId) {
                 const tbody = document.getElementById("attendanceBody");
                 const countEl = document.getElementById("attendanceCount");
                 if (!tbody) return;
 
-                if (countEl) countEl.textContent = `${rows.length} student${rows.length !== 1 ? "s" : ""}`;
+                const sorted = sortAttendanceRows(rows);
 
-                if (!rows.length) {
+                if (countEl) countEl.textContent = `${sorted.length} student${sorted.length !== 1 ? "s" : ""}`;
+
+                if (!sorted.length) {
                     tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Aucune présence enregistrée. Générez un QR code et attendez que les étudiants scannent.</td></tr>`;
                     return;
                 }
 
-                tbody.innerHTML = rows.map((r, i) => `
-    <tr>
+                tbody.innerHTML = sorted.map((r, i) => {
+                    const isAbsent = (r.attendance_status || "confirmed") !== "confirmed";
+                    const isNew = newId != null && r.id === newId;
+                    const rowClass = `${isAbsent ? 'row-absent' : ''}${isNew ? ' new-row' : ''}`.trim();
+                    return `
+    <tr class="${rowClass}">
       <td style="color:var(--muted)">${i + 1}</td>
       <td><strong>${esc(r.student_name || "—")}</strong></td>
       <td style="font-family:monospace;color:var(--accent)">${esc(r.student_code_massar || "—")}</td>
       <td style="color:var(--muted)">${esc(r.classe_name || "—")}</td>
       <td style="color:var(--muted);font-size:.8rem">${formatDateTime(r.validation_time)}</td>
       <td style="font-size:.75rem;font-family:monospace">${esc((r.device_fingerprint || r.device_id || "—").substring(0, 10))}</td>
-      <td><span class="badge badge-present">${esc(r.attendance_status || "confirmed")}</span></td>
+      <td><span class="badge ${isAbsent ? 'badge-absent' : 'badge-present'}">${isAbsent ? 'Absent' : 'Présent'}</span></td>
     </tr>
-  `).join("");
+  `;
+                }).join("");
             }
 
             function addAttendanceRow(record) {
@@ -1295,28 +1342,7 @@
                 if (exists) return;
                 attendanceRows.push(record);
 
-                const tbody = document.getElementById("attendanceBody");
-                const countEl = document.getElementById("attendanceCount");
-                if (!tbody) return;
-
-                const emptyRow = tbody.querySelector(".empty-row");
-                if (emptyRow) emptyRow.remove();
-
-                if (countEl) countEl.textContent = `${attendanceRows.length} student${attendanceRows.length !== 1 ? "s" : ""}`;
-
-                const idx = attendanceRows.length;
-                const tr = document.createElement("tr");
-                tr.className = "new-row";
-                tr.innerHTML = `
-    <td style="color:var(--muted)">${idx}</td>
-    <td><strong>${esc(record.student_name || "—")}</strong></td>
-    <td style="font-family:monospace;color:var(--accent)">${esc(record.student_code_massar || "—")}</td>
-    <td style="color:var(--muted)">${esc(record.classe_name || record.classe_session || "—")}</td>
-    <td style="color:var(--muted);font-size:.8rem">${formatDateTime(record.validation_time)}</td>
-    <td style="font-size:.75rem;font-family:monospace">${esc((record.device_fingerprint || record.device_id || "—").substring(0, 10))}</td>
-    <td><span class="badge badge-present">${esc(record.attendance_status || "confirmed")}</span></td>
-  `;
-                tbody.prepend(tr);
+                renderAttendance(attendanceRows, record.id);
                 showToast(`✅ ${record.student_name || "Student"} just scanned in!`, "info");
             }
 

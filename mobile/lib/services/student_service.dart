@@ -17,13 +17,14 @@ class StudentService {
     double? latitude,
     double? longitude,
   }) async {
+    final data = <String, dynamic>{
+      'qr_token': qrToken,
+    };
+    if (latitude != null) data['latitude'] = latitude;
+    if (longitude != null) data['longitude'] = longitude;
     final response = await _client.post(
       AppConstants.validateAppAttendanceEndpoint,
-      data: {
-        'qr_token': qrToken,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      },
+      data: data,
     );
     return response.data as Map<String, dynamic>;
   }
@@ -37,16 +38,17 @@ class StudentService {
     double? latitude,
     double? longitude,
   }) async {
+    final data = <String, dynamic>{
+      'qr_token': qrToken,
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'code_massar': codeMassar.trim(),
+    };
+    if (latitude != null) data['latitude'] = latitude;
+    if (longitude != null) data['longitude'] = longitude;
     final response = await _client.post(
       AppConstants.validateAttendanceEndpoint,
-      data: {
-        'qr_token': qrToken,
-        'first_name': firstName.trim(),
-        'last_name': lastName.trim(),
-        'code_massar': codeMassar.trim(),
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      },
+      data: data,
     );
     return response.data as Map<String, dynamic>;
   }

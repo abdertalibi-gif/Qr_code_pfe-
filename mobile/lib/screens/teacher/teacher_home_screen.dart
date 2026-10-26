@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/teacher_provider.dart';
+import '../../widgets/app_bottom_navigation.dart';
 import 'teacher_dashboard_screen.dart';
 import 'sessions_screen.dart';
 import 'teacher_attendance_screen.dart';
@@ -68,37 +69,45 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
     return Scaffold(
       body: IndexedStack(index: provider.currentTab.index, children: pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: provider.currentTab.index,
-        onDestinationSelected: (i) =>
-            provider.setTab(TeacherTab.values[i]),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded),
-            label: 'Accueil',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note_rounded),
-            label: 'Séances',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_alt_outlined),
-            selectedIcon: Icon(Icons.people_alt_rounded),
-            label: 'Présences',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
-            label: 'Statistiques',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profil',
-          ),
-        ],
+      // 5 destinations sur un écran de 360 px : les libellés par défaut
+      // ("Statistiques") débordent de leur case et se chevauchent. On réduit
+      // légèrement la police et on limite l'agrandissement du texte dans la
+      // barre uniquement, pour garder des libellés lisibles sur une ligne.
+      bottomNavigationBar: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.0,
+        child: AppBottomNavigation(
+          selectedIndex: provider.currentTab.index,
+          onDestinationSelected: (i) =>
+              provider.setTab(TeacherTab.values[i]),
+          labelFontSize: 10,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard_rounded),
+              label: 'Accueil',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.event_note_outlined),
+              selectedIcon: Icon(Icons.event_note_rounded),
+              label: 'Séances',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_alt_outlined),
+              selectedIcon: Icon(Icons.people_alt_rounded),
+              label: 'Présences',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Statistiques',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: 'Profil',
+            ),
+          ],
+        ),
       ),
     );
   }

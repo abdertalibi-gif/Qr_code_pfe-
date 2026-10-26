@@ -7,6 +7,11 @@ let allModules = [];
 let allBlocks = [];
 let allRooms = [];
 let allAmphis = [];
+let classesCurrentPage = 1;
+let classesTotal = 0;
+let classesRequestSeq = 0;
+let classesSearchTimer = null;
+const CLASSES_PAGE_SIZE = 10;
 
 async function initPage() {
   await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadFilieres(), loadBlocks(), loadAmphis(), loadTeachers()]);
@@ -32,14 +37,42 @@ async function loadTeachers() {
   }
 }
 
-async function loadClasses() {
+async function loadClasses(page) {
+  if (!Number.isInteger(page)) page = classesCurrentPage || 1;
+  const params = new URLSearchParams({
+    paginate: '1',
+    page: String(page),
+    page_size: String(CLASSES_PAGE_SIZE),
+  });
+  const search = (document.getElementById('searchClasses')?.value || '').trim();
+  if (search) params.set('search', search);
+
+  const tbody = document.getElementById('classesBody');
+  if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Chargement…</td></tr>';
+
+  const requestId = ++classesRequestSeq;
   try {
-    const data = await API.apiFetch('/classes/');
+    const data = await API.apiFetch('/classes/?' + params.toString());
+    if (requestId !== classesRequestSeq) return;
     allClasses = Array.isArray(data) ? data : (data.results || []);
+    classesTotal = Array.isArray(data) ? allClasses.length : (data.count ?? allClasses.length);
+    const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+    if (page > totalPages && totalPages >= 1 && classesTotal > 0) {
+      return loadClasses(totalPages);
+    }
+    classesCurrentPage = page;
     renderClasses();
+    if (!search) {
+      const navCount = document.getElementById('navCntClasses');
+      if (navCount) navCount.textContent = classesTotal;
+    }
   } catch (e) {
-    document.getElementById('classesBody').innerHTML =
-      '<tr class="empty-row"><td colspan="9">Erreur: ' + esc(e.message) + '</td></tr>';
+    if (requestId !== classesRequestSeq) return;
+    if (tbody) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+    const countLabel = document.getElementById('classesCountLabel');
+    if (countLabel) countLabel.textContent = 'Erreur de chargement.';
   }
 }
 
@@ -100,17 +133,33 @@ async function loadAmphis() {
 
 function renderClasses() {
   const tbody = document.getElementById('classesBody');
-  const q = searchQuery('searchClasses');
-  const filtered = allClasses.filter(function (c) {
-    return !q || (c.name && c.name.toLowerCase().includes(q)) || (c.filiere_name && c.filiere_name.toLowerCase().includes(q));
-  });
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">' + (q ? 'Aucun résultat.' : 'Aucune classe.') + '</td></tr>';
+  const query = (document.getElementById('searchClasses')?.value || '').trim();
+  const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+  const countLabel = document.getElementById('classesCountLabel');
+  const startIdx = (classesCurrentPage - 1) * CLASSES_PAGE_SIZE;
+
+  if (!allClasses.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">' + (query ? 'Aucun résultat.' : 'Aucune classe.') + '</td></tr>';
+    if (countLabel) {
+      countLabel.textContent = query
+        ? '0 classe trouvée sur un total de ' + classesTotal
+        : '0 classe au total';
+    }
+    createPaginationControls('classesPagination', classesCurrentPage, totalPages, loadClasses);
     return;
   }
-  tbody.innerHTML = filtered.map(function (c, i) {
+
+  if (countLabel) {
+    const from = startIdx + 1;
+    const to = Math.min(startIdx + CLASSES_PAGE_SIZE, classesTotal);
+    countLabel.textContent = query
+      ? 'Affichage de ' + from + ' à ' + to + ' sur ' + classesTotal + ' résultat(s) trouvé(s)'
+      : 'Affichage des classes ' + from + ' à ' + to + ' sur ' + classesTotal + ' au total (Page ' + classesCurrentPage + ' sur ' + totalPages + ')';
+  }
+
+  tbody.innerHTML = allClasses.map(function (c, i) {
     return '<tr>' +
-      '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+      '<td><span style="color:var(--muted)">' + (startIdx + i + 1) + '</span></td>' +
       '<td><strong>' + esc(c.name) + '</strong></td>' +
       '<td>' + esc(c.filiere_name || '—') + '</td>' +
       '<td>' + esc(c.niveau_id || '—') + '</td>' +
@@ -124,6 +173,8 @@ function renderClasses() {
       '</td>' +
     '</tr>';
   }).join('');
+
+  createPaginationControls('classesPagination', classesCurrentPage, totalPages, loadClasses);
 }
 
 /* ── Cascades async avec restauration ── */
@@ -277,7 +328,13 @@ function resetClassForm() {
 }
 
 function setupEventListeners() {
-  bindSearchInput('searchClasses', renderClasses);
+  const searchEl = document.getElementById('searchClasses');
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      clearTimeout(classesSearchTimer);
+      classesSearchTimer = setTimeout(function () { loadClasses(1); }, 350);
+    });
+  }
 
   document.getElementById('clNiveau')?.addEventListener('change', function () {
     cascadeSemestre(this.value);
@@ -326,7 +383,7 @@ function setupEventListeners() {
       }
       closeModal('modalClasse');
       showToast('Classe enregistrée.', 'success');
-      await loadClasses();
+      await loadClasses(id ? classesCurrentPage : 1);
     } catch (e) { showToast(e.message, 'error'); }
   });
 }

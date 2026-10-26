@@ -63,7 +63,6 @@ class TeacherImportTests(TestCase):
             buffer.read(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-
         from users.services.teacher_import import import_teachers
         report = import_teachers(uploaded_file)
 
@@ -72,7 +71,6 @@ class TeacherImportTests(TestCase):
         assert "updated" in report
         assert "skipped" in report
         assert "errors" in report
-
         # Verify teacher was created
         assert User.objects.filter(email="test@umi.ac.ma").exists()
         teacher = User.objects.get(email="test@umi.ac.ma")

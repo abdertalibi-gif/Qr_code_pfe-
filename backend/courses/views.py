@@ -1,9 +1,12 @@
 import base64
 import logging
+import threading
+from contextlib import nullcontext
 from io import BytesIO
 
 import qrcode
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -11,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from config.site_url import build_attend_url
+from users.models import Amphitheater, Block, Room, User
 from users.permissions import (
     IsAdminOrTeacher,
     apply_role_filtering,
@@ -18,12 +22,32 @@ from users.permissions import (
     get_user_filiere_ids,
 )
 
-from users.models import Amphitheater, Block, Room
 from .models import Session
 from .serializers import GenerateQRSerializer, SessionSerializer
-from .utils import get_occupied_location_ids
+from .utils import (
+    TEACHER_SESSION_OVERLAP_MESSAGE,
+    get_occupied_location_ids,
+    get_teacher_conflicting_sessions,
+)
 
 logger = logging.getLogger(__name__)
+
+# Verrous applicatifs par enseignant. Ils sérialisent la vérification de
+# chevauchement et l'écriture au sein d'un même processus. En production
+# multi-processus, `select_for_update()` sur la ligne enseignant assure la
+# sérialisation au niveau base de données (PostgreSQL).
+_teacher_locks_guard = threading.Lock()
+_teacher_locks = {}
+
+
+def _get_teacher_lock(teacher_id):
+    key = str(teacher_id)
+    with _teacher_locks_guard:
+        lock = _teacher_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _teacher_locks[key] = lock
+        return lock
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -32,7 +56,18 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Session.objects.select_related("teacher", "classe", "module").all()
+        qs = Session.objects.select_related(
+            "teacher",
+            "classe",
+            "classe__filiere",
+            "classe__semestre",
+            "module",
+            "semestre",
+            "filiere",
+            "block",
+            "room",
+            "amphitheater",
+        ).order_by("-date", "-start_time", "-id")
 
         if user.role == "teacher":
             qs = qs.filter(teacher=user)
@@ -55,6 +90,45 @@ class SessionViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated()]
         return super().get_permissions()
 
+    def _ensure_no_teacher_overlap(self, serializer, exclude_session_id=None):
+        """Re-vérifie le chevauchement enseignant sous verrou base de données.
+
+        Appelé dans ``transaction.atomic()`` depuis ``perform_create`` et
+        ``perform_update`` afin qu'une requête concurrente ne puisse pas se
+        glisser entre la validation du serializer et l'écriture.
+        """
+        validated = serializer.validated_data
+        instance = serializer.instance
+
+        teacher = validated.get("teacher")
+        if teacher is None and instance is not None:
+            teacher = instance.teacher
+        if teacher is None and getattr(self.request.user, "role", None) == "teacher":
+            teacher = self.request.user
+        if teacher is None:
+            return
+
+        date = validated.get("date", getattr(instance, "date", None))
+        start_time = validated.get(
+            "start_time", getattr(instance, "start_time", None)
+        )
+        end_time = validated.get("end_time", getattr(instance, "end_time", None))
+        if not (date and start_time and end_time):
+            return
+
+        # Verrou pessimiste sur la ligne enseignant (efficace sous PostgreSQL).
+        User.objects.select_for_update().get(pk=teacher.pk)
+
+        conflicts = get_teacher_conflicting_sessions(
+            teacher_id=teacher.pk,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            exclude_session_id=exclude_session_id,
+        )
+        if conflicts.exists():
+            raise serializers.ValidationError(TEACHER_SESSION_OVERLAP_MESSAGE)
+
     def perform_create(self, serializer):
         try:
             user = self.request.user
@@ -69,25 +143,61 @@ class SessionViewSet(viewsets.ModelViewSet):
                 classe = serializer.validated_data.get("classe")
                 if classe and filiere_ids and classe.filiere_id not in filiere_ids:
                     raise serializers.ValidationError({"classe": "Cette classe ne fait pas partie de vos filières."})
-            if user.role == "teacher":
-                session = serializer.save(teacher=user)
-            else:
-                if "teacher" not in serializer.validated_data or not serializer.validated_data.get("teacher"):
-                    raise serializers.ValidationError({"teacher": "Un enseignant doit être sélectionné."})
-                session = serializer.save()
-            teacher = session.teacher
-            if teacher.role == "teacher":
-                teacher.assigned_classes.add(session.classe)
+            with transaction.atomic():
+                self._ensure_no_teacher_overlap(serializer)
+                if user.role == "teacher":
+                    session = serializer.save(teacher=user)
+                else:
+                    if "teacher" not in serializer.validated_data or not serializer.validated_data.get("teacher"):
+                        raise serializers.ValidationError({"teacher": "Un enseignant doit être sélectionné."})
+                    session = serializer.save()
+                teacher = session.teacher
+                if teacher.role == "teacher":
+                    teacher.assigned_classes.add(session.classe)
         except serializers.ValidationError:
             raise
         except Exception as e:
             raise serializers.ValidationError({"detail": f"Erreur lors de la création de la séance: {str(e)}"})
 
-    def create(self, request, *args, **kwargs):
+    def perform_update(self, serializer):
         try:
-            return super().create(request, *args, **kwargs)
-        except Exception as e:
+            instance = serializer.instance
+            with transaction.atomic():
+                self._ensure_no_teacher_overlap(
+                    serializer, exclude_session_id=instance.pk
+                )
+                session = serializer.save()
+                teacher = session.teacher
+                if teacher.role == "teacher":
+                    teacher.assigned_classes.add(session.classe)
+        except serializers.ValidationError:
             raise
+        except Exception as e:
+            raise serializers.ValidationError({"detail": f"Erreur lors de la modification de la séance: {str(e)}"})
+
+    def create(self, request, *args, **kwargs):
+        # Verrou applicatif par enseignant : couvre les validations et
+        # l'écriture, y compris sous SQLite (mono-processus). Le verrou base
+        # de données de perform_create reste actif pour le multi-processus.
+        teacher_id = None
+        if getattr(request.user, "role", None) == "teacher":
+            teacher_id = request.user.pk
+        elif hasattr(request.data, "get"):
+            teacher_id = request.data.get("teacher")
+        lock = _get_teacher_lock(teacher_id) if teacher_id else nullcontext()
+        with lock:
+            return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        teacher_id = None
+        if hasattr(request.data, "get"):
+            teacher_id = request.data.get("teacher")
+        if not teacher_id:
+            teacher_id = instance.teacher_id
+        lock = _get_teacher_lock(teacher_id) if teacher_id else nullcontext()
+        with lock:
+            return super().update(request, *args, **kwargs)
 
     def _check_session_access(self, request, session):
         if not session.teacher_can_manage(request.user):

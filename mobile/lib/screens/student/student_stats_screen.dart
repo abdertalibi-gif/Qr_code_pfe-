@@ -34,6 +34,11 @@ class _StudentStatsScreenState extends State<StudentStatsScreen>
     super.build(context);
     final provider = context.watch<StudentProvider>();
     final history = provider.attendanceHistory;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor =
+        isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     // Calcul local des statistiques depuis l'historique
     final total = history.length;
@@ -72,13 +77,13 @@ class _StudentStatsScreenState extends State<StudentStatsScreen>
                 child: Column(
                   children: [
                     Icon(Icons.cloud_off_outlined,
-                        size: 56, color: Colors.grey[400]),
+                        size: 56, color: mutedColor),
                     const SizedBox(height: 12),
                     Text(
                       provider.historyError!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.grey),
+                      style: TextStyle(
+                          fontSize: 13, color: secondaryColor),
                     ),
                     const SizedBox(height: 12),
                     TextButton.icon(
@@ -97,15 +102,15 @@ class _StudentStatsScreenState extends State<StudentStatsScreen>
                 child: Column(
                   children: [
                     Icon(Icons.insights_outlined,
-                        size: 56, color: Colors.grey[400]),
+                        size: 56, color: mutedColor),
                     const SizedBox(height: 12),
                     const Text('Aucune donnée disponible',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(
                       'Scannez des QR pour générer vos statistiques.',
-                      style:
-                          TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(
+                          color: secondaryColor, fontSize: 12),
                     ),
                   ],
                 ),
@@ -142,12 +147,8 @@ class _RateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Column(
         children: [
@@ -228,8 +229,11 @@ class _HistoryDetailCard extends StatelessWidget {
         subtitle: Text(
           attendance.formattedValidationTime,
           style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.grey[400] : Colors.grey[600]),
+            fontSize: 12,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
+          ),
         ),
       ),
     );

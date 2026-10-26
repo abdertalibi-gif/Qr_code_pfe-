@@ -265,7 +265,7 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
     existing_users_map: dict[str, User] = {}
     for u in User.objects.filter(email__in=emails_to_check).only(
         "id", "email", "first_name", "last_name", "phone", "cin",
-        "grade", "speciality", "role"
+        "grade", "speciality", "role", "department"
     ):
         existing_users_map[u.email.lower()] = u
 
@@ -314,6 +314,11 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                 update_fields.append("role")
                 changed = True
 
+            if existing_user.department_id != dept.id:
+                existing_user.department = dept
+                update_fields.append("department")
+                changed = True
+
             if changed:
                 updated_users.append((existing_user, update_fields))
 
@@ -333,6 +338,7 @@ def import_teachers(uploaded_file) -> dict[str, Any]:
                 role="teacher",
                 phone=r.phone,
                 cin=r.cin,
+                department=dept,
                 grade=r.grade,
                 speciality=r.speciality,
                 is_active=True,

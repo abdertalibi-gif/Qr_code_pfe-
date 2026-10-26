@@ -122,12 +122,12 @@ class _SuccessScreenState extends State<SuccessScreen>
             end: Alignment.bottomCenter,
             colors: isDark
                 ? [
-                    const Color(0xFF0A2010),
+                    const Color(0xFF06231A),
                     AppTheme.darkBackground,
                   ]
                 : [
-                    const Color(0xFFEAF7EE),
-                    const Color(0xFFF8FFF9),
+                    AppTheme.successSoft,
+                    AppTheme.lightBackground,
                   ],
           ),
         ),
@@ -231,21 +231,14 @@ class _SuccessScreenState extends State<SuccessScreen>
                   Container(
                     width: 84,
                     height: 84,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF34A853),
-                          Color(0xFF1E8C3A),
-                        ],
-                      ),
+                      gradient: AppTheme.successGradient,
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0x5534A853),
+                          color: AppTheme.successColor.withOpacity(0.35),
                           blurRadius: 24,
-                          offset: Offset(0, 8),
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
@@ -313,7 +306,7 @@ class _SuccessScreenState extends State<SuccessScreen>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         border: Border.all(
           color: AppTheme.successColor.withOpacity(0.2),
           width: 1.5,
@@ -339,8 +332,8 @@ class _SuccessScreenState extends State<SuccessScreen>
             decoration: BoxDecoration(
               color: AppTheme.successColor.withOpacity(0.08),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
+                topLeft: Radius.circular(AppTheme.radius - 1),
+                topRight: Radius.circular(AppTheme.radius - 1),
               ),
             ),
             child: Row(
@@ -400,7 +393,9 @@ class _SuccessScreenState extends State<SuccessScreen>
                   icon: Icons.tag_rounded,
                   label: 'Attendance ID',
                   value: '#$attendanceId',
-                  valueColor: AppTheme.primary,
+                  valueColor: isDark
+                      ? AppTheme.primaryOnDark
+                      : AppTheme.primary,
                 ),
                 const SizedBox(height: 14),
                 _DetailRow(
@@ -470,6 +465,8 @@ class _SuccessScreenState extends State<SuccessScreen>
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   Widget _buildActions() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -494,8 +491,8 @@ class _SuccessScreenState extends State<SuccessScreen>
           icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
           label: const Text('Scan Another QR'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.primary,
-            side: const BorderSide(color: AppTheme.primary, width: 1.5),
+            foregroundColor: brandColor,
+            side: BorderSide(color: brandColor.withOpacity(0.4), width: 1.5),
           ),
         ),
       ],

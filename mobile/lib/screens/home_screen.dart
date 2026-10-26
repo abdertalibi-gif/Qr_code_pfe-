@@ -125,11 +125,7 @@ class _HomeScreenState extends State<HomeScreen>
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppTheme.primary, AppTheme.primaryDark],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            gradient: AppTheme.primaryGradient,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -139,14 +135,18 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          AppConstants.appName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppTheme.darkTextPrimary
-                                : AppTheme.lightTextPrimary,
+                        Flexible(
+                          child: Text(
+                            AppConstants.appName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
                           ),
                         ),
                       ],
@@ -295,15 +295,8 @@ class _WelcomeBanner extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary,
-            AppTheme.primaryDark,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: [
           BoxShadow(
             color: AppTheme.primary.withOpacity(isDark ? 0.3 : 0.4),
@@ -365,7 +358,7 @@ class _WelcomeBanner extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle, size: 8, color: Colors.greenAccent),
+                      Icon(Icons.circle, size: 8, color: AppTheme.successColor),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -429,15 +422,17 @@ class _ScanQrButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: Ink(
           decoration: BoxDecoration(
             color: Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.06),
@@ -459,14 +454,7 @@ class _ScanQrButton extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppTheme.primary,
-                        AppTheme.primaryDark,
-                      ],
-                    ),
+                    gradient: AppTheme.primaryGradient,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -487,7 +475,7 @@ class _ScanQrButton extends StatelessWidget {
                   AppStrings.scanQrCode,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.primary,
+                        color: brandColor,
                       ),
                 ),
                 const SizedBox(height: 6),
@@ -503,22 +491,29 @@ class _ScanQrButton extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryLight,
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark
+                        ? AppTheme.primary.withOpacity(0.16)
+                        : AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.touch_app_rounded,
-                          size: 16, color: AppTheme.primary),
-                      SizedBox(width: 6),
+                          size: 16,
+                          color: isDark
+                              ? AppTheme.primaryOnDark
+                              : AppTheme.primary),
+                      const SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           AppStrings.tapToOpenScanner,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: AppTheme.primary,
+                            color: isDark
+                                ? AppTheme.primaryOnDark
+                                : AppTheme.primary,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                           ),

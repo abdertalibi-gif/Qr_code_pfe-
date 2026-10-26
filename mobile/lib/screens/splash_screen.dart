@@ -150,22 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    const Color(0xFF0D1B2A),
-                    const Color(0xFF1A3350),
-                    const Color(0xFF0D47A1),
-                  ]
-                : [
-                    AppTheme.primary,
-                    const Color(0xFF1557C0),
-                    AppTheme.primaryDark,
-                  ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
+          gradient: isDark ? AppTheme.heroGradientDark : AppTheme.heroGradient,
         ),
         child: SafeArea(
           child: Column(
@@ -264,11 +249,7 @@ class _LogoWidget extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.primary, AppTheme.primaryDark],
-                ),
+                gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(

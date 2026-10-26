@@ -50,6 +50,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     cin = models.CharField(max_length=30, blank=True, default="", null=True)
     grade = models.CharField(max_length=100, blank=True, default="")
     speciality = models.CharField(max_length=200, blank=True, default="")
+    department = models.ForeignKey(
+        "Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="teachers",
+        verbose_name="Département",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]

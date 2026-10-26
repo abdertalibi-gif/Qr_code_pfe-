@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  const ACADEMIC_ORDER = ['niveau', 'semestre', 'filiere', 'module'];
+
   window.SessionForm = {
     isAdmin: false,
     userRole: null,
@@ -16,8 +18,19 @@
     _teacherClasses: [],
     _allClasses: [],
     _niveauCache: null,
-    _ml: null,
-    _sel: { niveau: [], semestre: [], filiere: [], module: [], classe: [] },
+    // Sélections académiques uniques (chaînes) + classes (multi, champ non concerné)
+    _sel: { niveau: '', semestre: '', filiere: '', module: '', classe: [] },
+    _enabled: { semestre: false, filiere: false, module: false, classe: false },
+    _refreshToken: 0,
+    // Champs académiques : menus déroulants natifs identiques à « Ajouter une classe ».
+    // Seul le champ classe conserve le composant multiselect existant.
+    _fields: {
+      niveau:   { select: 'sfNiveau',   placeholder: '— Sélectionner —' },
+      semestre: { select: 'sfSemestre', placeholder: "— Sélectionnez d'abord le niveau —" },
+      filiere:  { select: 'sfFiliere',  placeholder: "— Sélectionnez d'abord le semestre —" },
+      module:   { select: 'sfModule',   placeholder: "— Sélectionnez d'abord la filière —" },
+      classe:   { radios: 'sfClasseOptions', summary: 'sfClasseSelected', placeholder: '— Sélectionner une classe —' },
+    },
 
     /* ── PUBLIC API ── */
 
@@ -25,19 +38,19 @@
       this.isAdmin = options && options.isAdmin === true;
       this.userRole = (options && options.userRole) || null;
       this._ensureModal();
-      this._initMl();
+      this._bindEvents();
       var needsTeacher = this.userRole !== 'teacher';
       await Promise.all([
-        this._loadBlocksAmphis(),
         needsTeacher ? Promise.all([this._loadNiveauOptions(), this._loadTeachers()]) : Promise.resolve(),
       ]);
-      this._bindEvents();
+      if (!needsTeacher) await this._loadNiveauOptions();
+      this._renderNiveauSelect();
     },
 
     async open(classeId) {
-      this.classeId = classeId || null;
+      var requested = classeId || null;
       this._reset();
-      document.getElementById('sfDate').value = new Date().toISOString().split('T')[0];
+      this.classeId = requested;
 
       if (this.userRole === 'teacher') {
         await this._openForTeacher();
@@ -45,10 +58,6 @@
         await this._loadNiveauOptions();
         await this._loadAllClasses();
         await this._refreshFromOptions();
-        if (!this.blocksData.length || !this.amphiData.length) {
-          await this._loadBlocksAmphis();
-          this._populateLocationSelects();
-        }
       }
       openModal('modalSessionForm');
     },
@@ -60,12 +69,16 @@
         var session = await API.apiFetch('/sessions/' + id + '/');
         this._editingData = session;
         this._reset();
+        // `_reset()` efface l'état d'édition : on le rétablit ensuite pour que
+        // `_submit()` envoie bien un PATCH et non un POST.
+        this._editingId = id;
+        this._editingData = session;
 
         this.classeId = session.classe || null;
 
         document.getElementById('sfDate').value = session.date || '';
-        if (session.start_time) document.getElementById('sfStartTime').value = session.start_time;
-        if (session.end_time) document.getElementById('sfEndTime').value = session.end_time;
+        if (session.start_time) document.getElementById('sfStartTime').value = String(session.start_time).slice(0, 5);
+        if (session.end_time) document.getElementById('sfEndTime').value = String(session.end_time).slice(0, 5);
         if (session.session_type) document.getElementById('sfSessionType').value = session.session_type;
         if (session.teacher) document.getElementById('sfTeacher').value = session.teacher;
 
@@ -95,31 +108,15 @@
             await _this._loadNiveauOptions();
             await _this._loadAllClasses();
             var moduleId = session.module_id || classe.module_id;
-            _this._sel.niveau = classe.niveau_id ? [String(classe.niveau_id)] : [];
-            _this._sel.semestre = classe.semestre_id != null ? [String(classe.semestre_id)] : [];
-            _this._sel.filiere = classe.filiere_id != null ? [String(classe.filiere_id)] : [];
-            _this._sel.module = moduleId != null ? [String(moduleId)] : [];
+            _this._sel.niveau = classe.niveau_id ? String(classe.niveau_id) : '';
+            _this._sel.semestre = classe.semestre_id != null ? String(classe.semestre_id) : '';
+            _this._sel.filiere = classe.filiere_id != null ? String(classe.filiere_id) : '';
+            _this._sel.module = moduleId != null ? String(moduleId) : '';
             _this._sel.classe = [String(classe.id)];
             await _this._refreshNonTeacherLevel();
           } catch (e) {
             // cascade pre-fill failed, user can select manually
           }
-        }
-
-        if (session.location_type) {
-          document.getElementById('sfLocationType').value = session.location_type;
-          document.getElementById('sfLocationType').dispatchEvent(new Event('change'));
-          setTimeout(function () {
-            if (session.location_type === 'block') {
-              document.getElementById('sfBlock').value = session.block || '';
-              document.getElementById('sfBlock').dispatchEvent(new Event('change'));
-              setTimeout(function () {
-                document.getElementById('sfRoom').value = session.room || '';
-              }, 100);
-            } else if (session.location_type === 'amphitheater') {
-              document.getElementById('sfAmphi').value = session.amphitheater || '';
-            }
-          }, 200);
         }
 
       } catch (e) {
@@ -144,62 +141,31 @@
     <div class="modal-body">
       <div id="sfCascadeFields">
         <div class="field">
-          <label>Niveau</label>
-          <div class="multiselect">
-            <div class="multiselect-selected placeholder" id="sfNiveauSelected" data-ml-sel="niveau">— Sélectionner —</div>
-            <div class="multiselect-options" id="sfNiveauOptions" style="display:none"></div>
-          </div>
+          <label>Niveau <span class="req">*</span></label>
+          <select id="sfNiveau">
+            <option value="">— Sélectionner —</option>
+          </select>
         </div>
         <div class="field">
-          <label>Semestre</label>
-          <div class="multiselect">
-            <div class="multiselect-selected placeholder" id="sfSemestreSelected" data-ml-sel="semestre">— Sélectionnez d'abord un niveau —</div>
-            <div class="multiselect-options" id="sfSemestreOptions" style="display:none"></div>
-          </div>
+          <label>Semestre <span class="req">*</span></label>
+          <select id="sfSemestre" disabled>
+            <option value="">— Sélectionnez d'abord le niveau —</option>
+          </select>
         </div>
         <div class="field">
-          <label>Filière</label>
-          <div class="multiselect">
-            <div class="multiselect-selected placeholder" id="sfFiliereSelected" data-ml-sel="filiere">— Sélectionnez d'abord un semestre —</div>
-            <div class="multiselect-options" id="sfFiliereOptions" style="display:none"></div>
-          </div>
+          <label>Filière <span class="req">*</span></label>
+          <select id="sfFiliere" disabled>
+            <option value="">— Sélectionnez d'abord le semestre —</option>
+          </select>
         </div>
         <div class="field">
-          <label>Module</label>
-          <div class="multiselect">
-            <div class="multiselect-selected placeholder" id="sfModuleSelected" data-ml-sel="module">— Sélectionnez d'abord une filière —</div>
-            <div class="multiselect-options" id="sfModuleOptions" style="display:none"></div>
-          </div>
+          <label>Module <span class="req">*</span></label>
+          <select id="sfModule" disabled>
+            <option value="">— Sélectionnez d'abord la filière —</option>
+          </select>
         </div>
       </div>
-      <div class="field">
-        <label>Type de lieu</label>
-        <select id="sfLocationType">
-          <option value="">— Sélectionner —</option>
-          <option value="block">Bloc / Salle</option>
-          <option value="amphitheater">Amphithéâtre</option>
-        </select>
-        <p style="font-size:.75rem;color:var(--muted);margin:.25rem 0 0">
-          Lieu par défaut de la classe, modifiable en cas de changement exceptionnel.
-        </p>
-      </div>
-      <div id="sfBlockGroup" style="display:none">
-        <div class="field">
-          <label>Bloc</label>
-          <select id="sfBlock"><option value="">— Sélectionner un bloc —</option></select>
-        </div>
-        <div class="field">
-          <label>Salle</label>
-          <select id="sfRoom" disabled><option value="">— Sélectionner d'abord le bloc —</option></select>
-        </div>
-      </div>
-      <div id="sfAmphiGroup" style="display:none">
-        <div class="field">
-          <label>Amphithéâtre</label>
-          <select id="sfAmphi"><option value="">— Sélectionner un amphithéâtre —</option></select>
-        </div>
-      </div>
-      <div class="field" id="sfTeacherField"${isTeacher ? ' style="display:none"' : ''}>
+      <div id="sfTeacherField"${isTeacher ? ' style="display:none"' : ''}>
         <label>Enseignant</label>
         <select id="sfTeacher"><option value="">— Sélectionner —</option></select>
       </div>
@@ -221,22 +187,19 @@
         </div>
       </div>
       <div class="field">
-        <label>Date</label>
-        <input type="date" id="sfDate" />
+        <label>Heure de fin <span class="req">*</span></label>
+        <input type="time" id="sfEndTime" value="16:00" />
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-        <div class="field">
-          <label>Heure de début</label>
-          <input type="time" id="sfStartTime" value="14:00" />
-        </div>
-        <div class="field">
-          <label>Heure de fin</label>
-          <input type="time" id="sfEndTime" value="16:00" />
-        </div>
-      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin:0 0 .25rem">
+        🕒 Démarrage immédiat : la date et l'heure de début sont enregistrées
+        automatiquement par le serveur au moment de la création.
+      </p>
       <p style="font-size:.78rem;color:var(--muted);margin:0">
         Le QR ne peut être généré que pendant ce créneau. Après la fin, seules les statistiques et l'export restent disponibles.
       </p>
+      <!-- Valeurs internes (non modifiables) : démarrage réel / édition -->
+      <input type="hidden" id="sfDate" />
+      <input type="hidden" id="sfStartTime" />
     </div>
     <div class="modal-footer">
       <button class="btn outline" data-close="modalSessionForm">Annuler</button>
@@ -245,7 +208,6 @@
   </div>
 </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
-      // Bind close handlers for this dynamically created modal
       var modal = document.getElementById('modalSessionForm');
       modal.querySelectorAll('[data-close="modalSessionForm"]').forEach(function (el) {
         el.addEventListener('click', function () { closeModal('modalSessionForm'); });
@@ -255,18 +217,7 @@
       });
     },
 
-    /* ── MULTISELECT ── */
-
-    _initMl() {
-      if (this._ml) return;
-      this._ml = {
-        niveau:   { selId: 'sfNiveauSelected',   optId: 'sfNiveauOptions',   placeholder: '— Sélectionner —' },
-        semestre: { selId: 'sfSemestreSelected', optId: 'sfSemestreOptions', placeholder: "— Sélectionnez d'abord un niveau —" },
-        filiere:  { selId: 'sfFiliereSelected',  optId: 'sfFiliereOptions',  placeholder: "— Sélectionnez d'abord un semestre —" },
-        module:   { selId: 'sfModuleSelected',   optId: 'sfModuleOptions',   placeholder: "— Sélectionnez d'abord une filière —" },
-        classe:   { selId: 'sfClasseSelected',   optId: 'sfClasseOptions',   placeholder: '— Sélectionner une classe —' },
-      };
-    },
+    /* ── HELPERS ── */
 
     _esc(str) {
       return String(str == null ? '' : str).replace(/[&<>"']/g, function (ch) {
@@ -274,101 +225,188 @@
       });
     },
 
-    _toggleMlOptions(level) {
-      const f = this._ml[level];
+    _el(id) {
+      return document.getElementById(id);
+    },
+
+    _toggleOptions(level) {
+      var f = this._fields[level];
       if (!f) return;
-      const box = document.getElementById(f.optId);
+      var box = this._el(f.radios);
       if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
     },
 
-    _renderMlSummary(level) {
-      const f = this._ml[level];
+    _setEnabled(level, enabled) {
+      var f = this._fields[level];
       if (!f) return;
-      const el = document.getElementById(f.selId);
-      if (!el) return;
-      const vals = this._sel[level] || [];
-      if (!vals.length) {
-        el.textContent = f.placeholder;
-        el.classList.add('placeholder');
+      if (f.select) {
+        var sel = this._el(f.select);
+        if (sel) {
+          sel.disabled = !enabled;
+          if (!enabled) sel.value = '';
+        }
+        this._enabled[level] = !!enabled;
         return;
       }
-      el.classList.remove('placeholder');
-      const self = this;
-      el.innerHTML = vals.map(function (v) {
-        const o = (f.data || {})[String(v)];
-        const label = o ? o.label : ('#' + v);
-        return '<span class="multiselect-chip">' + self._esc(label) +
-          ' <span class="chip-x" data-ml-remove="' + level + '" data-ml-value="' + self._esc(v) + '">✕</span></span>';
+      // Composant multiselect (classe) : comportement existant conservé.
+      var box = this._el(f.radios);
+      var summary = f.summary ? this._el(f.summary) : null;
+      var wrap = summary ? summary.closest('.multiselect') : (box ? box.closest('.multiselect') : null);
+      if (wrap) {
+        wrap.style.opacity = enabled ? '' : '0.55';
+        wrap.style.pointerEvents = enabled ? '' : 'none';
+      }
+      if (summary) summary.classList.toggle('disabled', !enabled);
+      this._enabled[level] = !!enabled;
+    },
+
+    _placeholderOption(level) {
+      var f = this._fields[level];
+      return '<option value="">' + this._esc(f ? f.placeholder : '') + '</option>';
+    },
+
+    /**
+     * Remplit un menu déroulant académique avec les libellés réels de la base.
+     * Le premier choix est toujours le texte d'attente (valeur vide) ; une
+     * sélection devenue incompatible est effacée. Aucun "#undefined" possible.
+     */
+    _renderSelect(level, options) {
+      var f = this._fields[level];
+      if (!f || !f.select) return;
+      var sel = this._el(f.select);
+      if (!sel) return;
+
+      var opts = options || [];
+      var ids = new Set(opts.map(function (o) { return String(o.id); }));
+      if (this._sel[level] && !ids.has(String(this._sel[level]))) {
+        this._sel[level] = '';
+      }
+
+      var self = this;
+      var html = this._placeholderOption(level);
+      html += opts.map(function (o) {
+        var selected = String(self._sel[level]) === String(o.id) ? ' selected' : '';
+        var label = o.label != null ? o.label : (o.name != null ? o.name : '');
+        return '<option value="' + self._esc(o.id) + '"' + selected + '>' +
+          self._esc(label) + '</option>';
       }).join('');
+      sel.innerHTML = html;
+      sel.value = this._sel[level] ? String(this._sel[level]) : '';
     },
 
-    _setLevelOptions(level, opts) {
-      const f = this._ml[level];
+    _renderNiveauSelect(options) {
+      var opts = (options || this._niveauCache || []).map(function (n) {
+        return { id: String(n.id), label: n.label || n.name || String(n.id) };
+      });
+      this._renderSelect('niveau', opts);
+      var sel = this._el('sfNiveau');
+      if (sel) sel.disabled = false;
+    },
+
+    _resetLevel(level) {
+      this._sel[level] = '';
+      var f = this._fields[level];
       if (!f) return;
-      const self = this;
-      f.data = {};
-      opts.forEach(function (o) { f.data[String(o.id)] = o; });
-      const valid = new Set(opts.map(function (o) { return String(o.id); }));
-      this._sel[level] = (this._sel[level] || []).filter(function (v) { return valid.has(v); });
-      const box = document.getElementById(f.optId);
-      if (box) {
-        if (!opts.length) {
-          box.innerHTML = '<div class="multiselect-loading">Aucune option</div>';
-        } else {
-          box.innerHTML = opts.map(function (o) {
-            const checked = (self._sel[level] || []).indexOf(String(o.id)) !== -1 ? 'checked' : '';
-            return '<label class="multiselect-option"><input type="checkbox" value="' + self._esc(o.id) + '" ' + checked + '><span>' + self._esc(o.label) + '</span></label>';
-          }).join('');
+      if (f.select) {
+        var sel = this._el(f.select);
+        if (sel) {
+          sel.innerHTML = this._placeholderOption(level);
+          sel.value = '';
+          sel.disabled = true;
         }
+        this._enabled[level] = false;
+        return;
       }
-      this._renderMlSummary(level);
-    },
-
-    _syncSelectionsFromControls() {
-      const self = this;
-      ['niveau', 'semestre', 'filiere', 'module', 'classe'].forEach(function (lv) {
-        const box = document.getElementById(self._ml[lv].optId);
-        const vals = [];
-        if (box) {
-          box.querySelectorAll('input[type=checkbox]').forEach(function (inp) {
-            if (inp.checked) vals.push(inp.value);
-          });
-        }
-        self._sel[lv] = vals;
-      });
-    },
-
-    _removeMlValue(level, value) {
-      this._sel[level] = (this._sel[level] || []).filter(function (v) { return v !== value; });
-      const f = this._ml[level];
-      if (f) {
-        const box = document.getElementById(f.optId);
-        if (box) {
-          box.querySelectorAll('input[type=checkbox]').forEach(function (inp) {
-            if (inp.value === value) inp.checked = false;
-          });
-        }
+      var box = this._el(f.radios);
+      if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+      var summary = f.summary ? this._el(f.summary) : null;
+      if (summary) {
+        summary.textContent = f.placeholder;
+        summary.classList.add('placeholder');
       }
-      this._renderMlSummary(level);
-      this._refreshFromOptions();
-      this._syncClasseId();
+      this._setEnabled(level, false);
     },
 
-    _syncClasseId() {
-      const c = this._sel.classe || [];
-      this.classeId = c.length ? Number(c[0]) : null;
-    },
-
-    _clearAllMl() {
-      const self = this;
-      if (!this._ml) return;
-      Object.keys(this._ml).forEach(function (lv) {
-        self._sel[lv] = [];
-        const box = document.getElementById(self._ml[lv].optId);
-        if (box) { box.innerHTML = ''; box.style.display = 'none'; }
-        self._renderMlSummary(lv);
-      });
+    _resetClasse() {
+      this._sel.classe = [];
       this.classeId = null;
+      var f = this._fields.classe;
+      var box = this._el(f.radios);
+      if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+      var summary = this._el(f.summary);
+      if (summary) {
+        summary.textContent = f.placeholder;
+        summary.classList.add('placeholder');
+      }
+      this._enabled.classe = false;
+    },
+
+    _syncClasseFromControls(list) {
+      var box = this._el(this._fields.classe.radios);
+      var vals = [];
+      if (box) {
+        box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+          if (cb.checked) vals.push(cb.value);
+        });
+      }
+      this._sel.classe = vals;
+      this.classeId = vals.length ? Number(vals[0]) : null;
+      var summary = this._el(this._fields.classe.summary);
+      if (!summary) return;
+      if (!vals.length) {
+        summary.textContent = this._fields.classe.placeholder;
+        summary.classList.add('placeholder');
+        return;
+      }
+      var names = vals.map(function (v) {
+        var c = (list || []).find(function (x) { return String(x.id) === String(v); });
+        return c && c.name ? String(c.name) : '';
+      }).filter(function (n) { return n; });
+      if (!names.length) {
+        summary.textContent = this._fields.classe.placeholder;
+        summary.classList.add('placeholder');
+        return;
+      }
+      summary.textContent = names.join(', ');
+      summary.classList.remove('placeholder');
+    },
+
+    _renderClasseList(list) {
+      var self = this;
+      var box = this._el(this._fields.classe.radios);
+      if (!box) return;
+      var ids = new Set((list || []).map(function (c) { return String(c.id); }));
+      this._sel.classe = (this._sel.classe || []).filter(function (id) { return ids.has(String(id)); });
+      if (!list || !list.length) {
+        box.innerHTML = '<div class="multiselect-loading">Aucune classe disponible pour cette combinaison</div>';
+      } else {
+        box.innerHTML = list.map(function (c) {
+          var checked = self._sel.classe.indexOf(String(c.id)) !== -1 ? ' checked' : '';
+          return '<label class="multiselect-option">' +
+            '<input type="checkbox" value="' + self._esc(c.id) + '"' + checked + '>' +
+            '<span>' + self._esc(c.name || ('Classe #' + c.id)) + '</span></label>';
+        }).join('');
+        box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            self._syncClasseFromControls(list);
+          });
+        });
+      }
+      this._enabled.classe = true;
+      this._syncClasseFromControls(list);
+    },
+
+    _onLevelChange(level, value) {
+      this._sel[level] = value || '';
+      var idx = ACADEMIC_ORDER.indexOf(level);
+      if (idx >= 0) {
+        var self = this;
+        ACADEMIC_ORDER.slice(idx + 1).forEach(function (lv) {
+          self._resetLevel(lv);
+        });
+      }
+      this._resetClasse();
+      this._refreshFromOptions();
     },
 
     /* ── DATA LOADING ── */
@@ -376,7 +414,7 @@
     async _loadNiveauOptions() {
       if (this._niveauCache) return this._niveauCache;
       try {
-        const data = await API.apiFetch('/curriculum/niveaux/');
+        var data = await API.apiFetch('/curriculum/niveaux/');
         this._niveauCache = Array.isArray(data) ? data : [];
       } catch (e) {
         this._niveauCache = [];
@@ -385,26 +423,65 @@
       return this._niveauCache;
     },
 
+    async _fetchSemestres(niveau) {
+      try {
+        var data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveau));
+        return (Array.isArray(data) ? data : []).map(function (s) {
+          return { id: String(s.id), label: s.name };
+        });
+      } catch (e) {
+        showToast('Erreur chargement semestres: ' + e.message, 'error');
+        return [];
+      }
+    },
+
+    async _fetchFilieres(niveau, semestreId) {
+      try {
+        var params = new URLSearchParams({ semestre_id: semestreId, niveau: niveau });
+        var data = await API.apiFetch('/curriculum/filieres/?' + params.toString());
+        return (Array.isArray(data) ? data : []).map(function (f) {
+          return { id: String(f.id), label: f.name };
+        });
+      } catch (e) {
+        showToast('Erreur chargement filières: ' + e.message, 'error');
+        return [];
+      }
+    },
+
+    async _fetchModules(filiereId, semestreId) {
+      try {
+        var params = new URLSearchParams({ filiere_id: filiereId });
+        if (semestreId) params.set('semestre_id', semestreId);
+        var data = await API.apiFetch('/curriculum/modules/?' + params.toString());
+        return (Array.isArray(data) ? data : []).map(function (m) {
+          return { id: String(m.id), label: m.name };
+        });
+      } catch (e) {
+        showToast('Erreur chargement modules: ' + e.message, 'error');
+        return [];
+      }
+    },
+
     _distinct(list, keyFn, labelFn) {
-      const map = new Map();
+      var map = new Map();
       list.forEach(function (x) {
-        const k = keyFn(x);
+        var k = keyFn(x);
         if (k === null || k === undefined || k === '') return;
-        const kk = String(k);
+        var kk = String(k);
         if (!map.has(kk)) map.set(kk, labelFn(x) || kk);
       });
       return Array.from(map, function (entry) { return { id: entry[0], label: entry[1] }; });
     },
 
     _distinctNiveau(all) {
-      const seen = new Set();
-      const out = [];
-      const cache = this._niveauCache || [];
-      const byId = {};
-      cache.forEach(function (n) { byId[String(n.id)] = n.label; });
+      var seen = new Set();
+      var out = [];
+      var cache = this._niveauCache || [];
+      var byId = {};
+      cache.forEach(function (n) { byId[String(n.id)] = n.label || n.name; });
       all.forEach(function (c) {
         if (!c.niveau_id) return;
-        const k = String(c.niveau_id);
+        var k = String(c.niveau_id);
         if (seen.has(k)) return;
         seen.add(k);
         out.push({ id: k, label: byId[k] || c.niveau_id });
@@ -413,133 +490,130 @@
     },
 
     _refreshFromOptions() {
-      if (this.userRole === 'teacher') this._refreshTeacherCascade();
-      else this._refreshNonTeacherLevel();
-    },
-
-    _refreshTeacherCascade() {
-      const all = this._teacherClasses || [];
-      const s = this._sel;
-      const hitN = function (v) { return s.niveau.indexOf(String(v)) !== -1; };
-      const hitS = function (v) { return s.semestre.indexOf(String(v)) !== -1; };
-      const hitF = function (v) { return s.filiere.indexOf(String(v)) !== -1; };
-      const hitM = function (v) { return s.module.indexOf(String(v)) !== -1; };
-
-      // Niveau : toujours la liste des niveaux affectés (premier niveau, rien ne le filtre)
-      this._setLevelOptions('niveau', this._distinctNiveau(all));
-
-      // Semestre : uniquement si au moins un niveau est coché
-      if (!s.niveau.length) {
-        this._setLevelOptions('semestre', []);
-        this._setLevelOptions('filiere', []);
-        this._setLevelOptions('module', []);
-        this._setLevelOptions('classe', []);
-        return;
-      }
-      const semList = all.filter(function (c) { return hitN(c.niveau_id); });
-      this._setLevelOptions('semestre', this._distinct(semList, function (c) { return c.semestre_id; }, function (c) { return c.semestre_name; }));
-
-      // Filière : uniquement si au moins un semestre est coché
-      if (!s.semestre.length) {
-        this._setLevelOptions('filiere', []);
-        this._setLevelOptions('module', []);
-        this._setLevelOptions('classe', []);
-        return;
-      }
-      const filList = all.filter(function (c) { return hitN(c.niveau_id) && hitS(c.semestre_id); });
-      this._setLevelOptions('filiere', this._distinct(filList, function (c) { return c.filiere_id; }, function (c) { return c.filiere_name; }));
-
-      // Module : uniquement si au moins une filière est cochée
-      if (!s.filiere.length) {
-        this._setLevelOptions('module', []);
-        this._setLevelOptions('classe', []);
-        return;
-      }
-      const modList = all.filter(function (c) { return hitN(c.niveau_id) && hitS(c.semestre_id) && hitF(c.filiere_id); });
-      this._setLevelOptions('module', this._distinct(modList, function (c) { return c.module_id; }, function (c) { return c.module_name; }));
-
-      // Classe : uniquement si au moins un module est coché
-      if (!s.module.length) {
-        this._setLevelOptions('classe', []);
-        return;
-      }
-      const clsList = all.filter(function (c) { return hitN(c.niveau_id) && hitS(c.semestre_id) && hitF(c.filiere_id) && hitM(c.module_id); });
-      this._setLevelOptions('classe', clsList.map(function (c) { return { id: c.id, label: c.name || ('Classe #' + c.id) }; }));
+      if (this.userRole === 'teacher') return this._refreshTeacherCascade();
+      return this._refreshNonTeacherLevel();
     },
 
     async _refreshNonTeacherLevel() {
-      const s = this._sel;
-      this._setLevelOptions('niveau', (this._niveauCache || []).map(function (n) { return { id: String(n.id), label: n.label }; }));
-      if (!s.niveau.length) {
-        this._setLevelOptions('semestre', []);
-        this._setLevelOptions('filiere', []);
-        this._setLevelOptions('module', []);
+      var token = ++this._refreshToken;
+      this._renderNiveauSelect();
+      var niveau = this._sel.niveau;
+      if (!niveau) {
+        this._resetLevel('semestre');
+        this._resetLevel('filiere');
+        this._resetLevel('module');
+        this._resetClasse();
         return;
       }
-      const semMap = new Map();
-      for (let i = 0; i < s.niveau.length; i++) {
-        const nId = s.niveau[i];
-        try {
-          const data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(nId));
-          (Array.isArray(data) ? data : []).forEach(function (x) { semMap.set(String(x.id), x.name); });
-        } catch (e) { /* ignore nested errors */ }
-      }
-      this._setLevelOptions('semestre', Array.from(semMap, function (e) { return { id: e[0], label: e[1] }; }));
-      if (!s.semestre.length) {
-        this._setLevelOptions('filiere', []);
-        this._setLevelOptions('module', []);
-        return;
-      }
-      const filMap = new Map();
-      for (let nIdx = 0; nIdx < s.niveau.length; nIdx++) {
-        const nId = s.niveau[nIdx];
-        for (let sIdx = 0; sIdx < s.semestre.length; sIdx++) {
-          const params = new URLSearchParams({ semestre_id: s.semestre[sIdx], niveau: nId });
-          try {
-            const data = await API.apiFetch('/curriculum/filieres/?' + params.toString());
-            (Array.isArray(data) ? data : []).forEach(function (f) { filMap.set(String(f.id), f.name); });
-          } catch (e) { /* ignore nested errors */ }
-        }
-      }
-      this._setLevelOptions('filiere', Array.from(filMap, function (e) { return { id: e[0], label: e[1] }; }));
-      if (!s.filiere.length) {
-        this._setLevelOptions('module', []);
-        return;
-      }
-      const modMap = new Map();
-      for (let i = 0; i < s.filiere.length; i++) {
-        try {
-          const data = await API.apiFetch('/curriculum/modules/?filiere_id=' + encodeURIComponent(s.filiere[i]));
-          (Array.isArray(data) ? data : []).forEach(function (m) { modMap.set(String(m.id), m.name); });
-        } catch (e) { /* ignore nested errors */ }
-      }
-      this._setLevelOptions('module', Array.from(modMap, function (e) { return { id: e[0], label: e[1] }; }));
 
-      // Classe : uniquement si au moins un module est coché — filtrage strict sur
-      // les classes réelles conformes à la combinaison (AND inter-niveaux).
-      if (!s.module.length) {
-        this._setLevelOptions('classe', []);
+      var sems = await this._fetchSemestres(niveau);
+      if (token !== this._refreshToken) return;
+      this._renderSelect('semestre', sems);
+      this._setEnabled('semestre', true);
+      if (!this._sel.semestre) {
+        this._resetLevel('filiere');
+        this._resetLevel('module');
+        this._resetClasse();
         return;
       }
-      const all = this._allClasses || [];
-      const hitN2 = function (v) { return s.niveau.indexOf(String(v)) !== -1; };
-      const hitS2 = function (v) { return s.semestre.indexOf(String(v)) !== -1; };
-      const hitF2 = function (v) { return s.filiere.indexOf(String(v)) !== -1; };
-      const hitM2 = function (v) { return s.module.indexOf(String(v)) !== -1; };
-      const clsList = all.filter(function (c) {
-        return hitN2(c.niveau_id) && hitS2(c.semestre_id) && hitF2(c.filiere_id) && hitM2(c.module_id);
+
+      var filieres = await this._fetchFilieres(niveau, this._sel.semestre);
+      if (token !== this._refreshToken) return;
+      this._renderSelect('filiere', filieres);
+      this._setEnabled('filiere', true);
+      if (!this._sel.filiere) {
+        this._resetLevel('module');
+        this._resetClasse();
+        return;
+      }
+
+      var modules = await this._fetchModules(this._sel.filiere, this._sel.semestre);
+      if (token !== this._refreshToken) return;
+      this._renderSelect('module', modules);
+      this._setEnabled('module', true);
+      if (!this._sel.module) {
+        this._resetClasse();
+        return;
+      }
+
+      this._renderClasseList(this._filterClasses());
+    },
+
+    _filterClasses() {
+      var s = this._sel;
+      return (this._allClasses || []).filter(function (c) {
+        return (!s.niveau || String(c.niveau_id) === String(s.niveau)) &&
+          (!s.semestre || String(c.semestre_id) === String(s.semestre)) &&
+          (!s.filiere || String(c.filiere_id) === String(s.filiere)) &&
+          (!s.module || String(c.module_id) === String(s.module));
       });
-      this._setLevelOptions('classe', clsList.map(function (c) { return { id: c.id, label: c.name || ('Classe #' + c.id) }; }));
+    },
+
+    _refreshTeacherCascade() {
+      var all = this._teacherClasses || [];
+      this._renderNiveauSelect(this._distinctNiveau(all));
+      var niveau = this._sel.niveau;
+      if (!niveau) {
+        this._resetLevel('semestre');
+        this._resetLevel('filiere');
+        this._resetLevel('module');
+        this._resetClasse();
+        return;
+      }
+
+      var self = this;
+      var semList = all.filter(function (c) { return String(c.niveau_id) === String(niveau); });
+      this._renderSelect('semestre', this._distinct(semList, function (c) { return c.semestre_id; }, function (c) { return c.semestre_name; }));
+      this._setEnabled('semestre', true);
+      if (!this._sel.semestre) {
+        this._resetLevel('filiere');
+        this._resetLevel('module');
+        this._resetClasse();
+        return;
+      }
+
+      var filList = all.filter(function (c) {
+        return String(c.niveau_id) === String(niveau) && String(c.semestre_id) === String(self._sel.semestre);
+      });
+      this._renderSelect('filiere', this._distinct(filList, function (c) { return c.filiere_id; }, function (c) { return c.filiere_name; }));
+      this._setEnabled('filiere', true);
+      if (!this._sel.filiere) {
+        this._resetLevel('module');
+        this._resetClasse();
+        return;
+      }
+
+      var modList = all.filter(function (c) {
+        return String(c.niveau_id) === String(niveau) &&
+          String(c.semestre_id) === String(self._sel.semestre) &&
+          String(c.filiere_id) === String(self._sel.filiere);
+      });
+      this._renderSelect('module', this._distinct(modList, function (c) { return c.module_id; }, function (c) { return c.module_name; }));
+      this._setEnabled('module', true);
+      if (!this._sel.module) {
+        this._resetClasse();
+        return;
+      }
+
+      var clsList = all.filter(function (c) {
+        return String(c.niveau_id) === String(niveau) &&
+          String(c.semestre_id) === String(self._sel.semestre) &&
+          String(c.filiere_id) === String(self._sel.filiere) &&
+          String(c.module_id) === String(self._sel.module);
+      });
+      this._renderClasseList(clsList.map(function (c) {
+        return { id: c.id, name: c.name || ('Classe #' + c.id) };
+      }));
     },
 
     async _loadBlocksAmphis() {
       try {
-        const [blocks, amphis] = await Promise.all([
+        var res = await Promise.all([
           API.apiFetch('/blocks/'),
           API.apiFetch('/amphitheaters/'),
         ]);
-        this.blocksData = Array.isArray(blocks) ? blocks : [];
-        this.amphiData = Array.isArray(amphis) ? amphis : [];
+        this.blocksData = Array.isArray(res[0]) ? res[0] : [];
+        this.amphiData = Array.isArray(res[1]) ? res[1] : [];
         this._populateLocationSelects();
       } catch (e) {
         this.blocksData = [];
@@ -549,30 +623,60 @@
 
     /* ── AVAILABILITY ── */
 
+    // Démarrage immédiat : valeurs locales indicatives. Le serveur reste
+    // l'autorité et enregistre sa propre date/heure au moment de la création.
+    _nowDateValue() {
+      var now = new Date();
+      return now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+    },
+
+    _nowTimeValue() {
+      var now = new Date();
+      return String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0');
+    },
+
+    _defaultEndTimeValue() {
+      var now = new Date();
+      var end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      if (end.getFullYear() !== now.getFullYear() ||
+          end.getMonth() !== now.getMonth() ||
+          end.getDate() !== now.getDate()) {
+        return '23:59';
+      }
+      return String(end.getHours()).padStart(2, '0') + ':' +
+        String(end.getMinutes()).padStart(2, '0');
+    },
+
+    _setImmediateStartFields() {
+      document.getElementById('sfDate').value = this._nowDateValue();
+      document.getElementById('sfStartTime').value = this._nowTimeValue();
+    },
+
     async _fetchAvailableLocations() {
-      const date = document.getElementById('sfDate').value;
-      const startTime = document.getElementById('sfStartTime').value;
-      const endTime = document.getElementById('sfEndTime').value;
+      if (!this._editingId) this._setImmediateStartFields();
+      var date = document.getElementById('sfDate').value;
+      var startTime = document.getElementById('sfStartTime').value;
+      var endTime = document.getElementById('sfEndTime').value;
       if (!date || !startTime || !endTime) return;
 
       try {
-        const params = new URLSearchParams({
+        var params = new URLSearchParams({
           date: date,
           start_time: startTime,
           end_time: endTime,
         });
-        const data = await API.apiFetch('/sessions/available-locations/?' + params.toString());
+        var data = await API.apiFetch('/sessions/available-locations/?' + params.toString());
         if (!data) return;
 
         this._availableRooms = data.rooms || [];
         this._availableBlocks = data.blocks || [];
         this._availableAmphis = data.amphitheaters || [];
 
-        const locType = document.getElementById('sfLocationType').value;
-        if (locType === 'block') {
-          this._populateLocationSelects();
-          this._validateCurrentSelection();
-        } else if (locType === 'amphitheater') {
+        var locType = document.getElementById('sfLocationType').value;
+        if (locType === 'block' || locType === 'amphitheater') {
           this._populateLocationSelects();
           this._validateCurrentSelection();
         }
@@ -585,18 +689,18 @@
     },
 
     _validateCurrentSelection() {
-      const locType = document.getElementById('sfLocationType').value;
+      var locType = document.getElementById('sfLocationType').value;
       if (locType === 'block') {
-        const blockSel = document.getElementById('sfBlock');
-        const roomSel = document.getElementById('sfRoom');
+        var blockSel = document.getElementById('sfBlock');
+        var roomSel = document.getElementById('sfRoom');
         if (blockSel.value && this._availableBlocks) {
-          const block = this._availableBlocks.find(function (b) { return String(b.id) === blockSel.value; });
+          var block = this._availableBlocks.find(function (b) { return String(b.id) === blockSel.value; });
           if (block && roomSel.value && !block.rooms.some(function (r) { return String(r.id) === roomSel.value; })) {
             roomSel.value = '';
           }
         }
       } else if (locType === 'amphitheater') {
-        const sel = document.getElementById('sfAmphi');
+        var sel = document.getElementById('sfAmphi');
         if (sel.value && this._availableAmphis && !this._availableAmphis.some(function (a) { return String(a.id) === sel.value; })) {
           sel.value = '';
         }
@@ -604,13 +708,13 @@
     },
 
     async _loadTeachers() {
-      const sel = document.getElementById('sfTeacher');
+      var sel = document.getElementById('sfTeacher');
       sel.innerHTML = '<option value="">— Sélectionner —</option>';
       try {
-        const data = await API.apiFetch('/teachers/');
+        var data = await API.apiFetch('/teachers/');
         this.teachersData = Array.isArray(data) ? data : [];
         this.teachersData.forEach(function (t) {
-          const opt = document.createElement('option');
+          var opt = document.createElement('option');
           opt.value = t.id;
           opt.textContent = t.full_name + (t.email ? ' (' + t.email + ')' : '');
           sel.appendChild(opt);
@@ -622,13 +726,8 @@
 
     async _openForTeacher() {
       var _this = this;
-      const cFields = document.getElementById('sfCascadeFields');
+      var cFields = document.getElementById('sfCascadeFields');
       if (cFields) cFields.style.display = 'block';
-
-      if (!this.blocksData.length || !this.amphiData.length) {
-        await this._loadBlocksAmphis();
-        this._populateLocationSelects();
-      }
 
       await this._loadTeacherClasses();
 
@@ -637,13 +736,13 @@
         return;
       }
 
-      const tcField = document.getElementById('sfTeacherClassField');
+      var tcField = document.getElementById('sfTeacherClassField');
       if (tcField) tcField.style.display = 'block';
 
       await this._loadNiveauOptions();
 
       if (this.classeId != null && this.classeId) {
-        const cls = this._teacherClasses.find(function (c) { return c.id === _this.classeId; });
+        var cls = this._teacherClasses.find(function (c) { return c.id === _this.classeId; });
         if (cls) {
           await this._preselectClassCombo(cls);
           return;
@@ -656,10 +755,7 @@
         return;
       }
 
-      // Plusieurs classes : l'enseignant coche
-      // niveau → semestre → filière → module → type de séance → classe(s).
       this._refreshTeacherCascade();
-      this._syncClasseId();
     },
 
     async _loadAllClasses() {
@@ -686,10 +782,10 @@
 
     async _preselectClassCombo(cls) {
       await this._loadNiveauOptions();
-      this._sel.niveau = cls.niveau_id ? [String(cls.niveau_id)] : [];
-      this._sel.semestre = cls.semestre_id != null ? [String(cls.semestre_id)] : [];
-      this._sel.filiere = cls.filiere_id != null ? [String(cls.filiere_id)] : [];
-      this._sel.module = cls.module_id != null ? [String(cls.module_id)] : [];
+      this._sel.niveau = cls.niveau_id ? String(cls.niveau_id) : '';
+      this._sel.semestre = cls.semestre_id != null ? String(cls.semestre_id) : '';
+      this._sel.filiere = cls.filiere_id != null ? String(cls.filiere_id) : '';
+      this._sel.module = cls.module_id != null ? String(cls.module_id) : '';
       this._sel.classe = [String(cls.id)];
       this.classeId = cls.id;
       this._refreshTeacherCascade();
@@ -759,9 +855,9 @@
     /* ── UI HELPERS ── */
 
     _populateLocationSelects() {
-      const locType = document.getElementById('sfLocationType').value;
-      const blockSel = document.getElementById('sfBlock');
-      const currentBlock = blockSel.value;
+      var locType = document.getElementById('sfLocationType').value;
+      var blockSel = document.getElementById('sfBlock');
+      var currentBlock = blockSel.value;
       blockSel.innerHTML = '<option value="">— Sélectionner un bloc —</option>';
 
       var blocks = this._availableBlocks;
@@ -774,7 +870,7 @@
       blocks.forEach(function (b) {
         if (b.rooms && b.rooms.length) {
           hasRooms = true;
-          const opt = document.createElement('option');
+          var opt = document.createElement('option');
           opt.value = b.id;
           opt.textContent = b.name + ' (' + b.rooms.length + ' salle' + (b.rooms.length > 1 ? 's' : '') + ' disponible' + (b.rooms.length > 1 ? 's' : '') + ')';
           blockSel.appendChild(opt);
@@ -789,12 +885,12 @@
       }
       blockSel.dispatchEvent(new Event('change'));
 
-      const amphiSel = document.getElementById('sfAmphi');
-      const currentAmphi = amphiSel.value;
+      var amphiSel = document.getElementById('sfAmphi');
+      var currentAmphi = amphiSel.value;
       amphiSel.innerHTML = '<option value="">— Sélectionner un amphithéâtre —</option>';
       var amphis = this._availableAmphis || this.amphiData;
       (amphis || []).forEach(function (a) {
-        const opt = document.createElement('option');
+        var opt = document.createElement('option');
         opt.value = a.id;
         opt.textContent = a.name;
         amphiSel.appendChild(opt);
@@ -809,25 +905,20 @@
     },
 
     _reset() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const d = now.getDate();
-      document.getElementById('sfDate').value = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-      document.getElementById('sfStartTime').value = '14:00';
-      document.getElementById('sfEndTime').value = '16:00';
-      document.getElementById('sfLocationType').value = '';
-      document.getElementById('sfBlockGroup').style.display = 'none';
-      document.getElementById('sfAmphiGroup').style.display = 'none';
-      this._resetLocationFields();
+      this._setImmediateStartFields();
+      document.getElementById('sfEndTime').value = this._defaultEndTimeValue();
       document.getElementById('sfSessionType').value = 'Cours';
-      this._availableRooms = null;
-      this._availableBlocks = null;
-      this._availableAmphis = null;
-      this._populateLocationSelects();
       this._editingId = null;
       this._editingData = null;
-      this._clearAllMl();
+
+      // Réinitialisation complète de la cascade académique
+      this._sel = { niveau: '', semestre: '', filiere: '', module: '', classe: [] };
+      this._resetLevel('semestre');
+      this._resetLevel('filiere');
+      this._resetLevel('module');
+      this._resetClasse();
+      this._renderNiveauSelect();
+
       var tcField = document.getElementById('sfTeacherClassField');
       if (tcField) tcField.style.display = 'block';
       var tEl = document.querySelector('#modalSessionForm .modal-header h3');
@@ -839,81 +930,29 @@
     /* ── EVENT BINDING ── */
 
     _bindEvents() {
-      const self = this;
+      var self = this;
 
-      ['niveau', 'semestre', 'filiere', 'module', 'classe'].forEach(function (lv) {
-        const box = document.getElementById(self._ml[lv].optId);
-        if (box) {
-          box.addEventListener('change', function () {
-            self._syncSelectionsFromControls();
-            self._refreshFromOptions();
-            self._syncClasseId();
+      // Menus déroulants académiques : Niveau → Semestre → Filière → Module
+      ['niveau', 'semestre', 'filiere', 'module'].forEach(function (level) {
+        var f = self._fields[level];
+        var selEl = f && f.select ? document.getElementById(f.select) : null;
+        if (selEl) {
+          selEl.addEventListener('change', function () {
+            self._onLevelChange(level, selEl.value);
           });
         }
       });
 
-      const modal = document.getElementById('modalSessionForm');
+      var modal = document.getElementById('modalSessionForm');
       if (modal) {
         modal.addEventListener('click', function (e) {
-          const chip = e.target.closest('.chip-x');
-          if (chip) {
-            e.stopPropagation();
-            const lv = chip.getAttribute('data-ml-remove');
-            const val = chip.getAttribute('data-ml-value');
-            if (lv && val) self._removeMlValue(lv, val);
-            return;
+          var openEl = e.target.closest('[data-ml-sel]');
+          if (openEl) {
+            var lv = openEl.getAttribute('data-ml-sel');
+            if (self._enabled[lv]) self._toggleOptions(lv);
           }
-          const openEl = e.target.closest('[data-ml-sel]');
-          if (openEl) self._toggleMlOptions(openEl.getAttribute('data-ml-sel'));
         });
       }
-
-      document.getElementById('sfLocationType').addEventListener('change', function () {
-        const val = this.value;
-        document.getElementById('sfBlockGroup').style.display = val === 'block' ? 'block' : 'none';
-        document.getElementById('sfAmphiGroup').style.display = val === 'amphitheater' ? 'block' : 'none';
-        self._populateLocationSelects();
-        self._fetchAvailableLocations();
-      });
-
-      // Re-check availability when date or time changes
-      ['sfDate', 'sfStartTime', 'sfEndTime'].forEach(function (id) {
-        document.getElementById(id).addEventListener('change', function () {
-          const locType = document.getElementById('sfLocationType').value;
-          if (locType) {
-            self._populateLocationSelects();
-            self._fetchAvailableLocations();
-          }
-        });
-      });
-
-      document.getElementById('sfBlock').addEventListener('change', function () {
-        const blockId = parseInt(this.value);
-        const roomSel = document.getElementById('sfRoom');
-        roomSel.innerHTML = '<option value="">— Sélectionner —</option>';
-        roomSel.disabled = !blockId;
-        if (blockId) {
-          var rooms = null;
-          if (self._availableBlocks) {
-            var ab = self._availableBlocks.find(function (b) { return b.id === blockId; });
-            if (ab) rooms = ab.rooms;
-          } else {
-            var fb = self.blocksData.find(function (b) { return b.id === blockId; });
-            if (fb) rooms = fb.rooms;
-          }
-          if (rooms && rooms.length) {
-            rooms.forEach(function (r) {
-              const opt = document.createElement('option');
-              opt.value = r.id;
-              opt.textContent = r.name;
-              roomSel.appendChild(opt);
-            });
-          } else if (self._availableBlocks) {
-            roomSel.innerHTML = '<option value="">— Aucune salle disponible —</option>';
-            roomSel.querySelector('option').disabled = true;
-          }
-        }
-      });
 
       document.getElementById('sfSubmit').addEventListener('click', function () { self._submit(); });
     },
@@ -922,17 +961,19 @@
 
     async _submit() {
       var _this = this;
-      const s = this._sel;
-      const moduleIds = s.module || [];
-      const locType = document.getElementById('sfLocationType').value;
-      const date = document.getElementById('sfDate').value;
-      const startTime = document.getElementById('sfStartTime').value;
-      const endTime = document.getElementById('sfEndTime').value;
+      var s = this._sel;
+      var isEditing = !!this._editingId;
+      if (!isEditing) this._setImmediateStartFields();
+      var date = document.getElementById('sfDate').value;
+      var startTime = document.getElementById('sfStartTime').value;
+      var endTime = document.getElementById('sfEndTime').value;
 
-      if (!moduleIds.length) {
-        showToast('Veuillez sélectionner au moins un module.', 'error');
-        return;
-      }
+      // Cascade académique obligatoire et unique
+      if (!s.niveau) { showToast('Veuillez sélectionner un niveau.', 'error'); return; }
+      if (!s.semestre) { showToast('Veuillez sélectionner un semestre.', 'error'); return; }
+      if (!s.filiere) { showToast('Veuillez sélectionner une filière.', 'error'); return; }
+      if (!s.module) { showToast('Veuillez sélectionner un module.', 'error'); return; }
+
       if (this.userRole === 'teacher' && !(s.classe && s.classe.length)) {
         showToast('Veuillez sélectionner au moins une classe.', 'error');
         return;
@@ -941,70 +982,56 @@
         showToast('Veuillez sélectionner au moins une classe.', 'error');
         return;
       }
-      if (!date || !startTime || !endTime) { showToast('Date et horaires obligatoires.', 'error'); return; }
-      if (endTime <= startTime) { showToast("L'heure de fin doit être après l'heure de début.", 'error'); return; }
-      if (!locType) { showToast('Veuillez sélectionner un type de lieu.', 'error'); return; }
+      if (!endTime) { showToast("L'heure de fin est obligatoire.", 'error'); return; }
+      var referenceStart = isEditing ? startTime : this._nowTimeValue();
+      if (endTime <= referenceStart) {
+        showToast("L'heure de fin doit être après l'heure de début (démarrage immédiat).", 'error');
+        return;
+      }
 
-      const bodyCore = {
-        date: date,
-        start_time: startTime,
+      var bodyCore = {
         end_time: endTime,
-        location_type: locType,
         session_type: document.getElementById('sfSessionType').value,
       };
-
-      if (locType === 'block') {
-        const blockId = document.getElementById('sfBlock').value;
-        const roomId = document.getElementById('sfRoom').value;
-        if (!blockId) { showToast('Veuillez sélectionner un bloc.', 'error'); return; }
-        if (!roomId) { showToast('Veuillez sélectionner une salle.', 'error'); return; }
-        if (this._availableBlocks) {
-          const ab = this._availableBlocks.find(function (b) { return String(b.id) === blockId; });
-          if (!ab || !ab.rooms.some(function (r) { return String(r.id) === roomId; })) {
-            showToast("Cette salle n'est plus disponible pour ce créneau.", 'error');
-            return;
-          }
-        }
-        bodyCore.block = Number(blockId);
-        bodyCore.room = Number(roomId);
-      } else if (locType === 'amphitheater') {
-        const amphiId = document.getElementById('sfAmphi').value;
-        if (!amphiId) { showToast('Veuillez sélectionner un amphithéâtre.', 'error'); return; }
-        if (this._availableAmphis && !this._availableAmphis.some(function (a) { return String(a.id) === amphiId; })) {
-          showToast("Cet amphithéâtre n'est plus disponible pour ce créneau.", 'error');
-          return;
-        }
-        bodyCore.amphitheater = Number(amphiId);
+      if (isEditing) {
+        // Édition : conserver la date et l'heure de début existantes.
+        bodyCore.date = date;
+        bodyCore.start_time = startTime;
       }
 
       if (this.userRole !== 'teacher') {
-        const teacherVal = document.getElementById('sfTeacher').value;
+        var teacherVal = document.getElementById('sfTeacher').value;
         if (!teacherVal) { showToast('Veuillez sélectionner un enseignant.', 'error'); return; }
         bodyCore.teacher = Number(teacherVal);
       }
 
-      const isEditing = !!this._editingId;
+      // Combinaison académique réellement sélectionnée (validée aussi côté serveur)
+      var academic = {
+        niveau: s.niveau,
+        semestre_id: Number(s.semestre),
+        filiere_id: Number(s.filiere),
+      };
 
       // Un payload (POST ou PATCH) par classe cible
-      let payloads = [];
+      var payloads = [];
       if (this.userRole === 'teacher') {
         payloads = (s.classe || []).map(function (id) {
-          const cls = _this._teacherClasses.find(function (c) { return String(c.id) === String(id); });
+          var cls = _this._teacherClasses.find(function (c) { return String(c.id) === String(id); });
           if (!cls) return null;
-          const body = Object.assign({}, bodyCore, { module_id: Number(cls.module_id) });
+          var body = Object.assign({}, bodyCore, academic, { module_id: Number(cls.module_id || s.module) });
           body.classe = cls.id;
           return { body: body, label: cls.name || ('Classe #' + cls.id) };
         }).filter(Boolean);
       } else {
         if (this._editingId) {
-          const body = Object.assign({}, bodyCore, { module_id: Number(moduleIds[0]) });
-          if (this.classeId) body.classe = this.classeId;
-          payloads = [{ body: body, label: '' }];
+          var bodyEdit = Object.assign({}, bodyCore, academic, { module_id: Number(s.module) });
+          if (this.classeId) bodyEdit.classe = this.classeId;
+          payloads = [{ body: bodyEdit, label: '' }];
         } else {
           payloads = (s.classe || []).map(function (id) {
-            const cls = _this._allClasses.find(function (c) { return String(c.id) === String(id); });
+            var cls = _this._allClasses.find(function (c) { return String(c.id) === String(id); });
             if (!cls) return null;
-            const body = Object.assign({}, bodyCore, { module_id: Number(cls.module_id) });
+            var body = Object.assign({}, bodyCore, academic, { module_id: Number(cls.module_id || s.module) });
             body.classe = cls.id;
             return { body: body, label: cls.name || ('Classe #' + cls.id) };
           }).filter(Boolean);
@@ -1017,19 +1044,19 @@
     },
 
     async _executePayloads(payloads, isEditing) {
-      const btn = document.getElementById('sfSubmit');
-      const multi = payloads.length > 1 && !isEditing;
+      var btn = document.getElementById('sfSubmit');
+      var multi = payloads.length > 1 && !isEditing;
       btn.disabled = true;
       try {
         if (multi) {
-          let ok = 0;
-          const fails = [];
-          const lotIds = [];
-          for (let i = 0; i < payloads.length; i++) {
+          var ok = 0;
+          var fails = [];
+          var lotIds = [];
+          for (var i = 0; i < payloads.length; i++) {
             btn.textContent = 'Création… (' + (i + 1) + '/' + payloads.length + ')';
             try {
               if (lotIds.length) payloads[i].body.exclude_session_ids = lotIds.slice();
-              const data = await API.apiFetch('/sessions/', { method: 'POST', body: JSON.stringify(payloads[i].body) });
+              var data = await API.apiFetch('/sessions/', { method: 'POST', body: JSON.stringify(payloads[i].body) });
               ok++;
               if (data && data.id) lotIds.push(Number(data.id));
               document.dispatchEvent(new CustomEvent('session-created', { detail: data }));
@@ -1046,17 +1073,17 @@
           return;
         }
 
-        const p = payloads[0];
+        var p = payloads[0];
         if (isEditing) {
           await API.apiFetch('/sessions/' + this._editingId + '/', { method: 'PATCH', body: JSON.stringify(p.body) });
           closeModal('modalSessionForm');
           showToast('Séance modifiée avec succès.', 'success');
           document.dispatchEvent(new CustomEvent('session-created', {}));
         } else {
-          const data = await API.apiFetch('/sessions/', { method: 'POST', body: JSON.stringify(p.body) });
+          var created = await API.apiFetch('/sessions/', { method: 'POST', body: JSON.stringify(p.body) });
           closeModal('modalSessionForm');
           showToast('Séance créée avec succès.', 'success');
-          document.dispatchEvent(new CustomEvent('session-created', { detail: data }));
+          document.dispatchEvent(new CustomEvent('session-created', { detail: created }));
         }
       } catch (e) {
         showToast('Erreur : ' + (e.message || 'Échec de la création de la séance.'), 'error');

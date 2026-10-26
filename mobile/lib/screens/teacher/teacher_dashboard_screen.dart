@@ -76,10 +76,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen>
                 action: () => provider.setTab(TeacherTab.sessions),
               ),
               const SizedBox(height: 8),
-              if (provider.sessions.isEmpty)
+              if (provider.recentSessions.isEmpty)
                 const _EmptyCard(icon: Icons.event_note_outlined, text: 'Aucune séance récente')
               else
-                ...provider.sessions.take(5).map(
+                ...provider.recentSessions.take(5).map(
                       (s) => _SessionCard(
                         session: s,
                         onTap: () => Navigator.of(context).pushNamed(
@@ -123,12 +123,8 @@ class _WelcomeCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Row(
         children: [
@@ -186,12 +182,37 @@ class _StatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (stats == null) return const SizedBox.shrink();
     final s = stats!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     final items = [
-      (Icons.event_available_rounded, '${s.totalPresent}', 'Présents'),
-      (Icons.event_busy_rounded, '${s.totalAbsent}', 'Absents'),
-      (Icons.percent_rounded,
-          '${s.attendanceRate.toStringAsFixed(1)}%', 'Taux'),
-      (Icons.people_alt_rounded, '${s.totalStudents}', 'Étudiants'),
+      (
+        Icons.event_available_rounded,
+        '${s.totalPresent}',
+        'Présents',
+        AppTheme.successColor,
+        AppTheme.successSoft,
+      ),
+      (
+        Icons.event_busy_rounded,
+        '${s.totalAbsent}',
+        'Absents',
+        AppTheme.errorColor,
+        AppTheme.errorSoft,
+      ),
+      (
+        Icons.percent_rounded,
+        '${s.attendanceRate.toStringAsFixed(1)}%',
+        'Taux',
+        brandColor,
+        AppTheme.primarySoft,
+      ),
+      (
+        Icons.people_alt_rounded,
+        '${s.totalStudents}',
+        'Étudiants',
+        AppTheme.purple,
+        AppTheme.purpleSoft,
+      ),
     ];
     return GridView.count(
       crossAxisCount: 2,
@@ -199,30 +220,71 @@ class _StatsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.6,
+      childAspectRatio: 1.45,
       children: items.map((i) {
         return Card(
           elevation: 0,
+          // La marge par défaut de Card (4 px de chaque côté) réduisait la
+          // hauteur disponible et provoquait un débordement (« BOTTOM
+          // OVERFLOWED BY 1.8 PIXELS ») sur les écrans de 320–430 px.
+          margin: EdgeInsets.zero,
           color: Theme.of(context).cardTheme.color,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppTheme.primary.withOpacity(.12)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(i.$1, color: AppTheme.primary, size: 22),
-                const SizedBox(height: 6),
-                Text(i.$2,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-                Text(i.$3,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ],
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+            side: BorderSide(
+              color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
             ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Web stat-card left colour bar.
+              Container(width: 4, color: i.$4),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? i.$4.withOpacity(0.16)
+                              : i.$5,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Icon(i.$1, color: i.$4, size: 17),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        i.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        i.$3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       }).toList(),
@@ -292,7 +354,12 @@ class _SessionCard extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           '${session.classeName.isNotEmpty ? session.classeName : session.classeField} · ${session.timeRange}',
-          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
+          ),
         ),
         trailing: Chip(
           label: Text(session.sessionType,
@@ -323,7 +390,12 @@ class _LiveAttendanceCard extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           '${attendance.subject ?? ''} · ${attendance.sessionDate ?? ''}',
-          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
+          ),
         ),
       ),
     );
@@ -367,16 +439,28 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(icon, size: 40, color: Colors.grey[400]),
+            Icon(
+              icon,
+              size: 40,
+              color: isDark ? AppTheme.darkMuted : AppTheme.lightMuted,
+            ),
             const SizedBox(height: 8),
-            Text(text,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            Text(
+              text,
+              style: TextStyle(
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),

@@ -156,21 +156,27 @@ class _QrScannerScreenState extends State<QrScannerScreen>
           content: Row(
             children: [
               const Icon(Icons.warning_amber_rounded,
-                  color: Colors.white, size: 20),
+                  color: AppTheme.warningInk, size: 20),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
                   AppStrings.invalidQr,
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.warningInk,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          backgroundColor: AppTheme.warningColor.withOpacity(0.95),
+          backgroundColor: AppTheme.warningSoft,
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            side: const BorderSide(color: AppTheme.warningBorder),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );

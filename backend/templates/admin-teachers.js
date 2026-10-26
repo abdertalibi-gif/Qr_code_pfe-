@@ -2,6 +2,11 @@
 let allTeachers = [];
 let editingTeacherId = null;
 let currentUserRole = 'admin';
+let teachersCurrentPage = 1;
+let teachersTotal = 0;
+let teachersSearchTimer = null;
+let teachersRequestSeq = 0;
+const TEACHERS_PAGE_SIZE = 10;
 
 /* ── Import Report Display ── */
 function displayTeacherImportReport(result, containerId) {
@@ -127,28 +132,129 @@ async function initTeachersTab(userRole) {
   await initPage();
 }
 
-async function loadTeachers() {
+async function loadTeachers(page) {
+  if (!Number.isInteger(page)) page = teachersCurrentPage || 1;
+  const params = new URLSearchParams({
+    paginate: '1',
+    include_inactive: '1',
+    page: String(page),
+    page_size: String(TEACHERS_PAGE_SIZE),
+  });
+  const search = (document.getElementById('searchTeachers')?.value || '').trim();
+  if (search) params.set('search', search);
+
+  const tbody = document.getElementById('teachersBody');
+  if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Chargement…</td></tr>';
+
+  const requestId = ++teachersRequestSeq;
   try {
-    const data = await API.apiFetch('/teachers/');
+    const data = await API.apiFetch('/teachers/?' + params.toString());
+    if (requestId !== teachersRequestSeq) return;
     allTeachers = Array.isArray(data) ? data : (data.results || []);
+    teachersTotal = Array.isArray(data) ? allTeachers.length : (data.count ?? allTeachers.length);
+    const totalPages = Math.max(1, Math.ceil(teachersTotal / TEACHERS_PAGE_SIZE));
+    if (page > totalPages && totalPages >= 1 && teachersTotal > 0) {
+      return loadTeachers(totalPages);
+    }
+    teachersCurrentPage = page;
     renderTeachers();
+    if (!search) {
+      const setCounter = function (id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      setCounter('cntTeacherImport', teachersTotal);
+      setCounter('heroTeacherCount', teachersTotal);
+      setCounter('navCntTeachers', teachersTotal);
+    }
   } catch (e) {
-    document.getElementById('teachersBody').innerHTML =
-      '<tr class="empty-row"><td colspan="10">Erreur: ' + esc(e.message) + '</td></tr>';
+    if (requestId !== teachersRequestSeq) return;
+    if (tbody) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+    const countLabel = document.getElementById('teachersCountLabel');
+    if (countLabel) countLabel.textContent = 'Erreur de chargement.';
   }
+}
+
+function renderTeachersPagination(current, totalPages) {
+  const container = document.getElementById('teachersPagination');
+  if (!container) return;
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const pageSet = new Set([1, totalPages]);
+  for (let p = Math.max(1, current - 2); p <= Math.min(totalPages, current + 2); p++) {
+    pageSet.add(p);
+  }
+  const pages = Array.from(pageSet).sort((a, b) => a - b);
+
+  let html = '<div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">';
+  const isFirst = current <= 1;
+  html += '<button class="btn sm outline" id="teachersPaginationPrev"' + (isFirst ? ' disabled style="opacity:.45;cursor:not-allowed"' : '') + '>← Précédent</button>';
+
+  let previous = 0;
+  pages.forEach(function (p) {
+    if (previous && p - previous > 1) {
+      html += '<span style="color:var(--muted);padding:0 .2rem">…</span>';
+    }
+    const style = p === current
+      ? 'background:var(--primary,#0F7DB8);color:#fff;border-color:var(--primary,#0F7DB8);font-weight:700;box-shadow:0 1px 3px rgba(15,125,184,0.3);'
+      : '';
+    html += '<button class="btn sm outline" style="' + style + '" data-page="' + p + '">' + p + '</button>';
+    previous = p;
+  });
+
+  const isLast = current >= totalPages;
+  html += '<button class="btn sm outline" id="teachersPaginationNext"' + (isLast ? ' disabled style="opacity:.45;cursor:not-allowed"' : '') + '>Suivant →</button>';
+  html += '<span style="margin-left:.75rem;font-size:.85rem;color:var(--text-secondary,#6B7280)">Page ' + current + ' sur ' + totalPages + '</span>';
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  const prevBtn = document.getElementById('teachersPaginationPrev');
+  if (prevBtn && !isFirst) prevBtn.addEventListener('click', function () { loadTeachers(current - 1); });
+  const nextBtn = document.getElementById('teachersPaginationNext');
+  if (nextBtn && !isLast) nextBtn.addEventListener('click', function () { loadTeachers(current + 1); });
+  container.querySelectorAll('button[data-page]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      const target = parseInt(e.currentTarget.getAttribute('data-page'), 10);
+      if (target && target !== current) loadTeachers(target);
+    });
+  });
 }
 
 function renderTeachers() {
   const tbody = document.getElementById('teachersBody');
-  const q = searchQuery('searchTeachers');
-  const filtered = allTeachers.filter(t => matchesQuery(q, t.full_name, t.first_name, t.last_name, t.email, t.cin || ''));
-  if (!filtered.length) {
+  const q = (document.getElementById('searchTeachers')?.value || '').trim();
+  const totalPages = Math.max(1, Math.ceil(teachersTotal / TEACHERS_PAGE_SIZE));
+  const countLabel = document.getElementById('teachersCountLabel');
+  const startIdx = (teachersCurrentPage - 1) * TEACHERS_PAGE_SIZE;
+
+  if (!allTeachers.length) {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="10">' + (q ? 'Aucun résultat.' : 'Aucun enseignant.') + '</td></tr>';
+    if (countLabel) {
+      countLabel.textContent = q
+        ? '0 enseignant trouvé sur un total de ' + teachersTotal
+        : '0 enseignant au total';
+    }
+    renderTeachersPagination(teachersCurrentPage, totalPages);
     return;
   }
+
+  if (countLabel) {
+    const from = startIdx + 1;
+    const to = Math.min(startIdx + TEACHERS_PAGE_SIZE, teachersTotal);
+    countLabel.textContent = q
+      ? 'Affichage de ' + from + ' à ' + to + ' sur ' + teachersTotal + ' résultat(s) trouvé(s)'
+      : 'Affichage des enseignants ' + from + ' à ' + to + ' sur ' + teachersTotal + ' au total (Page ' + teachersCurrentPage + ' sur ' + totalPages + ')';
+  }
+
   const isRestricted = currentUserRole === 'department_head' || currentUserRole === 'program_manager';
-  tbody.innerHTML = filtered.map((t, i) => '<tr>' +
-    '<td><span style="color:var(--muted)">' + (i + 1) + '</span></td>' +
+  tbody.innerHTML = allTeachers.map((t, i) => '<tr>' +
+    '<td><span style="color:var(--muted)">' + (startIdx + i + 1) + '</span></td>' +
     '<td><strong>' + esc(t.full_name || t.first_name + ' ' + t.last_name) + '</strong></td>' +
     '<td>' + esc(t.email) + '</td>' +
     '<td>' + esc(t.phone || '—') + '</td>' +
@@ -164,6 +270,8 @@ function renderTeachers() {
         '<button class="btn sm outline admin-only" onclick="toggleTeacherActive(' + t.id + ')">' + (t.is_active === false ? 'Activer' : 'Désactiver') + '</button>' +
       '</td>') +
   '</tr>').join('');
+
+  renderTeachersPagination(teachersCurrentPage, totalPages);
 }
 
 async function openEditTeacher(userId) {
@@ -184,6 +292,10 @@ async function openEditTeacher(userId) {
   document.getElementById('euCin').value = user.cin || '';
   document.getElementById('euGrade').value = user.grade || '';
   document.getElementById('euSpeciality').value = user.speciality || '';
+  const deptSel = document.getElementById('euDepartment');
+  if (deptSel) {
+    deptSel.value = user.department_id != null ? String(user.department_id) : '';
+  }
   if (typeof showFieldsForRole === 'function') showFieldsForRole('teacher', 'eu');
   openModal('modalEditUser');
 }
@@ -197,7 +309,13 @@ async function toggleTeacherActive(id) {
 }
 
 function setupEventListeners() {
-  bindSearchInput('searchTeachers', renderTeachers);
+  const searchEl = document.getElementById('searchTeachers');
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      clearTimeout(teachersSearchTimer);
+      teachersSearchTimer = setTimeout(function () { loadTeachers(1); }, 350);
+    });
+  }
 
   document.getElementById('btnOpenAddTeacher')?.addEventListener('click', async function () {
     editingTeacherId = null;

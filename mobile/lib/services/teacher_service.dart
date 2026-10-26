@@ -25,9 +25,11 @@ class TeacherService {
 
   /// Liste les séances (filtrées par la classe pour l'enseignant).
   Future<List<SessionModel>> fetchSessions({int? classeId}) async {
+    final params = <String, dynamic>{};
+    if (classeId != null) params['classe'] = classeId;
     final response = await _client.get(
       AppConstants.sessionsEndpoint,
-      queryParameters: {'classe': ?classeId},
+      queryParameters: params,
     );
     final data = _unwrapList(response.data);
     return data.map(SessionModel.fromJson).toList();
@@ -67,15 +69,16 @@ class TeacherService {
     String? locationType,
     int? excludeSessionId,
   }) async {
+    final params = <String, dynamic>{
+      'date': date,
+      'start_time': startTime,
+      'end_time': endTime,
+    };
+    if (locationType != null) params['location_type'] = locationType;
+    if (excludeSessionId != null) params['exclude_session_id'] = excludeSessionId;
     final response = await _client.get(
       AppConstants.sessionAvailableLocationsEndpoint,
-      queryParameters: {
-        'date': date,
-        'start_time': startTime,
-        'end_time': endTime,
-        'location_type': ?locationType,
-        'exclude_session_id': ?excludeSessionId,
-      },
+      queryParameters: params,
     );
     final data = response.data;
     if (data is Map<String, dynamic>) return AvailableLocations.fromJson(data);
@@ -92,14 +95,15 @@ class TeacherService {
     double? latitude,
     double? longitude,
   }) async {
+    final data = <String, dynamic>{
+      'expiry_minutes': expiryMinutes,
+      'attendance_radius_meters': attendanceRadiusMeters,
+    };
+    if (latitude != null) data['latitude'] = latitude;
+    if (longitude != null) data['longitude'] = longitude;
     final response = await _client.post(
       AppConstants.sessionGenerateQrEndpoint(sessionId),
-      data: {
-        'expiry_minutes': expiryMinutes,
-        'attendance_radius_meters': attendanceRadiusMeters,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      },
+      data: data,
     );
     return SessionQrPayload.fromJson(response.data as Map<String, dynamic>);
   }
@@ -177,9 +181,11 @@ class TeacherService {
 
   /// Liste les étudiants d'une classe (GET /students/?classe_id=).
   Future<List<StudentItem>> fetchStudents({int? classeId}) async {
+    final params = <String, dynamic>{};
+    if (classeId != null) params['classe_id'] = classeId;
     final response = await _client.get(
       '/students/',
-      queryParameters: {'classe_id': ?classeId},
+      queryParameters: params,
     );
     final data = _unwrapList(response.data);
     return data.map(StudentItem.fromJson).toList();

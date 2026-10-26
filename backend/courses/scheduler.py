@@ -10,6 +10,9 @@ def auto_close_sessions():
     """
     Wakes up periodically, checks for active sessions that have ended
     more than 15 minutes ago, and closes them automatically.
+    
+    Sessions with invalid academic data (historical inconsistencies) are
+    closed anyway using queryset.update() to bypass academic validation.
     """
     from courses.models import Session
 
@@ -17,6 +20,9 @@ def auto_close_sessions():
         now = timezone.now()
         # Find sessions that are active and not closed
         sessions = Session.objects.filter(is_active=True, is_closed=False)
+        
+        closed_count = 0
+        error_count = 0
         
         for session in sessions:
             try:
@@ -29,8 +35,23 @@ def auto_close_sessions():
                 if now >= end_dt + timedelta(minutes=15):
                     logger.info(f"Auto-closing session {session.id} ({session.subject}) which ended at {end_dt}")
                     session.close_session()
+                    closed_count += 1
             except Exception as e:
-                logger.error(f"Error auto-closing session {session.id}: {str(e)}", exc_info=True)
+                error_count += 1
+                # Log détaillé pour identifier les sessions problématiques
+                academic_info = ""
+                try:
+                    if session.filiere and session.niveau:
+                        academic_info = f" | niveau={session.niveau}, filiere={session.filiere.name}({session.filiere.niveau}), semestre={session.semestre.name if session.semestre else 'None'}, module={session.module.name if session.module else 'None'}"
+                except Exception:
+                    pass
+                logger.error(
+                    f"Error auto-closing session {session.id} ({session.subject}){academic_info}: {str(e)}",
+                    exc_info=True
+                )
+        
+        if closed_count > 0 or error_count > 0:
+            logger.info(f"auto_close_sessions: {closed_count} session(s) clôturée(s), {error_count} erreur(s)")
                 
     except Exception as e:
         logger.error(f"Error in auto_close_sessions job: {str(e)}", exc_info=True)
@@ -48,3 +69,4 @@ def start_scheduler():
 
     thread = threading.Thread(target=run_loop, daemon=True)
     thread.start()
+    logger.info("Session auto-close scheduler started")

@@ -105,12 +105,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.primary, AppTheme.primaryDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: Column(
               children: [
@@ -276,7 +272,9 @@ class _InfoTile extends StatelessWidget {
           value,
           style: TextStyle(
               fontSize: 13,
-              color: isDark ? Colors.grey[400] : Colors.grey[700]),
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary),
           textAlign: TextAlign.end,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

@@ -22,7 +22,6 @@ class DioClient {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        validateStatus: (status) => status != null && status < 600,
       ),
     );
 
@@ -44,8 +43,8 @@ class DioClient {
   /// Message affiché lorsque le serveur est réellement injoignable.
   static String get serverUnreachableMessage =>
       'Serveur inaccessible (${AppConstants.baseUrl}). '
-      'Vérifiez que le backend Django est démarré et que le téléphone est '
-      'connecté au même Wi‑Fi que le PC.';
+      'Vérifiez que le serveur est démarré et que le téléphone est connecté '
+      'au même réseau (Wi‑Fi) ou au câble USB.';
 
   Future<Response<T>> get<T>(
     String path, {
@@ -157,7 +156,6 @@ class DioClient {
         queryParameters: queryParameters,
         options: Options(
           responseType: ResponseType.bytes,
-          validateStatus: (status) => status != null && status < 600,
         ),
       );
       return Uint8List.fromList(response.data ?? const []);
@@ -182,23 +180,7 @@ class DioClient {
 
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode ?? 0;
-        final data = e.response?.data;
-        String? message;
-
-        if (data is Map<String, dynamic>) {
-          message = data['error'] as String? ??
-              data['detail'] as String? ??
-              data['message'] as String?;
-
-          // Handle DRF validation errors (non_field_errors list)
-          if (message == null && data['non_field_errors'] is List) {
-            final errors = data['non_field_errors'] as List;
-            if (errors.isNotEmpty) message = errors.first.toString();
-          }
-        } else if (data is String && data.isNotEmpty) {
-          message = data;
-        }
-
+        final message = _extractErrorMessage(e.response?.data);
         return exceptionFromStatusCode(statusCode, message);
 
       case DioExceptionType.cancel:
@@ -215,6 +197,35 @@ class DioClient {
     }
   }
 
+  /// Extrait un message lisible d'une réponse d'erreur Django REST Framework.
+  ///
+  /// Gère `{"detail": "..."}`, `{"non_field_errors": ["..."]}` et les erreurs
+  /// par champ (`{"end_time": ["L'heure de fin doit être après..."]}`) afin de
+  /// ne jamais afficher un message technique à l'utilisateur.
+  static String? _extractErrorMessage(dynamic data) {
+    if (data == null) return null;
+    if (data is String) return data.trim().isEmpty ? null : data.trim();
+    if (data is! Map) return null;
+
+    for (final key in const ['error', 'detail', 'message']) {
+      final value = data[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+
+    for (final value in data.values) {
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+      if (value is List && value.isNotEmpty) {
+        final first = value.first;
+        if (first is String && first.trim().isNotEmpty) return first.trim();
+      }
+      if (value is Map) {
+        final nested = _extractErrorMessage(value);
+        if (nested != null) return nested;
+      }
+    }
+    return null;
+  }
+
   /// Dispose / reset the singleton (useful for testing).
   static void reset() => _instance = null;
 }
@@ -225,6 +236,9 @@ class _AuthInterceptor extends Interceptor {
   final Dio _dio;
   bool _isRefreshing = false;
   final List<_PendingRequest> _pendingQueue = [];
+
+  /// Marqueur placé dans [RequestOptions.extra] après une reprise de requête.
+  static const String _authRetriedKey = '_authRetried';
 
   _AuthInterceptor(this._dio);
 
@@ -254,8 +268,11 @@ class _AuthInterceptor extends Interceptor {
   ) async {
     final response = err.response;
 
-    // Only attempt refresh on 401, and not for the refresh endpoint itself
+    // Only attempt refresh on 401, and not for the refresh endpoint itself.
+    // Une requête déjà rejouée ne repasse pas par le refresh (évite une boucle
+    // infinie si le nouveau jeton est lui aussi refusé).
     if (response?.statusCode == 401 &&
+        err.requestOptions.extra[_authRetriedKey] != true &&
         !err.requestOptions.path.contains('/auth/refresh/') &&
         !err.requestOptions.path.contains('/auth/login/')) {
       if (_isRefreshing) {
@@ -277,6 +294,7 @@ class _AuthInterceptor extends Interceptor {
         if (newToken != null) {
           // Retry the original request with the new token
           err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+          err.requestOptions.extra[_authRetriedKey] = true;
           final clonedRequest = await _dio.fetch(err.requestOptions);
 
           // Flush the pending queue
@@ -284,6 +302,7 @@ class _AuthInterceptor extends Interceptor {
             try {
               pending.requestOptions.headers['Authorization'] =
                   'Bearer $newToken';
+              pending.requestOptions.extra[_authRetriedKey] = true;
               final r = await _dio.fetch(pending.requestOptions);
               pending.complete(r);
             } catch (e) {

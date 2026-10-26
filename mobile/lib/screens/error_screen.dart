@@ -124,7 +124,7 @@ class _ErrorScreenState extends State<ErrorScreen>
         provider.errorMessage ?? 'An unexpected error occurred. Please try again.';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final config = _ErrorConfig.fromType(errorType);
+    final config = _ErrorConfig.fromType(errorType, isDark: isDark);
 
     return Scaffold(
       body: Container(
@@ -140,7 +140,7 @@ class _ErrorScreenState extends State<ErrorScreen>
                   ]
                 : [
                     config.color.withOpacity(0.06),
-                    const Color(0xFFFFFBFB),
+                    AppTheme.lightBackground,
                   ],
           ),
         ),
@@ -331,7 +331,7 @@ class _ErrorScreenState extends State<ErrorScreen>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         border: Border.all(
           color: config.color.withOpacity(0.2),
           width: 1.5,
@@ -359,8 +359,8 @@ class _ErrorScreenState extends State<ErrorScreen>
             decoration: BoxDecoration(
               color: config.color.withOpacity(0.07),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
+                topLeft: Radius.circular(AppTheme.radius - 1),
+                topRight: Radius.circular(AppTheme.radius - 1),
               ),
             ),
             child: Row(
@@ -456,6 +456,8 @@ class _ErrorScreenState extends State<ErrorScreen>
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   Widget _buildActions(AttendanceErrorType errorType, _ErrorConfig config) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     final showRescan = errorType != AttendanceErrorType.alreadyValidated &&
         errorType != AttendanceErrorType.sessionClosed;
 
@@ -469,7 +471,7 @@ class _ErrorScreenState extends State<ErrorScreen>
             icon: const Icon(Icons.home_rounded, size: 20),
             label: const Text('Back to Home'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: brandColor,
               foregroundColor: Colors.white,
             ),
           )
@@ -479,7 +481,7 @@ class _ErrorScreenState extends State<ErrorScreen>
             icon: const Icon(Icons.home_rounded, size: 20),
             label: const Text('Back to Home'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: brandColor,
               foregroundColor: Colors.white,
             ),
           )
@@ -505,8 +507,8 @@ class _ErrorScreenState extends State<ErrorScreen>
             icon: const Icon(Icons.home_outlined, size: 20),
             label: const Text('Back to Home'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primary,
-              side: const BorderSide(color: AppTheme.primary, width: 1.5),
+              foregroundColor: brandColor,
+              side: BorderSide(color: brandColor.withOpacity(0.4), width: 1.5),
             ),
           ),
       ],
@@ -606,51 +608,54 @@ class _ErrorConfig {
 
   const _ErrorConfig({required this.color, required this.icon});
 
-  factory _ErrorConfig.fromType(AttendanceErrorType type) {
+  factory _ErrorConfig.fromType(
+    AttendanceErrorType type, {
+    bool isDark = false,
+  }) {
     switch (type) {
       case AttendanceErrorType.expired:
         return const _ErrorConfig(
-          color: Color(0xFFFBBC04),
+          color: AppTheme.warningColor,
           icon: Icons.timer_off_rounded,
         );
       case AttendanceErrorType.alreadyValidated:
         return _ErrorConfig(
-          color: AppTheme.primary,
+          color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
           icon: Icons.how_to_reg_rounded,
         );
       case AttendanceErrorType.invalidQr:
         return const _ErrorConfig(
-          color: Color(0xFFEA4335),
+          color: AppTheme.errorColor,
           icon: Icons.qr_code_rounded,
         );
       case AttendanceErrorType.sessionClosed:
         return const _ErrorConfig(
-          color: Color(0xFF9C27B0),
+          color: AppTheme.purple,
           icon: Icons.lock_clock_rounded,
         );
       case AttendanceErrorType.studentNotFound:
         return const _ErrorConfig(
-          color: Color(0xFFEA4335),
+          color: AppTheme.errorColor,
           icon: Icons.person_off_rounded,
         );
       case AttendanceErrorType.nameMismatch:
         return const _ErrorConfig(
-          color: Color(0xFFFF6D00),
+          color: AppTheme.accent,
           icon: Icons.person_search_rounded,
         );
       case AttendanceErrorType.noInternet:
-        return const _ErrorConfig(
-          color: Color(0xFF607D8B),
+        return _ErrorConfig(
+          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
           icon: Icons.wifi_off_rounded,
         );
       case AttendanceErrorType.timeout:
-        return const _ErrorConfig(
-          color: Color(0xFF795548),
+        return _ErrorConfig(
+          color: isDark ? AppTheme.primaryOnDark : AppTheme.primaryDark,
           icon: Icons.hourglass_disabled_rounded,
         );
       case AttendanceErrorType.unknown:
         return const _ErrorConfig(
-          color: Color(0xFFEA4335),
+          color: AppTheme.errorColor,
           icon: Icons.error_outline_rounded,
         );
     }

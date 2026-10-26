@@ -5,6 +5,8 @@ import '../../constants/app_theme.dart';
 import '../../models/classe_model.dart';
 import '../../models/session_model.dart';
 import '../../services/teacher_service.dart';
+import '../../utils/app_exceptions.dart';
+import '../../widgets/time_input_dialog.dart';
 
 /// Formulaire de création / modification d'une séance.
 class SessionFormScreen extends StatefulWidget {
@@ -72,9 +74,35 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
   String _two(int n) => n.toString().padLeft(2, '0');
   String get _dateStr =>
       '${_date.year}-${_two(_date.month)}-${_two(_date.day)}';
-  String get _startStr =>
-      '${_two(_startTime.hour)}:${_two(_startTime.minute)}:00';
-  String get _endStr => '${_two(_endTime.hour)}:${_two(_endTime.minute)}:00';
+  String get _startStr => '${formatHm(_startTime)}:00';
+  String get _endStr => '${formatHm(_endTime)}:00';
+
+  int _minutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  bool get _isTimeRangeValid => _minutes(_endTime) > _minutes(_startTime);
+
+  Future<void> _pickStartTime() async {
+    final picked = await showTimeInputDialog(
+      context,
+      title: 'Heure de début',
+      initialTime: _startTime,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _startTime = picked);
+    _fetchAvailability();
+  }
+
+  Future<void> _pickEndTime() async {
+    final picked = await showTimeInputDialog(
+      context,
+      title: 'Heure de fin',
+      initialTime: _endTime,
+      mustBeAfter: _startTime,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _endTime = picked);
+    _fetchAvailability();
+  }
 
   Future<void> _init() async {
     setState(() => _loading = true);
@@ -103,7 +131,7 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
         _selectedClasse = _classes.first;
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _describeError(e));
     } finally {
       setState(() => _loading = false);
     }
@@ -182,6 +210,16 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
       return;
     }
 
+    // Validation locale : évite un aller-retour serveur et un message obscur.
+    final startMinutes = _startTime.hour * 60 + _startTime.minute;
+    final endMinutes = _endTime.hour * 60 + _endTime.minute;
+    if (endMinutes <= startMinutes) {
+      setState(
+        () => _error = "L'heure de fin doit être après l'heure de début.",
+      );
+      return;
+    }
+
     setState(() {
       _submitting = true;
       _error = null;
@@ -228,10 +266,19 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _describeError(e));
     } finally {
       setState(() => _submitting = false);
     }
+  }
+
+  /// Transforme une exception en message lisible.
+  /// Les erreurs techniques (cast, null, etc.) ne sont jamais affichées telles
+  /// quelles à l'utilisateur.
+  String _describeError(Object error) {
+    if (error is AppException) return error.message;
+    return 'Impossible de traiter la demande. Vérifiez les informations '
+        'saisies puis réessayez.';
   }
 
   @override
@@ -332,7 +379,7 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // ── Heures ────────────────────────────────────────────
+                  // ── Heures (saisie clavier HH:mm) ─────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -340,17 +387,9 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.access_time_rounded),
                           title: const Text('Début'),
-                          subtitle: Text(_startTime.format(context)),
-                          onTap: () async {
-                            final picked = await showTimePicker(
-                              context: context,
-                              initialTime: _startTime,
-                            );
-                            if (picked != null) {
-                              setState(() => _startTime = picked);
-                              _fetchAvailability();
-                            }
-                          },
+                          subtitle: Text(formatHm(_startTime)),
+                          trailing: const Icon(Icons.edit_outlined, size: 18),
+                          onTap: _pickStartTime,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -359,22 +398,43 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.access_time_filled_rounded),
                           title: const Text('Fin'),
-                          subtitle: Text(_endTime.format(context)),
-                          onTap: () async {
-                            final picked = await showTimePicker(
-                              context: context,
-                              initialTime: _endTime,
-                            );
-                            if (picked != null) {
-                              setState(() => _endTime = picked);
-                              _fetchAvailability();
-                            }
-                          },
+                          subtitle: Text(formatHm(_endTime)),
+                          trailing: const Icon(Icons.edit_outlined, size: 18),
+                          onTap: _pickEndTime,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  if (!_isTimeRangeValid)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              size: 16, color: AppTheme.errorColor),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "L'heure de fin doit être après l'heure de début.",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.errorColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Saisie directe au format HH:mm — ex. 14:30",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // ── Type de lieu ──────────────────────────────────────
                   SegmentedButton<LocationType>(
@@ -403,7 +463,7 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.check_circle_outline,
-                              size: 16, color: AppTheme.primary),
+                              size: 16, color: AppTheme.successColor),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -414,7 +474,11 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                                       '${_available!.amphitheaters.length} '
                                       'amphis disponibles',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color),
                             ),
                           ),
                         ],

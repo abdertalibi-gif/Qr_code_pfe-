@@ -98,7 +98,7 @@ class _TeacherStatisticsScreenState extends State<TeacherStatisticsScreen>
               const SizedBox(height: 10),
               _StatCard(
                 icon: Icons.people_alt_rounded,
-                color: AppTheme.primaryDark,
+                color: AppTheme.secondary,
                 label: 'Étudiants',
                 value: '${stats.totalStudents}',
               ),
@@ -112,7 +112,9 @@ class _TeacherStatisticsScreenState extends State<TeacherStatisticsScreen>
               if (stats.daily.isEmpty)
                 Text('Aucune donnée quotidienne',
                     style: TextStyle(
-                        color: isDark ? Colors.grey[500] : Colors.grey[600]))
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary))
               else
                 ...stats.daily.take(14).map((d) {
                   final pct = d.total == 0
@@ -138,8 +140,9 @@ class _TeacherStatisticsScreenState extends State<TeacherStatisticsScreen>
                           child: LinearProgressIndicator(
                             value: pct,
                             minHeight: 6,
-                            backgroundColor:
-                                isDark ? Colors.white12 : Colors.black12,
+                            backgroundColor: isDark
+                                ? AppTheme.darkBorder
+                                : AppTheme.lightBorder,
                             color: AppTheme.successColor,
                           ),
                         ),
@@ -170,21 +173,45 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark &&
+            (color == AppTheme.primary || color == AppTheme.secondary)
+        ? AppTheme.primaryOnDark
+        : color;
     return Card(
       elevation: 0,
-      child: ListTile(
-        leading: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: color.withOpacity(.12),
-            borderRadius: BorderRadius.circular(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(width: 4, color: accent),
+          Expanded(
+            child: ListTile(
+              leading: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(isDark ? .16 : .12),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: accent),
+              ),
+              title: Text(value,
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800)),
+              subtitle: Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
+                ),
+              ),
+            ),
           ),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-        subtitle: Text(label),
+        ],
       ),
     );
   }

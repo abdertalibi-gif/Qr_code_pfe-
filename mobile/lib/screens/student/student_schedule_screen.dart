@@ -113,6 +113,10 @@ class _ScheduleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
     if (provider.scheduleLoading && provider.schedule.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -127,14 +131,16 @@ class _ScheduleTab extends StatelessWidget {
         onRefresh: () => provider.loadSchedule(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 80),
-            Icon(Icons.calendar_month_outlined,
-                size: 56, color: Colors.grey),
-            SizedBox(height: 12),
+          children: [
+            const SizedBox(height: 80),
+            Icon(Icons.calendar_month_outlined, size: 56, color: muted),
+            const SizedBox(height: 12),
             Center(
-              child: Text('Aucune séance planifiée pour le moment',
-                  style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Aucune séance planifiée pour le moment',
+                style: TextStyle(color: muted, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
@@ -169,9 +175,7 @@ class _ScheduleTab extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey[500]
-                            : Colors.grey[600],
+                        color: secondaryColor,
                       ),
                     ),
                   ),
@@ -218,6 +222,8 @@ class _DaySection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final date = DateTime.tryParse(dayLabel);
     final isToday = _isToday(date);
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     final sorted = [...items]..sort((a, b) => a.startMinutes - b.startMinutes);
 
@@ -235,8 +241,10 @@ class _DaySection extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isToday
-                        ? AppTheme.primary
-                        : (isDark ? Colors.white10 : Colors.black12),
+                        ? (isDark ? AppTheme.primaryOnDark : AppTheme.primary)
+                        : (isDark
+                            ? AppTheme.primary.withOpacity(0.16)
+                            : AppTheme.primarySoft),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -244,7 +252,9 @@ class _DaySection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isToday ? Colors.white : null,
+                      color: isToday
+                          ? Colors.white
+                          : (isDark ? AppTheme.darkTextPrimary : AppTheme.primary),
                     ),
                   ),
                 ),
@@ -255,7 +265,7 @@ class _DaySection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      color: secondaryColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -306,23 +316,26 @@ class _SessionCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOngoing = item.status == ScheduleStatus.ongoing;
     final isCancelled = item.status == ScheduleStatus.cancelled;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
 
     final statusColor = switch (item.status) {
-      ScheduleStatus.upcoming => AppTheme.primary,
+      ScheduleStatus.upcoming => brandColor,
       ScheduleStatus.ongoing => AppTheme.successColor,
-      ScheduleStatus.finished => isDark ? Colors.grey[500]! : Colors.grey[600],
+      ScheduleStatus.finished => muted,
       ScheduleStatus.cancelled => AppTheme.errorColor,
     };
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         border: Border.all(
-          color: isOngoing
-              ? AppTheme.successColor
-              : (isDark ? Colors.white12 : Colors.black12),
+          color: isOngoing ? AppTheme.successColor : borderColor,
           width: isOngoing ? 1.5 : 1,
         ),
         boxShadow: isOngoing
@@ -346,10 +359,10 @@ class _SessionCard extends StatelessWidget {
               children: [
                 Text(
                   item.startTime,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.primary,
+                    color: brandColor,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -357,7 +370,7 @@ class _SessionCard extends StatelessWidget {
                   item.endTime,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.grey[500] : Colors.grey[600],
+                    color: secondaryColor,
                   ),
                 ),
               ],
@@ -435,19 +448,22 @@ class _TypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppTheme.primaryLight,
+        color: isDark
+            ? AppTheme.primary.withOpacity(0.18)
+            : AppTheme.primaryLight,
         borderRadius: BorderRadius.circular(8),
       ),
       constraints: const BoxConstraints(maxWidth: 96),
       child: Text(
         type,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: AppTheme.primary,
+          color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
         ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -464,16 +480,19 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final textColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
     return Row(
       children: [
-        Icon(icon, size: 14, color: isDark ? Colors.grey[500] : Colors.grey[600]),
+        Icon(icon, size: 14, color: iconColor),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
               fontSize: 12.5,
-              color: isDark ? Colors.grey[400] : Colors.grey[700],
+              color: textColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -490,10 +509,13 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = switch (status) {
-      ScheduleStatus.upcoming => AppTheme.primary,
+      ScheduleStatus.upcoming =>
+        isDark ? AppTheme.primaryOnDark : AppTheme.primary,
       ScheduleStatus.ongoing => AppTheme.successColor,
-      ScheduleStatus.finished => Colors.grey,
+      ScheduleStatus.finished =>
+        isDark ? AppTheme.darkMuted : AppTheme.lightMuted,
       ScheduleStatus.cancelled => AppTheme.errorColor,
     };
     return Container(
@@ -532,23 +554,25 @@ class _QrOpenBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(.14),
+        color: brandColor.withOpacity(isDark ? .2 : .12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.qr_code_2_rounded, size: 14, color: AppTheme.primary),
-          SizedBox(width: 6),
+          Icon(Icons.qr_code_2_rounded, size: 14, color: brandColor),
+          const SizedBox(width: 6),
           Text(
             'Présence ouverte',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: AppTheme.primary,
+              color: brandColor,
             ),
           ),
         ],
@@ -565,6 +589,8 @@ class _HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     if (provider.historyLoading && provider.attendanceHistory.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -579,19 +605,23 @@ class _HistoryTab extends StatelessWidget {
         onRefresh: () => provider.loadHistory(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 80),
-            Icon(Icons.event_note_outlined, size: 56, color: Colors.grey),
-            SizedBox(height: 12),
+          children: [
+            const SizedBox(height: 80),
+            Icon(Icons.event_note_outlined, size: 56, color: muted),
+            const SizedBox(height: 12),
             Center(
-              child: Text('Aucune présence enregistrée',
-                  style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Aucune présence enregistrée',
+                style: TextStyle(color: muted, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Center(
               child: Text(
                 'Scannez un QR en cours pour commencer.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
+                textAlign: TextAlign.center,
               ),
             ),
           ],
@@ -634,8 +664,11 @@ class _HistoryCard extends StatelessWidget {
         subtitle: Text(
           attendance.formattedValidationTime,
           style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.grey[400] : Colors.grey[600]),
+            fontSize: 12,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
+          ),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -663,6 +696,8 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     return RefreshIndicator(
       onRefresh: () async => onRetry(),
       color: AppTheme.primary,
@@ -670,14 +705,14 @@ class _ErrorState extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 80),
-          Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey[500]),
+          Icon(Icons.cloud_off_outlined, size: 56, color: muted),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: muted, fontSize: 13),
             ),
           ),
           const SizedBox(height: 12),
@@ -686,7 +721,6 @@ class _ErrorState extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Réessayer'),
-              style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
             ),
           ),
         ],
