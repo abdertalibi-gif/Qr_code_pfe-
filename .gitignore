@@ -4,3 +4,6 @@ __pycache__/
 .idea/
 db.sqlite3
 logs/
+staticfiles/
+*.log
+test_output.txt
