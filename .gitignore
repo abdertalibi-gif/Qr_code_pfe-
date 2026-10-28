@@ -7,3 +7,18 @@ logs/
 staticfiles/
 *.log
 test_output.txt
+
+# --- Secrets et fichiers d'environnement ---
+# Le fichier .env local contient les identifiants (base, SMTP) : ne jamais le versionner.
+.env
+.env.*
+# Les modeles d'exemple ne contiennent aucun secret et doivent rester versionnes.
+!.env.example
+
+# --- Sauvegardes de base de donnees et exports contenant des identifiants ---
+*.backup
+*.dump
+*.bak
+*.sql.gz
+*.sql.bz2
+pgpass.conf

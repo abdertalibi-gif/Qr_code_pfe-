@@ -4,7 +4,12 @@ Run with: python populate_dept_data.py
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-os.environ["DATABASE_URL"] = "postgresql://neondb_owner:npg_mKh5b0YwsrZJ@ep-proud-hall-ap5q3y9d-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# Configuration lue depuis l'environnement / .env : aucun identifiant en dur.
+# load_dotenv n'ecrase pas une variable DATABASE_URL deja definie.
+from dotenv import load_dotenv
+
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django; django.setup()
 

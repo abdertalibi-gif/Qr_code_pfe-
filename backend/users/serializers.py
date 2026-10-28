@@ -480,7 +480,8 @@ class ClasseSerializer(serializers.ModelSerializer):
                 dept_module_ids = Module.objects.filter(filiere__department=dept).values_list("id", flat=True)
                 dept_teacher_ids = User.objects.filter(
                     Q(role="teacher")
-                    & (Q(assigned_classes__department=dept)
+                    & (Q(department=dept)
+                       | Q(assigned_classes__department=dept)
                        | Q(assigned_classes__filiere__department=dept)
                        | Q(sessions__classe__department=dept)
                        | Q(sessions__classe__filiere__department=dept)

@@ -18,22 +18,129 @@ async function initPage() {
   setupEventListeners();
 }
 
-async function loadTeachers() {
+async function fetchAllTeachers() {
+  // Préférer l'endpoint dédié /teachers/ (pagination opt-in) ou boucler sur toutes les pages
+  let teachers = [];
+  const seenIds = new Set();
+  let url = '/teachers/';
+
   try {
-    const data = await API.apiFetch('/users/?role=teacher');
-    const teachers = Array.isArray(data) ? data : (data.results || []);
-    const sel = document.getElementById('clTeacher');
-    if (!sel) return;
+    while (url) {
+      const data = await API.apiFetch(url);
+      let pageItems = [];
+      if (Array.isArray(data)) {
+        pageItems = data;
+        url = null;
+      } else if (data && Array.isArray(data.results)) {
+        pageItems = data.results;
+        url = data.next || null;
+      } else {
+        url = null;
+      }
+
+      for (const t of pageItems) {
+        if (t && t.id && !seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          teachers.push(t);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Fallback vers /users/?role=teacher suite à:', err);
+    url = '/users/?role=teacher&is_active=1';
+    while (url) {
+      const data = await API.apiFetch(url);
+      let pageItems = [];
+      if (Array.isArray(data)) {
+        pageItems = data;
+        url = null;
+      } else if (data && Array.isArray(data.results)) {
+        pageItems = data.results;
+        url = data.next || null;
+      } else {
+        url = null;
+      }
+
+      for (const t of pageItems) {
+        if (t && t.id && !seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          teachers.push(t);
+        }
+      }
+    }
+  }
+
+  // Filtrer pour ne conserver que les enseignants actifs
+  teachers = teachers.filter(t => t.is_active !== false);
+
+  // Trier alphabétiquement par nom complet
+  teachers.sort((a, b) => {
+    const nameA = (a.full_name || (a.first_name + ' ' + a.last_name)).trim().toLowerCase();
+    const nameB = (b.full_name || (b.first_name + ' ' + b.last_name)).trim().toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  return teachers;
+}
+
+async function loadTeachers(selectedId) {
+  const sel = document.getElementById('clTeacher');
+  const spinner = document.getElementById('clTeacherSpinner');
+  if (!sel) return;
+
+  const currentVal = selectedId !== undefined ? selectedId : sel.value;
+  sel.disabled = true;
+  if (spinner) spinner.style.display = 'inline-block';
+
+  try {
+    const teachers = await fetchAllTeachers();
     sel.innerHTML = '<option value="">— Sélectionner un enseignant —</option>';
+
+    let foundSelected = false;
     teachers.forEach(function (t) {
       const opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = (t.full_name || t.first_name + ' ' + t.last_name) + (t.email ? ' (' + t.email + ')' : '');
+      const displayName = t.full_name || ((t.first_name || '') + ' ' + (t.last_name || '')).trim() || ('Enseignant #' + t.id);
+      const emailPart = t.email ? ' (' + t.email + ')' : '';
+      const deptPart = t.department_name ? ' — ' + t.department_name : '';
+      opt.textContent = displayName + emailPart + deptPart;
+      if (currentVal && String(t.id) === String(currentVal)) {
+        opt.selected = true;
+        foundSelected = true;
+      }
       sel.appendChild(opt);
     });
+
+    // Si une valeur était sélectionnée mais n'est pas dans la liste des actifs (ex: enseignant inactif assigné antérieurement)
+    if (currentVal && !foundSelected) {
+      try {
+        const u = await API.apiFetch('/users/' + currentVal + '/');
+        if (u && u.id) {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          const uName = u.full_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || ('Enseignant #' + u.id);
+          opt.textContent = uName + (u.email ? ' (' + u.email + ')' : '') + ' (inactif)';
+          opt.selected = true;
+          sel.appendChild(opt);
+        }
+      } catch (_) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = 'Enseignant #' + currentVal;
+        opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    if (!teachers.length && !currentVal) {
+      sel.innerHTML = '<option value="">— Aucun enseignant disponible —</option>';
+    }
   } catch (e) {
-    const sel = document.getElementById('clTeacher');
-    if (sel) sel.innerHTML = '<option value="">Erreur de chargement des enseignants</option>';
+    console.error('Erreur de chargement des enseignants:', e);
+    sel.innerHTML = '<option value="">Erreur de chargement des enseignants</option>';
+  } finally {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
   }
 }
 

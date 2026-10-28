@@ -66,7 +66,10 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
   TimeOfDay _parseTime(String t) {
     final parts = t.split(':');
     if (parts.length >= 2) {
-      return TimeOfDay(hour: int.tryParse(parts[0]) ?? 0, minute: int.tryParse(parts[1]) ?? 0);
+      return TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? 0,
+        minute: int.tryParse(parts[1]) ?? 0,
+      );
     }
     return const TimeOfDay(hour: 14, minute: 0);
   }
@@ -119,12 +122,15 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
         if (s.classe != null) {
           _selectedClasse = _classes.firstWhere(
             (c) => c.id == s.classe,
-            orElse: () => _classes.isNotEmpty ? _classes.first : _ClassePlaceholder(),
+            orElse: () =>
+                _classes.isNotEmpty ? _classes.first : _ClassePlaceholder(),
           );
         }
         _selectedBlock = blocks.firstWhereOrNull((b) => b.id == s.block);
         if (_selectedBlock != null) {
-          _selectedRoom = _selectedBlock!.rooms.firstWhereOrNull((r) => r.id == s.room);
+          _selectedRoom = _selectedBlock!.rooms.firstWhereOrNull(
+            (r) => r.id == s.room,
+          );
         }
         _selectedAmphi = amphis.firstWhereOrNull((a) => a.id == s.amphitheater);
       } else if (_classes.isNotEmpty) {
@@ -158,9 +164,12 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
     }
 
     var location = LocationType.block;
-    if ((type == 'BLOC' || type == 'BOTH_ALLOWED') && c.blockId != null && c.roomId != null) {
+    if ((type == 'BLOC' || type == 'BOTH_ALLOWED') &&
+        c.blockId != null &&
+        c.roomId != null) {
       location = LocationType.block;
-    } else if ((type == 'AMPHI' || type == 'BOTH_ALLOWED') && c.amphitheaterId != null) {
+    } else if ((type == 'AMPHI' || type == 'BOTH_ALLOWED') &&
+        c.amphitheaterId != null) {
       location = LocationType.amphitheater;
     }
 
@@ -168,11 +177,14 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
       _locationType = location;
       if (location == LocationType.block) {
         _selectedBlock = _blocks.firstWhereOrNull((b) => b.id == c.blockId);
-        _selectedRoom =
-            _selectedBlock?.rooms.firstWhereOrNull((r) => r.id == c.roomId);
+        _selectedRoom = _selectedBlock?.rooms.firstWhereOrNull(
+          (r) => r.id == c.roomId,
+        );
         _selectedAmphi = null;
       } else {
-        _selectedAmphi = _amphitheaters.firstWhereOrNull((a) => a.id == c.amphitheaterId);
+        _selectedAmphi = _amphitheaters.firstWhereOrNull(
+          (a) => a.id == c.amphitheaterId,
+        );
         _selectedBlock = null;
         _selectedRoom = null;
       }
@@ -234,7 +246,8 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
       'session_type': _sessionType.apiValue,
       if (_locationType == LocationType.block) 'block': _selectedBlock?.id,
       if (_locationType == LocationType.block) 'room': _selectedRoom!.id,
-      if (_locationType != LocationType.block) 'amphitheater': _selectedAmphi!.id,
+      if (_locationType != LocationType.block)
+        'amphitheater': _selectedAmphi!.id,
     };
     // Le module est dérivé de la classe côté serveur si absent
     if (_selectedClasse!.moduleId != null) {
@@ -257,7 +270,11 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
       // Show success message (optional)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEdit ? 'Séance modifiée avec succès' : 'Séance créée avec succès'),
+          content: Text(
+            _isEdit
+                ? 'Séance modifiée avec succès'
+                : 'Séance créée avec succès',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -304,12 +321,17 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline,
-                              color: AppTheme.errorColor, size: 18),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppTheme.errorColor,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(_error!,
-                                style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -318,23 +340,33 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                   // ── Classe ────────────────────────────────────────────
                   DropdownButtonFormField<int>(
                     initialValue: _selectedClasse?.id,
-                    decoration: const InputDecoration(labelText: 'Classe / Module'),
+                    // Donne au texte sélectionné la largeur restante avant la
+                    // flèche : évite le RenderFlex overflow avec les noms longs.
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Classe / Module',
+                    ),
                     items: _classes
-                        .map((c) => DropdownMenuItem(
-                              value: c.id,
-                              child: Text(
-                                c.name,
-                                style: const TextStyle(fontSize: 13),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ))
+                        .map(
+                          (c) => DropdownMenuItem<int>(
+                            value: c.id,
+                            child: Text(
+                              c.name,
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: _isEdit
                         ? null
                         : (v) {
                             setState(() {
-                              _selectedClasse = _classes
-                                  .firstWhere((c) => c.id == v);
+                              _selectedClasse = _classes.firstWhere(
+                                (c) => c.id == v,
+                              );
                             });
                             _applyClasseLocation(_selectedClasse!);
                             _fetchAvailability();
@@ -346,12 +378,14 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                   // ── Type de séance ────────────────────────────────────
                   DropdownButtonFormField<SessionType>(
                     initialValue: _sessionType,
-                    decoration: const InputDecoration(labelText: 'Type de séance'),
+                    decoration: const InputDecoration(
+                      labelText: 'Type de séance',
+                    ),
                     items: SessionType.values
-                        .map((t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(t.label),
-                            ))
+                        .map(
+                          (t) =>
+                              DropdownMenuItem(value: t, child: Text(t.label)),
+                        )
                         .toList(),
                     onChanged: (v) =>
                         setState(() => _sessionType = v ?? SessionType.cours),
@@ -368,7 +402,9 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: _date,
-                        firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 1),
+                        ),
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) {
@@ -411,8 +447,11 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 16, color: AppTheme.errorColor),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 16,
+                            color: AppTheme.errorColor,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
@@ -462,8 +501,11 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_outline,
-                              size: 16, color: AppTheme.successColor),
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                            color: AppTheme.successColor,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -471,14 +513,14 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                                       _available!.amphitheaters.isEmpty
                                   ? 'Aucun lieu disponible à ces horaires'
                                   : '${_available!.rooms.length} salles et '
-                                      '${_available!.amphitheaters.length} '
-                                      'amphis disponibles',
+                                        '${_available!.amphitheaters.length} '
+                                        'amphis disponibles',
                               style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.color),
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.color,
+                              ),
                             ),
                           ),
                         ],
@@ -486,62 +528,71 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                     ),
                   const SizedBox(height: 12),
 
-    // ── Lieu ──────────────────────────────────────────────
-                    if (_locationType == LocationType.block) ...[
-                      DropdownButtonFormField<int>(
-                        initialValue: _selectedBlock?.id,
-                        decoration: const InputDecoration(labelText: 'Bloc'),
-                        items: _blocks
-                            .map((b) => DropdownMenuItem(
-                                  value: b.id,
-                                  child: Text(b.name),
-                                ))
-                            .toList(),
-                        onChanged: (v) {
-                          setState(() {
-                            _selectedBlock =
-                                _blocks.firstWhere((b) => b.id == v);
-                            _selectedRoom = null;
-                          });
-                        },
+                  // ── Lieu ──────────────────────────────────────────────
+                  if (_locationType == LocationType.block) ...[
+                    DropdownButtonFormField<int>(
+                      initialValue: _selectedBlock?.id,
+                      decoration: const InputDecoration(labelText: 'Bloc'),
+                      items: _blocks
+                          .map(
+                            (b) => DropdownMenuItem(
+                              value: b.id,
+                              child: Text(b.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedBlock = _blocks.firstWhere((b) => b.id == v);
+                          _selectedRoom = null;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: _selectedRoom?.id,
+                      decoration: const InputDecoration(labelText: 'Salle'),
+                      items: (_selectedBlock?.rooms ?? [])
+                          .map(
+                            (r) => DropdownMenuItem(
+                              value: r.id,
+                              child: Text(r.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedRoom = _selectedBlock!.rooms.firstWhere(
+                            (r) => r.id == v,
+                          );
+                        });
+                      },
+                      validator: (v) => v == null ? 'Salle requise' : null,
+                    ),
+                  ] else
+                    DropdownButtonFormField<int>(
+                      initialValue: _selectedAmphi?.id,
+                      decoration: const InputDecoration(
+                        labelText: 'Amphithéâtre',
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        initialValue: _selectedRoom?.id,
-                        decoration: const InputDecoration(labelText: 'Salle'),
-                        items: (_selectedBlock?.rooms ?? [])
-                            .map((r) => DropdownMenuItem(
-                                  value: r.id,
-                                  child: Text(r.name),
-                                ))
-                            .toList(),
-                        onChanged: (v) {
-                          setState(() {
-                            _selectedRoom = _selectedBlock!.rooms
-                                .firstWhere((r) => r.id == v);
-                          });
-                        },
-                        validator: (v) => v == null ? 'Salle requise' : null,
-                      ),
-                    ] else
-                      DropdownButtonFormField<int>(
-                        initialValue: _selectedAmphi?.id,
-                        decoration:
-                            const InputDecoration(labelText: 'Amphithéâtre'),
-                        items: _amphitheaters
-                            .map((a) => DropdownMenuItem(
-                                  value: a.id,
-                                  child: Text(a.name),
-                                ))
-                            .toList(),
-                        onChanged: (v) {
-                          setState(() {
-                            _selectedAmphi = _amphitheaters
-                                .firstWhere((a) => a.id == v);
-                          });
-                        },
-                        validator: (v) => v == null ? 'Amphithéâtre requis' : null,
-                      ),
+                      items: _amphitheaters
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedAmphi = _amphitheaters.firstWhere(
+                            (a) => a.id == v,
+                          );
+                        });
+                      },
+                      validator: (v) =>
+                          v == null ? 'Amphithéâtre requis' : null,
+                    ),
 
                   // ── Submit ────────────────────────────────────────────
                   ElevatedButton.icon(
@@ -551,11 +602,13 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
-                        : Icon(_isEdit
-                            ? Icons.save_rounded
-                            : Icons.add_rounded),
+                        : Icon(
+                            _isEdit ? Icons.save_rounded : Icons.add_rounded,
+                          ),
                     label: Text(_isEdit ? 'Enregistrer' : 'Créer la séance'),
                   ),
                 ],
@@ -566,8 +619,7 @@ class _SessionFormScreenState extends State<SessionFormScreen> {
 }
 
 class _ClassePlaceholder extends ClasseModel {
-  _ClassePlaceholder()
-      : super(id: -1, name: '—', niveau: '', code: '');
+  _ClassePlaceholder() : super(id: -1, name: '—', niveau: '', code: '');
 }
 
 extension _FirstWhereOrNull on List<BlockModel> {

@@ -92,6 +92,21 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
     pagination_class = AdminListPagination
 
+    def paginate_queryset(self, queryset):
+        paginate_param = self.request.query_params.get("paginate")
+        if paginate_param in ("0", "false", "no"):
+            return None
+        # Si un rôle est demandé sans paramètre de pagination explicite (ni page, ni page_size, ni paginate=1),
+        # renvoyer l'ensemble pour les listes déroulantes (ex: /users/?role=teacher)
+        if (
+            paginate_param not in ("1", "true", "yes")
+            and "page" not in self.request.query_params
+            and "page_size" not in self.request.query_params
+            and self.request.query_params.get("role")
+        ):
+            return None
+        return super().paginate_queryset(queryset)
+
     def get_serializer_class(self) -> Type[BaseSerializer]:
         if self.action == "create":
             return UserCreateSerializer
@@ -104,6 +119,11 @@ class UserViewSet(viewsets.ModelViewSet):
         role_param = self.request.query_params.get("role")
         if role_param:
             qs = qs.filter(role=role_param)
+        is_active_param = self.request.query_params.get("is_active")
+        if is_active_param in ("1", "true", "yes"):
+            qs = qs.filter(is_active=True)
+        elif is_active_param in ("0", "false", "no"):
+            qs = qs.filter(is_active=False)
         department_id = self.request.query_params.get("department_id")
         if department_id and role_param == "program_manager":
             qs = qs.filter(managed_filieres__department_id=department_id).distinct()
@@ -112,6 +132,7 @@ class UserViewSet(viewsets.ModelViewSet):
             if dept:
                 qs = qs.filter(
                     Q(role="department_head", id=self.request.user.id)
+                    | Q(role__in=("teacher", "admin"), department=dept)
                     | Q(role__in=("teacher", "admin"),
                         assigned_classes__department=dept)
                     | Q(role__in=("teacher", "admin"),
