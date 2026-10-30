@@ -103,18 +103,22 @@ class _TeacherStatisticsScreenState extends State<TeacherStatisticsScreen>
                 value: '${stats.totalStudents}',
               ),
               const SizedBox(height: 20),
-              Text('Activité des derniers jours',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                'Activité des derniers jours',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               if (stats.daily.isEmpty)
-                Text('Aucune donnée quotidienne',
-                    style: TextStyle(
-                        color: isDark
-                            ? AppTheme.darkTextSecondary
-                            : AppTheme.lightTextSecondary))
+                Text(
+                  'Aucune donnée quotidienne',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                )
               else
                 ...stats.daily.take(14).map((d) {
                   final pct = d.total == 0
@@ -128,10 +132,11 @@ class _TeacherStatisticsScreenState extends State<TeacherStatisticsScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(d.date,
-                                style: const TextStyle(fontSize: 12)),
-                            Text('${d.present}/${d.total}',
-                                style: const TextStyle(fontSize: 12)),
+                            Text(d.date, style: const TextStyle(fontSize: 12)),
+                            Text(
+                              '${d.present}/${d.total}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -174,44 +179,53 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark &&
-            (color == AppTheme.primary || color == AppTheme.secondary)
+    final accent =
+        isDark && (color == AppTheme.primary || color == AppTheme.secondary)
         ? AppTheme.primaryOnDark
         : color;
     return Card(
       elevation: 0,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(width: 4, color: accent),
-          Expanded(
-            child: ListTile(
-              leading: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(isDark ? .16 : .12),
-                  borderRadius: BorderRadius.circular(11),
+      // Le Card est dans une ListView (hauteur non bornee) : sans
+      // IntrinsicHeight, CrossAxisAlignment.stretch demande une hauteur
+      // infinie au Row -> "BoxConstraints forces an infinite height".
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: accent),
+            Expanded(
+              child: ListTile(
+                leading: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(isDark ? .16 : .12),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(icon, color: accent),
                 ),
-                child: Icon(icon, color: accent),
-              ),
-              title: Text(value,
+                title: Text(
+                  value,
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w800)),
-              subtitle: Text(
-                label.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: isDark
-                      ? AppTheme.darkTextSecondary
-                      : AppTheme.lightTextSecondary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                subtitle: Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

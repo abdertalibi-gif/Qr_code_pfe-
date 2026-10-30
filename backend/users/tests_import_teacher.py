@@ -18,11 +18,12 @@ class TeacherImportTests(TestCase):
         # Create a minimal organization
         from users.models import Department
         self.dept1 = Department.objects.create(name="Test Department", head=None)
-        from curriculum.models import Filiere
+        from curriculum.models import Filiere, Semestre
+        self.semestre1 = Semestre.objects.create(name="S1")
         self.filiere1 = Filiere.objects.create(
             name="Test Filiere",
             niveau="LIC",
-            semestre__name="S1",
+            semestre=self.semestre1,
             department=self.dept1,
         )
 
@@ -330,7 +331,7 @@ class TeacherImportTests(TestCase):
         """Test updating an existing teacher's information."""
         # Create existing teacher
         teacher = User.objects.create_user(
-            email="update@test.com",
+            email="update@umi.ac.ma",
             password="test123",
             first_name="Old",
             last_name="Teacher",
@@ -358,7 +359,7 @@ class TeacherImportTests(TestCase):
         ws.append([
             "New",
             "Teacher",
-            "update@test.com",  # Same email
+            "update@umi.ac.ma",  # Same email
             "0611111111",
             "777777777",
             "Test Department",

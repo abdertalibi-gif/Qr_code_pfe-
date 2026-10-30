@@ -14,8 +14,9 @@
     .\run-debug.ps1 -Device R8YY608FJ8M
 #>
 param(
-    [string]$Device =  "R8YY608FJ8M",
-    [int]   $BackendPort = 8000
+    [string]$Device = "R8YY608FJ8M",
+    [int]   $BackendPort = 8000,
+    [int]   $WaitSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,9 +28,42 @@ $backend = Join-Path $root "backend"
 $adb = "C:\Users\Abde\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 if (-not (Test-Path $adb)) { $adb = "adb" }
 
-$flutter = "flutter"
-if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
-    $flutter = "C:\flutter\bin\flutter.bat"
+$flutter = $null
+$cmd = Get-Command flutter -ErrorAction SilentlyContinue
+if ($cmd) { $flutter = $cmd.Source }
+
+if (-not $flutter) {
+    foreach ($candidate in @(
+        "C:\flutter\bin\flutter.bat",
+        "C:\src\flutter\bin\flutter.bat",
+        "C:\flutter_old\bin\flutter.bat"
+    )) {
+        if (Test-Path $candidate) { $flutter = $candidate; break }
+    }
+}
+
+if (-not $flutter) {
+    Write-Host "ERREUR: SDK Flutter introuvable." -ForegroundColor Red
+    Write-Host "Installe Flutter ou ajoute C:\src\flutter\bin au PATH." -ForegroundColor Yellow
+    exit 1
+}
+
+$flutterRoot = Split-Path -Parent (Split-Path -Parent $flutter)
+$engineFile = Join-Path $flutterRoot "bin\internal\engine.version"
+if (Test-Path $engineFile) {
+    $env:FLUTTER_PREBUILT_ENGINE_VERSION = (Get-Content $engineFile -Raw).Trim()
+}
+Write-Host "[0/4] Flutter: $flutter" -ForegroundColor DarkGray
+
+# Un disque plein fait echouer la compilation Dart/Gradle avec des messages
+# peu explicites ("Espace insuffisant sur le disque", errno 112).
+$freeGb = (Get-PSDrive C).Free / 1GB
+if ($freeGb -lt 2) {
+    Write-Host ("      ATTENTION: seulement {0:N2} GB libres sur C:." -f $freeGb) -ForegroundColor Red
+    Write-Host "      Le build va probablement echouer." -ForegroundColor Red
+    Write-Host "      Libere de l'espace (mobile\build, .gradle\caches) puis relance." -ForegroundColor Yellow
+} else {
+    Write-Host ("      espace disque: {0:N2} GB libres" -f $freeGb) -ForegroundColor DarkGray
 }
 
 function Test-LocalPort {
@@ -70,25 +104,46 @@ if (Test-LocalPort -Port $BackendPort) {
 
 Write-Host "[2/4] Telephone USB" -ForegroundColor Cyan
 & $adb start-server | Out-Null
-$connected = $false
-for ($i = 0; $i -lt 20; $i++) {
-    if (& $adb devices | Select-String -Pattern "^$Device\s+device$") {
-        $connected = $true
-        break
-    }
-    Start-Sleep -Milliseconds 500
+
+function Get-DeviceState {
+    param([string]$Serial)
+    $line = & $adb devices | Select-String -Pattern "^$Serial\s+(\S+)"
+    if ($line) { return $line.Matches[0].Groups[1].Value }
+    return $null
 }
 
-if (-not $connected) {
-    Write-Host "      ERREUR: $Device non detecte." -ForegroundColor Red
-    Write-Host "      -> branche le cable, deverrouille l'ecran," -ForegroundColor Yellow
-    Write-Host "         puis accepte 'Autoriser le debogage USB'." -ForegroundColor Yellow
-    Write-Host "      Etat adb actuel:" -ForegroundColor Yellow
+$state = $null
+$deadline = (Get-Date).AddSeconds($WaitSeconds)
+$restarted = $false
+while ((Get-Date) -lt $deadline) {
+    $state = Get-DeviceState -Serial $Device
+    if ($state -eq "device") { break }
+
+    if ($state -eq "unauthorized") {
+        Write-Host "      detecte mais non autorise : accepte la popup sur le telephone" -ForegroundColor Yellow
+    } elseif (-not $restarted) {
+        # Premier passage sans appareil : on purge le serveur adb une fois.
+        & $adb kill-server | Out-Null
+        Start-Sleep -Seconds 1
+        & $adb start-server | Out-Null
+        $restarted = $true
+    }
+    Start-Sleep -Milliseconds 750
+}
+
+if ($state -ne "device") {
+    Write-Host "      ERREUR: $Device absent apres $WaitSeconds s." -ForegroundColor Red
+    Write-Host "      -> cable direct sans hub, autre port USB, ecran deverrouille," -ForegroundColor Yellow
+    Write-Host "         mode USB 'Transfert de fichiers', debogage USB autorise." -ForegroundColor Yellow
     & $adb devices
     exit 1
 }
 
-& $adb shell svc power stayon usb | Out-Null
+# Limite les deconnexions : ecran maintenu allume, appli exclue de la veille.
+& $adb shell svc power stayon true | Out-Null
+& $adb shell settings put system screen_off_timeout 1800000 | Out-Null
+& $adb shell cmd deviceidle whitelist +com.pfeqr.attendance_app | Out-Null
+& $adb shell settings put global app_standby_enabled 0 | Out-Null
 Write-Host "      connecte ($Device)" -ForegroundColor Green
 
 Write-Host "[3/4] Tunnel USB -> backend (adb reverse)" -ForegroundColor Cyan
@@ -101,7 +156,6 @@ if (& $adb reverse --list | Select-String -Pattern "tcp:$BackendPort") {
 }
 
 Write-Host "[4/4] flutter run --debug sur $Device" -ForegroundColor Cyan
-$env:FLUTTER_PREBUILT_ENGINE_VERSION = (Get-Content "C:\flutter\bin\internal\engine.version").Trim()
 
 Push-Location $mobile
 try {

@@ -216,6 +216,12 @@ class ClasseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_permissions(self):
+        user = getattr(self.request, "user", None)
+        # Un etudiant ne peut que consulter (lecture seule) sa propre classe.
+        if user and user.is_authenticated and user.role == "student":
+            if self.action in ("list", "retrieve"):
+                return [IsAuthenticated()]
+            return [IsAuthenticated(), IsAdmin()]
         if self.action in ("list", "retrieve", "create"):
             return [IsAuthenticated(), IsAdminOrDepartmentHeadOrFiliereManager()]
         return super().get_permissions()
@@ -241,6 +247,15 @@ class ClasseViewSet(viewsets.ModelViewSet):
             )
         )
         user = self.request.user
+        if user.role == "student":
+            try:
+                student = user.student_profile
+            except Student.DoesNotExist:
+                student = None
+            if student is None or student.classe_id is None:
+                return qs.none()
+            # Un etudiant ne voit que sa propre classe, jamais via un id client.
+            return qs.filter(id=student.classe_id)
         if user.role == "teacher":
             qs = qs.filter(teachers=user).distinct()
         elif user.role == "department_head":
