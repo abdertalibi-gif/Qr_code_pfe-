@@ -1,261 +1,1921 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PrésenceQR — Espace Étudiant</title>
   <link rel="stylesheet" href="/dashboard.css" />
   <style>
-    .student-app .hero { display: none; }
-    .student-app .how-section { display: none; }
-    .student-app .info-grid { display: none; }
-    .student-app main { max-width: 880px; }
+    /* ────────────────────────────────────────────────────────────────
+       Espace Étudiant — design dédié moderne & professionnel (web).
+       Toutes les règles sont limitées à .student-app afin de ne pas
+       modifier les espaces Admin / Enseignant.
+       ──────────────────────────────────────────────────────────────── */
+    :root {
+      --student-primary: #0F7DB8;
+      --student-primary-dark: #0B5E8E;
+      --student-primary-soft: #E6F2F9;
+      --student-primary-light: #F0F7FC;
+      --student-secondary: #2196D3;
+      --student-accent: #F28C28;
+      --student-accent-soft: #FFF3E6;
+      --student-success: #10B981;
+      --student-success-soft: #ECFDF5;
+      --student-warning: #F59E0B;
+      --student-warning-soft: #FFFBEB;
+      --student-danger: #EF4444;
+      --student-danger-soft: #FEF2F2;
+      --student-purple: #8B5CF6;
+      --student-purple-soft: #F5F3FF;
+      --student-bg: #F8FAFC;
+      --student-card: #FFFFFF;
+      --student-border: #E2E8F0;
+      --student-border-subtle: #EDF2F7;
+      --student-text: #12324A;
+      --student-text-secondary: #4A6375;
+      --student-muted: #8295A5;
+      --student-shadow-sm: 0 2px 6px -1px rgba(15, 60, 90, 0.05), 0 1px 3px -1px rgba(15, 60, 90, 0.03);
+      --student-shadow-md: 0 8px 24px -6px rgba(15, 60, 90, 0.07), 0 2px 8px -2px rgba(15, 60, 90, 0.04);
+      --student-shadow-lg: 0 16px 36px -10px rgba(15, 60, 90, 0.12), 0 4px 12px -3px rgba(15, 60, 90, 0.05);
+      --student-radius: 16px;
+      --student-radius-lg: 20px;
+      --student-radius-sm: 10px;
+    }
+
+    .student-app {
+      background:
+        radial-gradient(1200px 500px at 5% -5%, rgba(15, 125, 184, 0.09), transparent 60%),
+        radial-gradient(1000px 450px at 98% 5%, rgba(242, 140, 40, 0.06), transparent 55%),
+        #F8FAFC;
+      color: var(--student-text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Barre de navigation ─────────────────────────────────────── */
+    .student-app nav {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--student-border);
+      box-shadow: 0 2px 14px -6px rgba(15, 60, 90, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .student-app .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 1.08rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--student-text);
+    }
+
+    .student-app .nav-brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--student-primary), var(--student-secondary));
+      display: grid;
+      place-items: center;
+      color: #fff;
+      box-shadow: 0 4px 10px -2px rgba(15, 125, 184, 0.4);
+      flex-shrink: 0;
+    }
+
+    .student-app .nav-brand-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .student-app .nav-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-left: 0.25rem;
+    }
+
+    .student-app .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.35rem 0.75rem 0.35rem 0.45rem;
+      background: var(--student-primary-light);
+      border: 1px solid rgba(15, 125, 184, 0.16);
+      border-radius: 999px;
+      transition: all 0.2s ease;
+    }
+
+    .student-app .user-pill:hover {
+      background: #EAF4FA;
+      border-color: rgba(15, 125, 184, 0.28);
+    }
+
+    .student-app .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--student-primary), var(--student-secondary));
+      color: #fff;
+      font-size: 0.74rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 2px 6px -1px rgba(15, 125, 184, 0.35);
+    }
+
+    .student-app #navUserName {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--student-text);
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .student-app .badge-student {
+      background: var(--student-primary);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    .student-app main {
+      flex: 1;
+      width: 100%;
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 1.8rem 1.5rem 3.5rem;
+    }
+
+    .student-app footer {
+      background: transparent;
+      border-top: 1px solid var(--student-border-subtle);
+      color: var(--student-muted);
+      font-size: 0.78rem;
+      padding: 1.5rem 1rem;
+      text-align: center;
+    }
+
+    /* ── Hero / Identité Étudiant ────────────────────────────────── */
+    .student-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--student-radius-lg);
+      padding: 1.85rem;
+      margin-bottom: 1.45rem;
+      color: #fff;
+      background:
+        radial-gradient(560px 280px at 100% 0%, rgba(255, 255, 255, 0.18), transparent 65%),
+        linear-gradient(135deg, #0A4368 0%, #0F6E9F 48%, #1D8AC9 100%);
+      box-shadow: 0 20px 42px -22px rgba(11, 94, 142, 0.65);
+      animation: student-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .student-hero::before,
+    .student-hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .student-hero::before {
+      width: 280px;
+      height: 280px;
+      right: -80px;
+      bottom: -140px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+    }
+
+    .student-hero::after {
+      width: 160px;
+      height: 160px;
+      right: 140px;
+      top: -90px;
+      background: rgba(242, 140, 40, 0.14);
+      filter: blur(10px);
+    }
+
+    .student-hero-top {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .student-app .profile-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1.5px solid rgba(255, 255, 255, 0.42);
+      box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: grid;
+      place-items: center;
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #fff;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+
+    .student-app .profile-info {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .student-hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.78);
+      margin-bottom: 0.35rem;
+    }
+
+    .student-hero-eyebrow svg {
+      color: #7DD3FC;
+    }
+
+    .student-app .profile-info h2 {
+      font-size: clamp(1.4rem, 2.8vw, 1.85rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    .student-app .profile-info p {
+      margin-top: 0.3rem;
+      font-size: 0.86rem;
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .student-hero-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    .student-role-pill,
+    .student-id-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .student-role-pill {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+    }
+
+    .student-id-pill {
+      background: rgba(10, 40, 62, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.9);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .student-hero-class {
+      margin-left: auto;
+      min-width: 230px;
+      max-width: 320px;
+      padding: 0.9rem 1.15rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .student-hero-class-label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: 0.25rem;
+    }
+
+    .student-hero-class strong {
+      display: block;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+
+    .student-hero-class span:last-child {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 0.76rem;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    /* ── Bandeau Statistique Étudiant ────────────────────────────── */
+    .student-stat-strip {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .student-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 10px 24px -14px rgba(11, 60, 92, 0.35);
+      color: var(--student-text);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    }
+
+    .student-stat:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px -12px rgba(11, 60, 92, 0.45);
+    }
+
+    .student-stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+      transition: transform 0.2s ease;
+    }
+
+    .student-stat:hover .student-stat-icon {
+      transform: scale(1.05);
+    }
+
+    .student-stat:nth-child(2) .student-stat-icon {
+      background: var(--student-accent-soft);
+      color: var(--student-accent);
+    }
+
+    .student-stat:nth-child(3) .student-stat-icon {
+      background: var(--student-success-soft);
+      color: var(--student-success);
+    }
+
+    .student-stat:nth-child(4) .student-stat-icon {
+      background: var(--student-purple-soft);
+      color: var(--student-purple);
+    }
+
+    .student-stat-value {
+      font-size: 1.3rem;
+      font-weight: 800;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+      color: var(--student-text);
+      letter-spacing: -0.02em;
+    }
+
+    .student-stat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--student-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* ── Panneaux Généraux ───────────────────────────────────────── */
+    .student-panel {
+      background: var(--student-card);
+      border: 1px solid var(--student-border);
+      border-radius: var(--student-radius-lg);
+      padding: 1.35rem 1.45rem;
+      margin-bottom: 1.35rem;
+      box-shadow: var(--student-shadow-sm);
+      animation: student-rise 0.45s 0.05s ease both;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .student-panel:hover {
+      box-shadow: var(--student-shadow-md);
+      border-color: #CBD5E1;
+    }
+
+    .student-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--student-border-subtle);
+    }
+
+    .student-panel-head h2 {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--student-text);
+      margin: 0;
+    }
+
+    .student-panel-head h2 svg {
+      color: var(--student-primary);
+      flex-shrink: 0;
+    }
+
+    .student-panel-hint {
+      font-size: 0.78rem;
+      color: var(--student-muted);
+      font-weight: 500;
+    }
+
+    .student-count-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 0.5rem;
+      border-radius: 999px;
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    /* ── Grille Informations Personnelles & Académiques ─────────── */
+    .student-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .student-info-item {
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--student-radius-sm);
+      background: #F8FAFC;
+      border: 1px solid var(--student-border);
+      min-width: 0;
+      transition: all 0.18s ease;
+    }
+
+    .student-info-item:hover {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px -4px rgba(15, 60, 90, 0.08);
+    }
+
+    .student-info-item.is-strong {
+      background: var(--student-primary-light);
+      border-color: rgba(15, 125, 184, 0.22);
+    }
+
+    .student-info-label {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--student-muted);
+    }
+
+    .student-info-value {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--student-text);
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+    }
+
+    .student-info-item.is-strong .student-info-value {
+      color: var(--student-primary-dark);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Grille des Modules ──────────────────────────────────────── */
+    .student-modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.8rem;
+    }
+
+    .student-module-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 0.95rem 1rem;
+      border-radius: var(--student-radius);
+      border: 1px solid var(--student-border);
+      background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+      box-shadow: var(--student-shadow-sm);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .student-module-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 125, 184, 0.35);
+      box-shadow: 0 10px 24px -10px rgba(15, 125, 184, 0.3);
+    }
+
+    .student-module-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--student-primary-soft), #F0F7FC);
+      border: 1px solid rgba(15, 125, 184, 0.18);
+      color: var(--student-primary);
+      font-size: 1rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .student-module-body {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .student-module-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--student-text);
+    }
+
+    .student-module-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.45rem;
+    }
+
+    .student-module-chip {
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: #F1F5F9;
+      color: var(--student-text-secondary);
+      font-size: 0.68rem;
+      font-weight: 600;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: 1px solid var(--student-border-subtle);
+    }
+
+    .student-module-chip.is-code {
+      background: var(--student-primary-soft);
+      border-color: rgba(15, 125, 184, 0.2);
+      color: var(--student-primary);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .student-empty {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1.2rem 1.3rem;
+      border-radius: var(--student-radius);
+      border: 1.5px dashed var(--student-border);
+      background: #FAFCFE;
+      color: var(--student-muted);
+      font-size: 0.84rem;
+    }
+
+    .student-empty svg {
+      flex-shrink: 0;
+      color: var(--student-primary);
+      opacity: 0.75;
+    }
+
+    /* ── Onglets Modernes ────────────────────────────────────────── */
+    .student-tabs-wrap {
+      margin-top: 1.6rem;
+    }
+
+    .student-app .schedule-tabs.student-tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem;
+      border: 1px solid var(--student-border);
+      border-radius: 14px;
+      background: var(--student-card);
+      box-shadow: var(--student-shadow-sm);
+      overflow: visible;
+    }
+
+    .student-app .student-tabs .schedule-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.05rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--student-text-secondary);
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.2s ease;
+    }
+
+    .student-app .student-tabs .schedule-tab:hover {
+      color: var(--student-primary);
+      background: var(--student-primary-light);
+    }
+
+    .student-app .student-tabs .schedule-tab.active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--student-primary), var(--student-secondary));
+      box-shadow: 0 4px 12px -2px rgba(15, 125, 184, 0.4);
+    }
+
+    .student-app .student-tabs .schedule-tab svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .student-app .student-tab-panel {
+      margin-top: 0.9rem;
+      padding: 0;
+      border: 1px solid var(--student-border);
+      border-radius: var(--student-radius-lg);
+      background: var(--student-card);
+      box-shadow: var(--student-shadow-sm);
+      overflow: hidden;
+      animation: student-fade 0.25s ease both;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .student-app .student-tab-panel:hover {
+      box-shadow: var(--student-shadow-md);
+    }
+
+    /* ── En-tête Emploi du Temps ─────────────────────────────────── */
+    .student-app .student-schedule-header {
+      padding: 1.1rem 1.35rem;
+      border-bottom: 1px solid var(--student-border-subtle);
+      background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .student-app .student-schedule-header h2 {
+      font-size: 1.02rem;
+      font-weight: 800;
+      margin: 0;
+      color: var(--student-text);
+    }
+
+    .student-schedule-sub {
+      margin-top: 0.2rem;
+      font-size: 0.78rem;
+      color: var(--student-muted);
+    }
+
+    .student-app .schedule-sync-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--student-border);
+      border-radius: 999px;
+      background: #F8FAFC;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--student-text-secondary);
+    }
+
+    .student-app .schedule-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--student-success);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .student-app .schedule-sync-dot.pulse {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: sync-pulse 1.8s infinite;
+    }
+
+    .student-app .schedule-sync-dot.off {
+      background: var(--student-muted);
+      animation: none;
+      box-shadow: none;
+    }
+
+    @keyframes sync-pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+      }
+
+      70% {
+        box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+
+    .student-app .schedule-sync-bar .btn-icon {
+      min-height: 28px;
+      padding: 0.25rem 0.6rem !important;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      border: 1px solid var(--student-border);
+      background: #FFFFFF;
+      color: var(--student-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.18s ease;
+    }
+
+    .student-app .schedule-sync-bar .btn-icon:hover {
+      background: var(--student-primary-light);
+      border-color: rgba(15, 125, 184, 0.3);
+    }
+
+    /* ── Jours & Cartes de Séance ────────────────────────────────── */
+    .student-app .schedule-day {
+      padding: 1.15rem 1.35rem;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .student-app .schedule-day:last-child {
+      border-bottom: none;
+    }
+
+    .student-app .schedule-day-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .student-app .schedule-day-label {
+      width: auto;
+      padding: 0.22rem 0.75rem;
+      border-radius: 999px;
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .student-app .schedule-day-label.today {
+      background: linear-gradient(135deg, var(--student-primary), var(--student-secondary));
+      color: #fff;
+      box-shadow: 0 4px 10px -2px rgba(15, 125, 184, 0.4);
+    }
+
+    .student-app .schedule-date {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--student-text-secondary);
+    }
+
+    .student-app .schedule-card {
+      margin-bottom: 0.75rem;
+      padding: 1rem 1.1rem;
+      border-radius: var(--student-radius);
+      border: 1px solid var(--student-border);
+      background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+      box-shadow: var(--student-shadow-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .student-app .schedule-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .student-app .schedule-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 125, 184, 0.35);
+      box-shadow: var(--student-shadow-md);
+    }
+
+    .student-app .schedule-card.ongoing {
+      background: linear-gradient(180deg, #FFFFFF 0%, #F5FDF9 100%);
+      border-color: var(--student-success);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), var(--student-shadow-md);
+    }
+
+    .student-app .schedule-card.cancelled {
+      opacity: 0.75;
+      background: #FDF9F9;
+      border-color: #FECACA;
+    }
+
+    .student-app .schedule-card-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.1rem;
+    }
+
+    .student-app .schedule-time-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-width: 60px;
+      flex-shrink: 0;
+    }
+
+    .student-app .schedule-time-start {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--student-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .student-app .schedule-time-end {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--student-muted);
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.15rem;
+    }
+
+    .student-app .schedule-time-line {
+      width: 3px;
+      height: 38px;
+      border-radius: 999px;
+      background: var(--student-border);
+      margin-top: 0.5rem;
+      margin-left: 0.3rem;
+    }
+
+    .student-app .schedule-time-line.ongoing {
+      background: var(--student-success);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    }
+
+    .student-app .schedule-time-line.cancelled {
+      background: var(--student-danger);
+    }
+
+    .student-app .schedule-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .student-app .schedule-card-title {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--student-text);
+      line-height: 1.3;
+    }
+
+    .student-app .schedule-card-title.cancelled {
+      text-decoration: line-through;
+      color: var(--student-danger);
+    }
+
+    .student-app .schedule-card-sub {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--student-text-secondary);
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .student-app .schedule-info-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.85rem;
+      margin-top: 0.55rem;
+    }
+
+    .student-app .schedule-info-item {
+      font-size: 0.77rem;
+      color: var(--student-text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .student-app .schedule-info-item strong {
+      color: var(--student-text);
+      font-weight: 600;
+    }
+
+    .student-app .schedule-badges {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.7rem;
+    }
+
+    .student-app .schedule-status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .student-app .schedule-status-chip.upcoming {
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+      border: 1px solid rgba(15, 125, 184, 0.2);
+    }
+
+    .student-app .schedule-status-chip.ongoing {
+      background: var(--student-success-soft);
+      color: var(--student-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .student-app .schedule-status-chip.ongoing .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--student-success);
+      animation: sync-pulse 1.6s infinite;
+    }
+
+    .student-app .schedule-status-chip.finished {
+      background: #F1F5F9;
+      color: var(--student-muted);
+      border: 1px solid var(--student-border-subtle);
+    }
+
+    .student-app .schedule-status-chip.cancelled {
+      background: var(--student-danger-soft);
+      color: var(--student-danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .student-app .schedule-type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #F8FAFC;
+      border: 1px solid var(--student-border);
+      color: var(--student-text-secondary);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .student-app .schedule-qr-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #ECFDF5;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #059669;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .student-app .schedule-empty {
+      padding: 3.2rem 1.5rem;
+      text-align: center;
+      color: var(--student-muted);
+    }
+
+    .student-app .schedule-empty-icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 0.9rem;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: var(--student-primary-soft);
+      color: var(--student-primary);
+    }
+
+    .student-app .schedule-empty-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    /* ── Tableau d'Historique des Présences ──────────────────────── */
+    .student-app .student-attendance {
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+    }
+
+    .student-app .student-attendance .attendance-section-header {
+      padding: 1.1rem 1.35rem;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+      border-bottom: 1px solid var(--student-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .student-app .student-attendance .attendance-section-header h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+      color: var(--student-text);
+    }
+
+    .student-app .student-attendance .attendance-section-header h3 svg {
+      color: var(--student-primary);
+    }
+
+    .student-app .student-attendance .table-wrap {
+      overflow-x: auto;
+    }
+
+    .student-app .student-attendance table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .student-app .student-attendance table th {
+      background: #F8FAFC;
+      padding: 0.75rem 1rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--student-muted);
+      font-weight: 800;
+      border-bottom: 1px solid var(--student-border);
+    }
+
+    .student-app .student-attendance table td {
+      padding: 0.85rem 1rem;
+      font-size: 0.86rem;
+      border-bottom: 1px solid #F1F5F9;
+      color: var(--student-text);
+      vertical-align: middle;
+    }
+
+    .student-app .student-attendance table tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    .student-app .student-attendance table tbody tr:hover {
+      background: #F8FBFE;
+    }
+
+    .student-app .badge-present {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: var(--student-success-soft);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #059669;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .student-app .empty-state-inline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      color: var(--student-muted);
+      font-size: 0.86rem;
+      padding: 2.2rem 1rem;
+    }
+
+    .student-app .empty-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--student-primary);
+    }
+
+    /* ── Section Scanner QR Manuel ───────────────────────────────── */
+    .student-app .student-schedule-section {
+      border-radius: var(--student-radius-lg);
+      border: 1px solid var(--student-border);
+      background: var(--student-card);
+      box-shadow: var(--student-shadow-sm);
+      margin-top: 1.5rem;
+      overflow: hidden;
+    }
+
+    .student-app .student-schedule-section .student-schedule-header {
+      border-radius: 0;
+    }
+
+    .student-app .student-schedule-section .schedule-tab-content {
+      border: none;
+      padding: 1.2rem 1.35rem 1.4rem;
+    }
+
+    .student-app #scanToken {
+      min-height: 46px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      border: 1.5px solid var(--student-border);
+      padding: 0.65rem 1rem;
+      font-size: 0.92rem;
+      transition: all 0.2s ease;
+      color: var(--student-text);
+    }
+
+    .student-app #scanToken:focus {
+      outline: none;
+      border-color: var(--student-primary);
+      box-shadow: 0 0 0 3px rgba(15, 125, 184, 0.18);
+    }
+
+    /* ── Animations ──────────────────────────────────────────────── */
+    @keyframes student-rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes student-fade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 880px) {
+      .student-stat-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .student-hero-class {
+        margin-left: 0;
+        width: 100%;
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .student-app main {
+        padding: 1.2rem 0.95rem 2.8rem;
+      }
+
+      .student-hero {
+        padding: 1.35rem;
+        border-radius: 18px;
+      }
+
+      .student-hero-top {
+        gap: 0.9rem;
+      }
+
+      .student-app .profile-avatar {
+        width: 62px;
+        height: 62px;
+        border-radius: 16px;
+        font-size: 1.25rem;
+      }
+
+      .student-app .profile-info {
+        min-width: 0;
+      }
+
+      .student-stat-strip {
+        gap: 0.55rem;
+      }
+
+      .student-stat {
+        padding: 0.7rem 0.8rem;
+        gap: 0.6rem;
+        border-radius: 14px;
+      }
+
+      .student-stat-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+      }
+
+      .student-stat-icon svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .student-stat-value {
+        font-size: 1.12rem;
+      }
+
+      .student-stat-label {
+        font-size: 0.62rem;
+      }
+
+      .student-panel {
+        padding: 1.1rem;
+        border-radius: 16px;
+      }
+
+      .student-info-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .student-modules-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .student-app .student-tabs {
+        display: flex;
+        width: 100%;
+      }
+
+      .student-app .student-tabs .schedule-tab {
+        flex: 1;
+        justify-content: center;
+        padding: 0.55rem 0.5rem;
+        font-size: 0.76rem;
+      }
+
+      .student-app .student-tab-panel {
+        border-radius: 16px;
+      }
+
+      .student-app .schedule-day {
+        padding: 1rem;
+      }
+
+      .student-app .schedule-card-body {
+        gap: 0.75rem;
+      }
+
+      /* Tableau transformé en cartes adaptées aux écrans tactiles */
+      .student-app .student-attendance .table-wrap {
+        overflow: visible;
+      }
+
+      .student-app .student-attendance table,
+      .student-app .student-attendance thead,
+      .student-app .student-attendance tbody,
+      .student-app .student-attendance tr,
+      .student-app .student-attendance td {
+        display: block;
+        width: 100%;
+      }
+
+      .student-app .student-attendance thead {
+        display: none;
+      }
+
+      .student-app .student-attendance tbody tr {
+        margin: 0.75rem 0.9rem;
+        padding: 0.8rem 0.95rem;
+        border: 1px solid var(--student-border);
+        border-radius: 14px;
+        background: #FFFFFF;
+        box-shadow: 0 4px 12px -4px rgba(15, 60, 90, 0.08);
+      }
+
+      .student-app .student-attendance tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.35rem 0;
+        border: none;
+        text-align: right;
+      }
+
+      .student-app .student-attendance tbody td::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--student-muted);
+        text-align: left;
+      }
+
+      .student-app .student-attendance tbody td:first-child {
+        justify-content: flex-start;
+        color: var(--student-muted);
+      }
+
+      .student-app .student-attendance tbody td:first-child::before {
+        display: none;
+      }
+
+      .student-app .student-attendance .empty-row {
+        margin: 0.8rem;
+      }
+
+      .student-app .student-attendance .empty-row td {
+        display: block;
+        text-align: center;
+      }
+
+      .student-app .student-attendance .empty-row td::before {
+        display: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .student-info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .student-stat-strip {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .student-app *,
+      .student-app *::before,
+      .student-app *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   </style>
 </head>
+
 <body class="dashboard-app student-app">
 
-<nav>
-  <div class="nav-brand">
-    <div class="nav-brand-icon">📋</div>
-    PrésenceQR
-  </div>
-  <div class="nav-right">
-    <div class="user-pill">
-      <div class="user-avatar" id="avatarInitials">?</div>
-      <span id="navUserName">Chargement…</span>
-      <span class="badge badge-student">Étudiant</span>
-    </div>
-    <button class="btn-icon" onclick="API.logout()" title="Déconnexion" aria-label="Déconnexion">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="logout-label">Déconnexion</span>
-    </button>
-  </div>
-</nav>
-
-<main>
-  <div class="profile-card" id="profileCard" style="display:none">
-    <div class="profile-avatar" id="profileAvatar">?</div>
-    <div class="profile-info">
-      <h2 id="profileName">?</h2>
-      <p id="profileEmail">?</p>
-    </div>
-    <div class="profile-meta" id="profileMeta"></div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="schedule-tabs">
-    <div class="schedule-tab active" data-tab="schedule" id="tabSchedule">Emploi du temps</div>
-    <div class="schedule-tab" data-tab="attendance" id="tabAttendance">Historique des présences</div>
-  </div>
-
-  <!-- Schedule Tab -->
-  <div class="schedule-tab-content" id="tabContentSchedule" style="display:block">
-    <div class="student-schedule-header">
-      <h2>Emploi du temps</h2>
-      <div class="schedule-sync-bar">
-        <span class="schedule-sync-dot" id="syncDot"></span>
-        <span id="syncStatus">Synchronisation…</span>
-        <button class="btn-icon" onclick="studentPage.refreshSchedule()" title="Actualiser" style="padding:0.3rem 0.7rem">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-9-9z"/><path d="M12 8v4l2 2"/></svg>
-          Actualiser
-        </button>
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c3 3 9 3 12 0v-5" />
+        </svg>
       </div>
+      <span>PrésenceQR</span>
+      <span class="nav-brand-badge">Étudiant</span>
     </div>
-    <div id="scheduleContainer">
-      <div class="schedule-empty">
-        <div class="schedule-empty-icon">📅</div>
-        <div>Chargement de l'emploi du temps…</div>
+    <div class="nav-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="avatarInitials">?</div>
+        <span id="navUserName">Chargement…</span>
+        <span class="badge badge-student">Étudiant</span>
       </div>
+      <button class="btn-icon" onclick="API.logout()" title="Déconnexion" aria-label="Déconnexion">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        <span class="logout-label">Déconnexion</span>
+      </button>
     </div>
-  </div>
+  </nav>
 
-  <!-- Attendance History Tab -->
-  <div class="schedule-tab-content" id="tabContentAttendance" style="display:none">
-    <div class="attendance-section">
-      <div class="attendance-section-header">
-        <h3>Historique de présences</h3>
-        <span id="attCount" style="font-size:.82rem;color:var(--muted)">Chargement…</span>
-      </div>
-      <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Matière</th>
-              <th>Date séance</th>
-              <th>Scanné à</th>
-              <th>Statut</th>
-            </tr>
-          </thead>
-          <tbody id="attBody">
-            <tr class="empty-row"><td colspan="5">Chargement de l'historique…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Attendance scanning section -->
-  <div class="student-schedule-section" id="scanSection" style="display:none">
-    <div class="student-schedule-header">
-      <h2>Scanner un QR de présence</h2>
-    </div>
-    <div class="schedule-tab-content">
-      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-        <input type="text" id="scanToken" placeholder="Collez le token QR ou l'ID de la séance" style="flex:1;min-width:200px;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:var(--radius);font-size:0.9rem">
-        <button class="btn btn-primary" onclick="studentPage.validateScan()" style="padding:0.6rem 1.2rem">Valider la présence</button>
-      </div>
-      <div id="scanResult" style="margin-top:0.75rem;font-size:0.85rem"></div>
-    </div>
-  </div>
-</main>
-
-<footer>
-  PrésenceQR © 2025 — Espace Étudiant
-</footer>
-
-<script src="/api.js"></script>
-<script src="/i18n-fr.js"></script>
-<script>
-  const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-  const SCHEDULE_POLL_INTERVAL = 30000; // 30s
-
-  /**
-   * Student page controller.
-   *
-   * Provides a dynamic, real-time schedule for the connected student:
-   *   • WebSocket push from /ws/schedule/{classe_id}/ for immediate updates
-   *   • HTTP polling fallback every 30 s
-   *   • Day-by-day layout (Lundi → Dimanche)
-   */
-  const studentPage = {
-    currentUser: null,
-    schedule: [],
-    ws: null,
-    pollTimer: null,
-    pollRunning: false,
-
-    // ─── Init ──────────────────────────────────────────────────────────────
-
-    async init() {
-      // Auth guard: must be a student.
-      try {
-        this.currentUser = await API.requireAuth('student');
-      } catch {
-        try { this.currentUser = await API.requireAuth(); } catch { return; }
-      }
-
-      this._updateNavBar();
-      this._setupTabs();
-
-      // Load profile, schedule, and attendance history in parallel.
-      await Promise.all([this.loadSchedule(), this.loadHistory()]);
-
-      // Connect real-time WebSocket.
-      this._connectWebSocket();
-
-      // Start polling fallback.
-      this._startPolling();
-    },
-
-    // ─── Auth / Profile ────────────────────────────────────────────────────
-
-    _updateNavBar() {
-      document.getElementById('navUserName').textContent =
-        `${this.currentUser.first_name} ${this.currentUser.last_name}`;
-      document.getElementById('avatarInitials').textContent =
-        (this.currentUser.first_name?.[0] || '') + (this.currentUser.last_name?.[0] || '');
-      this._showProfile(this.currentUser);
-    },
-
-    _showProfile(user) {
-      const card = document.getElementById('profileCard');
-      card.style.display = 'flex';
-      document.getElementById('profileAvatar').textContent =
-        (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
-      document.getElementById('profileName').textContent =
-        `${user.first_name} ${user.last_name}`;
-      document.getElementById('profileEmail').textContent = user.email || '—';
-
-      const roleLabels = { admin: 'Admin', teacher: 'Enseignant', student: 'Étudiant' };
-      document.getElementById('profileMeta').innerHTML = `
-        <div class="meta-chip">
-          <span class="meta-chip-label">Rôle</span>
-          <span class="meta-chip-value">${roleLabels[user.role] || user.role || '—'}</span>
+  <main>
+    <!-- ── Identité de l'étudiant ───────────────────────────────────── -->
+    <section class="student-hero" id="profileCard" style="display:none">
+      <div class="student-hero-top">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-info">
+          <span class="student-hero-eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+            Espace étudiant
+          </span>
+          <h2 id="profileName">?</h2>
+          <p id="profileEmail">?</p>
+          <div class="student-hero-badges">
+            <span class="student-role-pill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Étudiant
+            </span>
+            <span class="student-id-pill" id="profileStudentId">ID étudiant —</span>
+          </div>
         </div>
-        <div class="meta-chip">
-          <span class="meta-chip-label">ID</span>
-          <span class="meta-chip-value">#${user.id || '—'}</span>
+        <div class="student-hero-class">
+          <span class="student-hero-class-label">Classe actuelle</span>
+          <strong id="profileClasse">—</strong>
+          <span id="profileCycle">—</span>
         </div>
-      `;
-    },
+      </div>
 
-    // ─── Tabs ──────────────────────────────────────────────────────────────
 
-    _setupTabs() {
-      document.querySelectorAll('.schedule-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          const target = tab.getAttribute('data-tab');
-          document.querySelectorAll('.schedule-tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.schedule-tab-content').forEach(c => c.style.display = 'none');
-          tab.classList.add('active');
-          document.getElementById(`tabContent${target === 'schedule' ? 'Schedule' : 'Attendance'}`).style.display = 'block';
+    </section>
+
+    <!-- ── Informations académiques ─────────────────────────────────── -->
+    <section class="student-panel" id="studentDetails">
+      <div class="student-panel-head">
+        <h2>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          Mes informations
+        </h2>
+        <span class="student-panel-hint">Informations académiques et personnelles</span>
+      </div>
+      <div class="student-info-grid" id="studentInfoGrid">
+        <div class="student-info-item"><span class="student-info-label">Chargement</span><span
+            class="student-info-value">…</span></div>
+      </div>
+    </section>
+
+    <!-- ── Modules de l'étudiant ────────────────────────────────────── -->
+    <section class="student-panel" id="modulesSection">
+      <div class="student-panel-head">
+        <h2>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <line x1="8" y1="7" x2="16" y2="7" />
+          </svg>
+          Mes modules
+          <span class="student-count-pill" id="modulesCount">0</span>
+        </h2>
+        <span class="student-panel-hint" id="modulesSemester">Semestre —</span>
+      </div>
+      <div class="student-modules-grid" id="modulesGrid">
+        <div class="student-empty">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Chargement des modules…
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Onglets ──────────────────────────────────────────────────── -->
+    <div class="student-tabs-wrap">
+      <div class="schedule-tabs student-tabs">
+        <div class="schedule-tab active" data-tab="schedule" id="tabSchedule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          Emploi du temps
+        </div>
+        <div class="schedule-tab" data-tab="attendance" id="tabAttendance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Historique des présences
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Emploi du temps ──────────────────────────────────────────── -->
+    <div class="schedule-tab-content student-tab-panel" id="tabContentSchedule" style="display:block">
+      <div class="student-schedule-header">
+        <div>
+          <h2>Emploi du temps</h2>
+          <div class="student-schedule-sub" id="scheduleSubtitle">Séances de votre classe</div>
+        </div>
+        <div class="schedule-sync-bar">
+          <span class="schedule-sync-dot" id="syncDot"></span>
+          <span id="syncStatus">Synchronisation…</span>
+          <button class="btn-icon" onclick="studentPage.refreshSchedule()" title="Actualiser">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <polyline points="21 3 21 9 15 9" />
+            </svg>
+            Actualiser
+          </button>
+        </div>
+      </div>
+      <div id="scheduleContainer">
+        <div class="schedule-empty">
+          <div class="schedule-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <div>Chargement de l'emploi du temps…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Historique des présences ─────────────────────────────────── -->
+    <div class="schedule-tab-content student-tab-panel" id="tabContentAttendance" style="display:none">
+      <div class="attendance-section student-attendance">
+        <div class="attendance-section-header">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="8" y1="13" x2="16" y2="13" />
+              <line x1="8" y1="17" x2="13" y2="17" />
+            </svg>
+            Historique de présences
+          </h3>
+          <span id="attCount" style="font-size:.8rem;color:var(--muted)">Chargement…</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Matière</th>
+                <th>Date séance</th>
+                <th>Scanné à</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody id="attBody">
+              <tr class="empty-row">
+                <td colspan="5">Chargement de l'historique…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Validation manuelle d'un QR ─────────────────────────────── -->
+    <div class="student-schedule-section" id="scanSection" style="display:none">
+      <div class="student-schedule-header">
+        <h2>Scanner un QR de présence</h2>
+      </div>
+      <div class="schedule-tab-content">
+        <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+          <input type="text" id="scanToken" placeholder="Collez le token QR ou l'ID de la séance"
+            style="flex:1;min-width:200px;padding:0.6rem 1rem;border:1px solid var(--border);border-radius:var(--radius);font-size:0.9rem">
+          <button class="btn btn-primary" onclick="studentPage.validateScan()" style="padding:0.6rem 1.2rem">Valider la
+            présence</button>
+        </div>
+        <div id="scanResult" style="margin-top:0.75rem;font-size:0.85rem"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    PrésenceQR © 2025 — Espace Étudiant
+  </footer>
+
+  <script src="/api.js"></script>
+  <script src="/i18n-fr.js"></script>
+  <script>
+    const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const SCHEDULE_POLL_INTERVAL = 30000; // 30s
+
+    /**
+     * Student page controller.
+     *
+     * Provides a dynamic, real-time schedule for the connected student:
+     *   • WebSocket push from /ws/schedule/{classe_id}/ for immediate updates
+     *   • HTTP polling fallback every 30 s
+     *   • Day-by-day layout (Lundi → Dimanche)
+     */
+    const studentPage = {
+      currentUser: null,
+      schedule: [],
+      ws: null,
+      pollTimer: null,
+      pollRunning: false,
+
+      // ─── Init ──────────────────────────────────────────────────────────────
+
+      async init() {
+        // Auth guard: must be a student.
+        try {
+          this.currentUser = await API.requireAuth('student');
+        } catch {
+          try { this.currentUser = await API.requireAuth(); } catch { return; }
+        }
+
+        this._updateNavBar();
+        this._setupTabs();
+
+        // Le profil est rechargé pour récupérer les modules et les
+        // informations académiques à jour, en parallèle des données métier.
+        await Promise.all([
+          this.refreshProfile(),
+          this.loadSchedule(),
+          this.loadHistory(),
+        ]);
+
+        // Connect real-time WebSocket.
+        this._connectWebSocket();
+
+        // Start polling fallback.
+        this._startPolling();
+
+        // Rafraîchit au retour sur l'onglet (sans recharger la page).
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            this.refreshProfile();
+            this.loadSchedule(true);
+          }
         });
-      });
-    },
+      },
 
-    // ─── Schedule ──────────────────────────────────────────────────────────
+      // ─── Auth / Profile ────────────────────────────────────────────────────
 
-    get classeId() {
-      return this.currentUser?.student_profile?.classe_id;
-    },
+      _updateNavBar() {
+        document.getElementById('navUserName').textContent =
+          `${this.currentUser.first_name} ${this.currentUser.last_name}`;
+        document.getElementById('avatarInitials').textContent =
+          this._initials(this.currentUser.first_name, this.currentUser.last_name);
+        this._showProfile(this.currentUser);
+      },
 
-    async loadSchedule(silent = false) {
-      if (!silent) this._setSyncStatus('syncing');
-      try {
-        const data = await API.apiFetch('/attendance/my-schedule/');
-        this.schedule = Array.isArray(data) ? data : (data.results || []);
-        this._renderSchedule();
-        this._setSyncStatus('connected');
-      } catch (e) {
-        this._setSyncStatus('error', e.message);
-        const container = document.getElementById('scheduleContainer');
-        container.innerHTML = `
+      _initials(firstName, lastName) {
+        return ((firstName || '')[0] || '') + ((lastName || '')[0] || '');
+      },
+
+      _showProfile(user) {
+        const card = document.getElementById('profileCard');
+        card.style.display = 'flex';
+
+        const profile = user.student_profile || {};
+        document.getElementById('profileAvatar').textContent =
+          this._initials(user.first_name, user.last_name) || '?';
+        document.getElementById('profileName').textContent =
+          `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Étudiant';
+        document.getElementById('profileEmail').textContent = user.email || '—';
+        document.getElementById('profileStudentId').textContent =
+          `ID étudiant #${profile.id || '—'}`;
+
+        document.getElementById('profileClasse').textContent =
+          profile.classe_name || '—';
+        document.getElementById('profileCycle').textContent =
+          [profile.filiere_name, profile.semestre_name, profile.academic_year]
+            .filter(Boolean)
+            .join(' · ') || '—';
+
+        this._renderStudentInfo(user, profile);
+        this._renderModules(profile);
+      },
+
+      _renderStudentInfo(user, profile) {
+        const rows = [
+          { label: 'ID étudiant', value: profile.id ? `#${profile.id}` : '—', strong: true },
+          { label: 'Compte', value: user.id ? `#${user.id}` : '—' },
+          { label: 'Code Massar', value: profile.code_massar || '—', strong: true },
+          { label: 'Code Apogée', value: profile.code_apogee || '—' },
+          { label: 'Classe', value: profile.classe_name || '—' },
+          { label: 'Filière', value: profile.filiere_name || '—' },
+          { label: 'Semestre', value: profile.semestre_name || '—' },
+          { label: 'Niveau', value: profile.niveau || '—' },
+          { label: 'Année universitaire', value: profile.academic_year || '—' },
+          { label: 'Email', value: user.email || '—' },
+          { label: 'Téléphone', value: user.phone || '—' },
+          { label: 'CIN', value: user.cin || '—' },
+          { label: 'Inscrit depuis', value: this._formatDateOnly(profile.created_at || user.created_at) },
+        ];
+
+        document.getElementById('studentInfoGrid').innerHTML = rows.map(row => `
+        <div class="student-info-item ${row.strong ? 'is-strong' : ''}">
+          <span class="student-info-label">${esc(row.label)}</span>
+          <span class="student-info-value">${esc(row.value)}</span>
+        </div>
+      `).join('');
+      },
+
+      _renderModules(profile) {
+        const modules = Array.isArray(profile.modules) ? profile.modules : [];
+        const countEl = document.getElementById('modulesCount');
+        const semesterEl = document.getElementById('modulesSemester');
+        const grid = document.getElementById('modulesGrid');
+
+        if (countEl) countEl.textContent = modules.length;
+        if (semesterEl) {
+          semesterEl.textContent = [profile.semestre_name, profile.filiere_name]
+            .filter(Boolean)
+            .join(' · ') || 'Semestre en cours';
+        }
+        const statModules = document.getElementById('statModules');
+        if (statModules) statModules.textContent = modules.length;
+
+        if (!modules.length) {
+          grid.innerHTML = `
+          <div class="student-empty">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span>Aucun module n'est encore rattaché à votre inscription.</span>
+          </div>`;
+          return;
+        }
+
+        grid.innerHTML = modules.map(module => {
+          const name = module.name || 'Module';
+          const initial = (name[0] || '?').toUpperCase();
+          const chips = [];
+          if (module.code) chips.push(`<span class="student-module-chip is-code">${esc(module.code)}</span>`);
+          if (module.semestre_name) chips.push(`<span class="student-module-chip">${esc(module.semestre_name)}</span>`);
+          if (module.filiere_name) chips.push(`<span class="student-module-chip">${esc(module.filiere_name)}</span>`);
+          if (module.coefficient) chips.push(`<span class="student-module-chip">Coef. ${esc(module.coefficient)}</span>`);
+          if (module.teacher_name) chips.push(`<span class="student-module-chip">${esc(module.teacher_name)}</span>`);
+
+          return `
+          <article class="student-module-card">
+            <div class="student-module-icon">${esc(initial)}</div>
+            <div class="student-module-body">
+              <div class="student-module-name">${esc(name)}</div>
+              <div class="student-module-meta">
+                ${chips.join('') || '<span class="student-module-chip">Module du semestre</span>'}
+              </div>
+            </div>
+          </article>`;
+        }).join('');
+      },
+
+      /**
+       * Recharge le profil depuis l'API sans recharger la page.
+       * Met à jour la classe affichée et, si l'affectation a changé,
+       * reconnecte le WebSocket et recharge l'emploi du temps.
+       */
+      async refreshProfile() {
+        if (!API.getToken()) return;
+        try {
+          const previousClasseId = this.classeId;
+          const user = await API.apiFetch('/auth/me/');
+          this.currentUser = user;
+          localStorage.setItem('current_user', JSON.stringify(user));
+          this._updateNavBar();
+
+          const classeChanged =
+            String(previousClasseId ?? '') !== String(this.classeId ?? '');
+          if (classeChanged) {
+            this._reconnectWebSocket();
+            await this.loadSchedule(true);
+          }
+        } catch (e) {
+          // Silencieux : le polling suivant réessaiera, on garde les
+          // dernières données connues pour ne pas casser l'interface.
+          console.warn('Student profile refresh failed:', e.message);
+        }
+      },
+
+      // ─── Tabs ──────────────────────────────────────────────────────────────
+
+      _setupTabs() {
+        document.querySelectorAll('.schedule-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-tab');
+            document.querySelectorAll('.schedule-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.schedule-tab-content').forEach(c => c.style.display = 'none');
+            tab.classList.add('active');
+            document.getElementById(`tabContent${target === 'schedule' ? 'Schedule' : 'Attendance'}`).style.display = 'block';
+          });
+        });
+      },
+
+      // ─── Schedule ──────────────────────────────────────────────────────────
+
+      get classeId() {
+        return this.currentUser?.student_profile?.classe_id;
+      },
+
+      async loadSchedule(silent = false) {
+        if (!silent) this._setSyncStatus('syncing');
+        try {
+          const data = await API.apiFetch('/attendance/my-schedule/');
+          this.schedule = Array.isArray(data) ? data : (data.results || []);
+          this._renderSchedule();
+          this._setSyncStatus('connected');
+        } catch (e) {
+          this._setSyncStatus('error', e.message);
+          const container = document.getElementById('scheduleContainer');
+          container.innerHTML = `
           <div class="schedule-empty">
-            <div class="schedule-empty-icon">⚠️</div>
+            <div class="schedule-empty-icon" style="background:var(--student-danger-soft);color:var(--student-danger)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
             <div>Erreur : ${esc(e.message || 'inconnue')}</div>
-            <button class="btn btn-primary" onclick="studentPage.refreshSchedule()" style="margin-top:0.5rem">Réessayer</button>
+            <button class="btn btn-primary" onclick="studentPage.refreshSchedule()" style="margin-top:0.6rem">Réessayer</button>
           </div>
         `;
-      }
-    },
+        }
+      },
 
-    refreshSchedule() {
-      this.loadSchedule(false);
-    },
+      refreshSchedule() {
+        this.loadSchedule(false);
+      },
 
-    _renderSchedule() {
-      const container = document.getElementById('scheduleContainer');
-      if (!this.schedule.length) {
-        const classeName = this.currentUser?.student_profile?.classe_name;
-        container.innerHTML = `
+      _renderSchedule() {
+        const container = document.getElementById('scheduleContainer');
+        if (!this.schedule.length) {
+          const classeName = this.currentUser?.student_profile?.classe_name;
+          container.innerHTML = `
           <div class="schedule-empty">
-            <div class="schedule-empty-icon">📅</div>
-            <div>${classeName ? 'Aucune séance prévue pour cette période.' : window.I18N.scheduleNoClass}</div>
+            <div class="schedule-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div>${classeName
+              ? `Aucune séance prévue pour ${esc(classeName)}.`
+              : window.I18N.scheduleNoClass}</div>
           </div>
         `;
-        return;
-      }
+          this._updateScheduleStats({}, 0);
+          return;
+        }
 
-      const days = this._groupByDay(this.schedule);
-      let html = '';
+        const days = this._groupByDay(this.schedule);
+        let html = '';
 
-      for (const [dayKey, items] of Object.entries(days)) {
-        const date = new Date(dayKey + 'T00:00:00');
-        const isToday = this._isToday(date);
-        const dayName = DAY_NAMES[date.getDay() === 0 ? 6 : date.getDay() - 1];
-        html += `
+        for (const [dayKey, items] of Object.entries(days)) {
+          const date = new Date(dayKey + 'T00:00:00');
+          const isToday = this._isToday(date);
+          const dayName = DAY_NAMES[date.getDay() === 0 ? 6 : date.getDay() - 1];
+          html += `
           <div class="schedule-day">
             <div class="schedule-day-header">
               <div class="schedule-day-label ${isToday ? 'today' : ''}">${dayName.slice(0, 3).toUpperCase()}</div>
@@ -264,29 +1924,40 @@
             ${items.map(item => this._renderSessionCard(item)).join('')}
           </div>
         `;
-      }
+        }
 
-      container.innerHTML = html;
-    },
+        container.innerHTML = html;
+        this._updateScheduleStats(days, this.schedule.length);
+      },
 
-    _renderSessionCard(item) {
-      const status = item.status || 'a_venir';
-      const statusClass = this._statusClass(status);
-      const statusLabel = this._statusLabel(status);
-      const typeLabel = this._typeLabel(item.session_type);
-      const isOngoing = status === 'en_cours';
-      const isCancelled = status === 'annulee';
-      const locationDisplay = this._locationDisplay(item);
+      _updateScheduleStats(days, total) {
+        const statSessions = document.getElementById('statSessions');
+        const statToday = document.getElementById('statToday');
+        const subtitle = document.getElementById('scheduleSubtitle');
 
-      let badge = '';
-      if (item.qr_open) {
-        badge = `<span class="schedule-qr-badge">Présence ouverte</span>`;
-      }
-      if (isOngoing) {
-        badge = `<span class="schedule-status-chip ongoing"><span class="dot"></span>En direct</span>` + (item.qr_open ? `<span class="schedule-qr-badge">Présence ouverte</span>` : '');
-      }
+        if (statSessions) statSessions.textContent = total;
+        if (statToday) {
+          const todayKey = this._todayKey();
+          statToday.textContent = (days[todayKey] || []).length;
+        }
+        if (subtitle) {
+          const dayCount = Object.keys(days).length;
+          subtitle.textContent = total
+            ? `${total} séance${total > 1 ? 's' : ''} · ${dayCount} jour${dayCount > 1 ? 's' : ''}`
+            : 'Séances de votre classe';
+        }
+      },
 
-      return `
+      _renderSessionCard(item) {
+        const status = item.status || 'a_venir';
+        const statusClass = this._statusClass(status);
+        const statusLabel = this._statusLabel(status);
+        const typeLabel = this._typeLabel(item.session_type);
+        const isOngoing = status === 'en_cours';
+        const isCancelled = status === 'annulee';
+        const locationDisplay = this._locationDisplay(item);
+
+        return `
         <div class="schedule-card ${isOngoing ? 'ongoing' : ''} ${isCancelled ? 'cancelled' : ''}">
           <div class="schedule-card-body">
             <div class="schedule-time-col">
@@ -298,249 +1969,301 @@
               <div class="schedule-card-title ${isCancelled ? 'cancelled' : ''}">
                 ${esc(item.module_name || item.subject || '?')}
               </div>
-              <div class="schedule-card-sub">${esc(item.teacher_name || '—')}</div>
+              <div class="schedule-card-sub">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>${esc(item.teacher_name || 'Enseignant non assigné')}</span>
+              </div>
               <div class="schedule-info-grid">
-                <div class="schedule-info-item"><strong>Type :</strong> ${esc(typeLabel)}</div>
-                <div class="schedule-info-item"><strong>Lieu :</strong> ${esc(locationDisplay)}</div>
-                <div class="schedule-info-item"><strong>Classe :</strong> ${esc(item.classe_name || '—')}</div>
-                <div class="schedule-info-item"><strong>Statut :</strong> ${esc(statusLabel)}</div>
+                <div class="schedule-info-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  <span><strong>Type :</strong> ${esc(typeLabel)}</span>
+                </div>
+                <div class="schedule-info-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span><strong>Lieu :</strong> ${esc(locationDisplay)}</span>
+                </div>
+                <div class="schedule-info-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                  <span><strong>Classe :</strong> ${esc(item.classe_name || '—')}</span>
+                </div>
               </div>
               <div class="schedule-badges">
                 <span class="schedule-status-chip ${statusClass}">${isOngoing ? '<span class="dot"></span>' : ''}${esc(statusLabel)}</span>
                 <span class="schedule-type-badge">${esc(typeLabel)}</span>
-                ${item.qr_open ? '<span class="schedule-qr-badge">Présence ouverte</span>' : ''}
+                ${item.qr_open ? '<span class="schedule-qr-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Présence ouverte</span>' : ''}
               </div>
             </div>
           </div>
         </div>
       `;
-    },
+      },
 
-    // ─── Attendance History ────────────────────────────────────────────────
+      // ─── Attendance History ────────────────────────────────────────────────
 
-    async loadHistory() {
-      try {
-        const data = await API.apiFetch('/attendance/my/');
-        const records = Array.isArray(data) ? data : (data.results || []);
-        this._renderHistory(records);
-      } catch (e) {
-        document.getElementById('attBody').innerHTML =
-          `<tr class="empty-row"><td colspan="5">Erreur : ${esc(e.message || 'inconnue')}</td></tr>`;
-      }
-    },
+      async loadHistory() {
+        try {
+          const data = await API.apiFetch('/attendance/my/');
+          const records = Array.isArray(data) ? data : (data.results || []);
+          this._renderHistory(records);
+        } catch (e) {
+          document.getElementById('attBody').innerHTML =
+            `<tr class="empty-row"><td colspan="5">Erreur : ${esc(e.message || 'inconnue')}</td></tr>`;
+        }
+      },
 
-    _renderHistory(records) {
-      const countEl = document.getElementById('attCount');
-      if (countEl) countEl.textContent = `${records.length} enregistrement${records.length !== 1 ? 's' : ''}`;
+      _renderHistory(records) {
+        const countEl = document.getElementById('attCount');
+        if (countEl) countEl.textContent = `${records.length} enregistrement${records.length !== 1 ? 's' : ''}`;
 
-      if (!records.length) {
-        document.getElementById('attBody').innerHTML = `
+        const statAttendances = document.getElementById('statAttendances');
+        if (statAttendances) statAttendances.textContent = records.length;
+
+        if (!records.length) {
+          document.getElementById('attBody').innerHTML = `
           <tr class="empty-row"><td colspan="5">
             <div class="empty-state-inline">
-              <span class="empty-icon">📋</span>
+              <span class="empty-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </span>
               <span>Aucune présence enregistrée. Scannez un QR en cours.</span>
             </div>
           </td></tr>`;
-        return;
-      }
+          return;
+        }
 
-      document.getElementById('attBody').innerHTML = records.map((r, i) => `
+        document.getElementById('attBody').innerHTML = records.map((r, i) => `
         <tr>
-          <td style="color:var(--muted)">${i + 1}</td>
-          <td><strong>${esc(r.subject || '?')}</strong></td>
-          <td style="color:var(--muted)">${formatDate(r.session_date)}</td>
-          <td style="color:var(--muted);font-size:.82rem">${formatDateTime(r.validation_time)}</td>
-          <td><span class="badge badge-present">Présent</span></td>
+          <td data-label="#" style="color:var(--student-muted);font-weight:700">${i + 1}</td>
+          <td data-label="Matière"><strong>${esc(r.subject || '?')}</strong></td>
+          <td data-label="Date séance" style="color:var(--student-text-secondary)">${formatDate(r.session_date)}</td>
+          <td data-label="Scanné à" style="color:var(--student-muted);font-size:0.82rem;font-variant-numeric:tabular-nums">${formatDateTime(r.validation_time)}</td>
+          <td data-label="Statut"><span class="badge badge-present"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Présent</span></td>
         </tr>
       `).join('');
-    },
+      },
 
-    // ─── WebSocket ─────────────────────────────────────────────────────────
+      // ─── WebSocket ─────────────────────────────────────────────────────────
 
-    _connectWebSocket() {
-      if (!this.classeId) {
-        console.warn('Student schedule WS: no classe_id available');
-        return;
-      }
-      const path = `/ws/schedule/${this.classeId}/`;
-      this.ws = API.connectScheduleWs(this.classeId, this._onWsMessage.bind(this), this._onWsStatus.bind(this));
-    },
-
-    _onWsMessage(data) {
-      if (!data || !data.type || data.type !== 'session_change') return;
-
-      const action = data.action;
-      const sessionData = data.data || {};
-
-      // Hard guard: never render a session belonging to another class,
-      // even if it were broadcast on this channel.
-      if (sessionData.classe != null && Number(sessionData.classe) !== Number(this.classeId)) {
-        return;
-      }
-
-      if (action === 'created' || action === 'updated') {
-        const idx = this.schedule.findIndex(s => s.id === sessionData.id);
-        if (idx >= 0) {
-          this.schedule[idx] = sessionData;
-        } else {
-          this.schedule.push(sessionData);
+      _connectWebSocket() {
+        if (!this.classeId) {
+          console.warn('Student schedule WS: no classe_id available');
+          return;
         }
-        this.schedule.sort((a, b) => {
-          if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-          return a.start_time < b.start_time ? -1 : 1;
-        });
-        this._renderSchedule();
-        this._setSyncStatus('connected');
-      } else if (action === 'deleted') {
-        const idx = this.schedule.findIndex(s => s.id === sessionData.id);
-        if (idx >= 0) {
-          this.schedule.splice(idx, 1);
+        if (this.ws && (
+          this.ws.readyState === WebSocket.OPEN ||
+          this.ws.readyState === WebSocket.CONNECTING
+        )) {
+          return;
+        }
+        this.ws = API.connectScheduleWs(this.classeId, this._onWsMessage.bind(this), this._onWsStatus.bind(this));
+      },
+
+      _reconnectWebSocket() {
+        if (this.ws) {
+          try { this.ws.close(); } catch (_) { }
+          this.ws = null;
+        }
+        this._connectWebSocket();
+      },
+
+      _onWsMessage(data) {
+        if (!data || !data.type || data.type !== 'session_change') return;
+
+        const action = data.action;
+        const sessionData = data.data || {};
+
+        // Hard guard: never render a session belonging to another class,
+        // even if it were broadcast on this channel.
+        if (sessionData.classe != null && Number(sessionData.classe) !== Number(this.classeId)) {
+          return;
+        }
+
+        if (action === 'created' || action === 'updated') {
+          const idx = this.schedule.findIndex(s => s.id === sessionData.id);
+          if (idx >= 0) {
+            this.schedule[idx] = sessionData;
+          } else {
+            this.schedule.push(sessionData);
+          }
+          this.schedule.sort((a, b) => {
+            if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+            return a.start_time < b.start_time ? -1 : 1;
+          });
           this._renderSchedule();
+          this._setSyncStatus('connected');
+        } else if (action === 'deleted') {
+          const idx = this.schedule.findIndex(s => s.id === sessionData.id);
+          if (idx >= 0) {
+            this.schedule.splice(idx, 1);
+            this._renderSchedule();
+          }
         }
-      }
-    },
+      },
 
-    _onWsStatus(status) {
-      const dot = document.getElementById('syncDot');
-      if (status === 'connected') {
-        dot.classList.remove('off');
-        dot.classList.add('pulse');
-      } else {
-        dot.classList.add('off');
-        dot.classList.remove('pulse');
-      }
-    },
+      _onWsStatus(status) {
+        const dot = document.getElementById('syncDot');
+        if (!dot) return;
+        if (status === 'connected') {
+          dot.classList.remove('off');
+          dot.classList.add('pulse');
+        } else {
+          dot.classList.add('off');
+          dot.classList.remove('pulse');
+        }
+      },
 
-    // ─── Polling ───────────────────────────────────────────────────────────
+      // ─── Polling ───────────────────────────────────────────────────────────
 
-    _startPolling() {
-      if (this.pollTimer) clearInterval(this.pollTimer);
-      this.pollTimer = setInterval(() => {
-        if (!this.pollRunning) {
+      _startPolling() {
+        if (this.pollTimer) clearInterval(this.pollTimer);
+        this.pollTimer = setInterval(async () => {
+          if (this.pollRunning) return;
           this.pollRunning = true;
-          this.loadSchedule(true).finally(() => { this.pollRunning = false; });
+          try {
+            // Le profil d'abord : une réaffectation de classe doit être
+            // détectée avant de recharger l'emploi du temps / le WebSocket.
+            await this.refreshProfile();
+            await this.loadSchedule(true);
+          } finally {
+            this.pollRunning = false;
+          }
+        }, SCHEDULE_POLL_INTERVAL);
+      },
+
+      // ─── Scan validation ───────────────────────────────────────────────────
+
+      async validateScan() {
+        const token = document.getElementById('scanToken').value.trim();
+        if (!token) return;
+        const result = document.getElementById('scanResult');
+        result.textContent = 'Validation…';
+        result.style.color = 'var(--text-secondary)';
+        try {
+          const data = await API.apiFetch('/attendance/validate/app/', {
+            method: 'POST',
+            body: JSON.stringify({ qr_token: token }),
+          });
+          result.innerHTML = `<span style="color:var(--green)">✓ Présence validée pour ${esc(data.student_name || '?')}</span>`;
+        } catch (e) {
+          result.innerHTML = `<span style="color:var(--red)">✗ ${esc(e.message || 'Erreur')}</span>`;
         }
-      }, SCHEDULE_POLL_INTERVAL);
-    },
+      },
 
-    // ─── Scan validation ───────────────────────────────────────────────────
+      // ─── Helpers ───────────────────────────────────────────────────────────
 
-    async validateScan() {
-      const token = document.getElementById('scanToken').value.trim();
-      if (!token) return;
-      const result = document.getElementById('scanResult');
-      result.textContent = 'Validation…';
-      result.style.color = 'var(--text-secondary)';
-      try {
-        const data = await API.apiFetch('/attendance/validate/app/', {
-          method: 'POST',
-          body: JSON.stringify({ qr_token: token }),
-        });
-        result.innerHTML = `<span style="color:var(--green)">✓ Présence validée pour ${esc(data.student_name || '?')}</span>`;
-      } catch (e) {
-        result.innerHTML = `<span style="color:var(--red)">✗ ${esc(e.message || 'Erreur')}</span>`;
-      }
-    },
+      _setSyncStatus(state, message = '') {
+        const dot = document.getElementById('syncDot');
+        const status = document.getElementById('syncStatus');
+        if (!dot || !status) return;
+        if (state === 'connected') {
+          dot.classList.remove('off');
+          dot.classList.add('pulse');
+          status.textContent = 'Synchronisé en temps réel';
+        } else if (state === 'syncing') {
+          dot.classList.remove('off');
+          dot.classList.remove('pulse');
+          status.textContent = 'Synchronisation…';
+        } else if (state === 'error') {
+          dot.classList.add('off');
+          dot.classList.remove('pulse');
+          status.textContent = `Erreur : ${message}`;
+        }
+      },
 
-    // ─── Helpers ───────────────────────────────────────────────────────────
+      _groupByDay(items) {
+        const grouped = {};
+        for (const item of items) {
+          const dateStr = item.date;
+          (grouped[dateStr] = grouped[dateStr] || []).push(item);
+        }
+        const sortedKeys = Object.keys(grouped).sort();
+        const result = {};
+        for (const k of sortedKeys) result[k] = grouped[k];
+        return result;
+      },
 
-    _setSyncStatus(state, message = '') {
-      const dot = document.getElementById('syncDot');
-      const status = document.getElementById('syncStatus');
-      if (state === 'connected') {
-        dot.classList.remove('off');
-        dot.classList.add('pulse');
-        status.textContent = 'Synchronisé en temps réel';
-      } else if (state === 'syncing') {
-        dot.classList.remove('off');
-        dot.classList.remove('pulse');
-        status.textContent = 'Synchronisation…';
-      } else if (state === 'error') {
-        dot.classList.add('off');
-        dot.classList.remove('pulse');
-        status.textContent = `Erreur : ${message}`;
-      }
-    },
+      _isToday(date) {
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear() &&
+          date.getMonth() === now.getMonth() &&
+          date.getDate() === now.getDate();
+      },
 
-    _groupByDay(items) {
-      const grouped = {};
-      for (const item of items) {
-        const dateStr = item.date;
-        (grouped[dateStr] = grouped[dateStr] || []).push(item);
-      }
-      const sortedKeys = Object.keys(grouped).sort();
-      const result = {};
-      for (const k of sortedKeys) result[k] = grouped[k];
-      return result;
-    },
+      _todayKey() {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${now.getFullYear()}-${month}-${day}`;
+      },
 
-    _isToday(date) {
-      const now = new Date();
-      return date.getFullYear() === now.getFullYear() &&
-             date.getMonth() === now.getMonth() &&
-             date.getDate() === now.getDate();
-    },
+      _formatTime(timeStr) {
+        if (!timeStr) return '—';
+        return timeStr.substring(0, 5);
+      },
 
-    _formatTime(timeStr) {
-      if (!timeStr) return '—';
-      return timeStr.substring(0, 5);
-    },
+      _formatDateOnly(value) {
+        if (!value) return '—';
+        try {
+          return new Date(value).toLocaleDateString('fr-FR', {
+            day: '2-digit', month: 'short', year: 'numeric'
+          });
+        } catch { return String(value).substring(0, 10); }
+      },
 
-    _formatDateTime(dt) {
-      if (!dt) return '—';
-      try {
-        return new Date(dt).toLocaleString('fr-FR', {
-          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-        });
-      } catch { return dt; }
-    },
+      _formatDateTime(dt) {
+        if (!dt) return '—';
+        try {
+          return new Date(dt).toLocaleString('fr-FR', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+          });
+        } catch { return dt; }
+      },
 
-    _statusClass(status) {
-      switch (status) {
-        case 'en_cours': return 'ongoing';
-        case 'annulee': return 'cancelled';
-        case 'terminee': return 'finished';
-        default: return 'upcoming';
-      }
-    },
+      _statusClass(status) {
+        switch (status) {
+          case 'en_cours': return 'ongoing';
+          case 'annulee': return 'cancelled';
+          case 'terminee': return 'finished';
+          default: return 'upcoming';
+        }
+      },
 
-    _statusLabel(status) {
-      switch (status) {
-        case 'en_cours': return 'En cours';
-        case 'annulee': return 'Annulée';
-        case 'terminee': return 'Terminée';
-        default: return 'À venir';
-      }
-    },
+      _statusLabel(status) {
+        switch (status) {
+          case 'en_cours': return 'En cours';
+          case 'annulee': return 'Annulée';
+          case 'terminee': return 'Terminée';
+          default: return 'À venir';
+        }
+      },
 
-    _typeLabel(sessionType) {
-      const map = { Cours: 'Cours', TD: 'TD', TP: 'TP', Exam: 'Examen', Other: 'Autre' };
-      return map[sessionType] || 'Cours';
-    },
+      _typeLabel(sessionType) {
+        const map = { Cours: 'Cours', TD: 'TD', TP: 'TP', Exam: 'Examen', Other: 'Autre' };
+        return map[sessionType] || 'Cours';
+      },
 
-    _locationDisplay(item) {
-      if (item.amphitheater_name) return `Amphi ${item.amphitheater_name}`;
-      const parts = [];
-      if (item.block_name) parts.push(item.block_name);
-      if (item.room_name) parts.push(item.room_name);
-      return parts.length ? parts.join(' — ') : '—';
-    },
-  };
+      _locationDisplay(item) {
+        if (item.amphitheater_name) return `Amphi ${item.amphitheater_name}`;
+        const parts = [];
+        if (item.block_name) parts.push(item.block_name);
+        if (item.room_name) parts.push(item.room_name);
+        return parts.length ? parts.join(' — ') : '—';
+      },
+    };
 
-  // ─── Lifecycle ───────────────────────────────────────────────────────────
+    // ─── Lifecycle ───────────────────────────────────────────────────────────
 
-  let currentUser = null;
+    (async () => {
+      await studentPage.init();
+    })();
 
-  (async () => {
-    await studentPage.init();
-  })();
-
-  function esc(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-</script>
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
 </body>
+
 </html>

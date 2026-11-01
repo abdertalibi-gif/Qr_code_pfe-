@@ -35,8 +35,8 @@ class StudentImportServiceTests(TestCase):
     def test_import_creates_students_users_and_enrollments(self):
         csv_content = (
             "Student Code,Last Name,First Name,Email,Phone\n"
-            "CNE001,Benali,Ayman,ayman@test.ma,0611111111\n"
-            "CNE002,Alami,Sara,sara@test.ma,\n"
+            "CNE001,Benali,Ayman,ayman@edu.umi.ac.ma,0611111111\n"
+            "CNE002,Alami,Sara,sara@edu.umi.ac.ma,\n"
         )
         report = import_students_for_module(self.module.id, self._csv_file(csv_content))
 
@@ -51,7 +51,7 @@ class StudentImportServiceTests(TestCase):
     def test_import_is_idempotent(self):
         csv_content = (
             "Student Code,Last Name,First Name,Email\n"
-            "CNE001,Benali,Ayman,ayman@test.ma\n"
+            "CNE001,Benali,Ayman,ayman@edu.umi.ac.ma\n"
         )
         first = import_students_for_module(self.module.id, self._csv_file(csv_content))
         second = import_students_for_module(self.module.id, self._csv_file(csv_content))
@@ -66,7 +66,7 @@ class StudentImportServiceTests(TestCase):
 
     def test_import_reuses_existing_student_without_duplicate_enrollment(self):
         user = User.objects.create_user(
-            email="ayman@test.ma",
+            email="ayman@edu.umi.ac.ma",
             password="Pass12345!",
             first_name="Ayman",
             last_name="Benali",
@@ -77,15 +77,15 @@ class StudentImportServiceTests(TestCase):
             code_massar="CNE001",
             first_name="Ayman",
             last_name="Benali",
-            email="ayman@test.ma",
+            email="ayman@edu.umi.ac.ma",
             classe=self.classe,
         )
         StudentModuleEnrollment.objects.create(student=student, module=self.module)
 
         csv_content = (
             "Student Code,Last Name,First Name,Email\n"
-            "CNE001,Benali,Ayman,ayman@test.ma\n"
-            "CNE003,Idrissi,Hamza,hamza@test.ma\n"
+            "CNE001,Benali,Ayman,ayman@edu.umi.ac.ma\n"
+            "CNE003,Idrissi,Hamza,hamza@edu.umi.ac.ma\n"
         )
         report = import_students_for_module(self.module.id, self._csv_file(csv_content))
 
@@ -98,16 +98,16 @@ class StudentImportServiceTests(TestCase):
         csv_content = (
             "Student Code,Last Name,First Name,Email\n"
             "CNE001,Benali,Ayman,not-an-email\n"
-            "CNE001,Other,User,valid@test.ma\n"
+            "CNE001,Other,User,valid@edu.umi.ac.ma\n"
         )
         report = import_students_for_module(self.module.id, self._csv_file(csv_content))
 
         self.assertGreaterEqual(len(report["errors"]), 2)
         self.assertEqual(Student.objects.count(), 0)
 
-    def test_import_rejects_email_linked_to_other_student(self):
+    def test_import_rejects_email_linked_to_student_with_other_code(self):
         user = User.objects.create_user(
-            email="shared@test.ma",
+            email="shared@edu.umi.ac.ma",
             password="Pass12345!",
             first_name="Other",
             last_name="Student",
@@ -118,20 +118,23 @@ class StudentImportServiceTests(TestCase):
             code_massar="CNE999",
             first_name="Other",
             last_name="Student",
-            email="shared@test.ma",
+            email="shared@edu.umi.ac.ma",
             classe=self.classe,
         )
 
         csv_content = (
             "Student Code,Last Name,First Name,Email\n"
-            "CNE001,Benali,Ayman,shared@test.ma\n"
+            "CNE001,Benali,Ayman,shared@edu.umi.ac.ma\n"
         )
         report = import_students_for_module(self.module.id, self._csv_file(csv_content))
 
-        # Email matches existing student → reuses and updates code_massar
-        self.assertEqual(len(report["errors"]), 0)
-        student = Student.objects.get(email="shared@test.ma")
-        self.assertEqual(student.code_massar, "CNE001")
+        # L'email appartient déjà à un étudiant dont le CNE est différent :
+        # l'import doit être bloqué et aucun identifiant n'est modifié.
+        self.assertEqual(report["created"], 0)
+        self.assertGreaterEqual(len(report["errors"]), 1)
+        student = Student.objects.get(email="shared@edu.umi.ac.ma")
+        self.assertEqual(student.code_massar, "CNE999")
+        self.assertEqual(Student.objects.count(), 1)
 
 
 class StudentImportAPITests(TestCase):
@@ -184,7 +187,7 @@ class StudentImportAPITests(TestCase):
     def test_import_endpoint(self):
         csv_content = (
             "Student Code,Last Name,First Name,Email\n"
-            "CNE020,Benali,Ayman,ayman@test.ma\n"
+            "CNE020,Benali,Ayman,ayman@edu.umi.ac.ma\n"
         )
         upload = io.BytesIO(csv_content.encode("utf-8"))
         upload.name = "students.csv"

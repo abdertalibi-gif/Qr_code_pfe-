@@ -1,28 +1,118 @@
+/// Module auquel l'étudiant est réellement inscrit pour le semestre.
+class StudentModule {
+  final int id;
+  final String name;
+  final String code;
+  final int coefficient;
+  final String teacherName;
+  final int? filiereId;
+  final String filiereName;
+  final int? semestreId;
+  final String semestreName;
+
+  const StudentModule({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.coefficient,
+    required this.teacherName,
+    this.filiereId,
+    this.filiereName = '',
+    this.semestreId,
+    this.semestreName = '',
+  });
+
+  factory StudentModule.fromJson(Map<String, dynamic> json) {
+    return StudentModule(
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? '',
+      code: json['code'] as String? ?? '',
+      coefficient: json['coefficient'] as int? ?? 0,
+      teacherName: json['teacher_name'] as String? ?? '',
+      filiereId: json['filiere_id'] as int?,
+      filiereName: json['filiere_name'] as String? ?? '',
+      semestreId: json['semestre_id'] as int?,
+      semestreName: json['semestre_name'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'code': code,
+        'coefficient': coefficient,
+        'teacher_name': teacherName,
+        'filiere_id': filiereId,
+        'filiere_name': filiereName,
+        'semestre_id': semestreId,
+        'semestre_name': semestreName,
+      };
+}
+
 class StudentProfile {
   final int id;
   final String firstName;
   final String lastName;
   final String codeMassar;
+  final String? codeApogee;
   final int? classeId;
   final String? classeName;
+  final int? filiereId;
+  final String? filiereName;
+  final int? semestreId;
+  final String? semestreName;
+  final int? moduleId;
+  final String? moduleName;
+  final String? niveau;
+  final String? academicYear;
+  final String? createdAt;
+  final List<StudentModule> modules;
 
   StudentProfile({
     required this.id,
     required this.firstName,
     required this.lastName,
     required this.codeMassar,
+    this.codeApogee,
     this.classeId,
     this.classeName,
+    this.filiereId,
+    this.filiereName,
+    this.semestreId,
+    this.semestreName,
+    this.moduleId,
+    this.moduleName,
+    this.niveau,
+    this.academicYear,
+    this.createdAt,
+    this.modules = const [],
   });
 
   factory StudentProfile.fromJson(Map<String, dynamic> json) {
+    final rawModules = json['modules'];
     return StudentProfile(
       id: json['id'] as int,
       firstName: json['first_name'] as String? ?? '',
       lastName: json['last_name'] as String? ?? '',
       codeMassar: json['code_massar'] as String? ?? '',
+      codeApogee: json['code_apogee'] as String?,
       classeId: json['classe_id'] as int?,
       classeName: json['classe_name'] as String?,
+      filiereId: json['filiere_id'] as int?,
+      filiereName: json['filiere_name'] as String?,
+      semestreId: json['semestre_id'] as int?,
+      semestreName: json['semestre_name'] as String?,
+      moduleId: json['module_id'] as int?,
+      moduleName: json['module_name'] as String?,
+      niveau: json['niveau'] as String?,
+      academicYear: json['academic_year'] as String?,
+      createdAt: json['created_at'] as String?,
+      modules: rawModules is List
+          ? rawModules
+              .whereType<Map<String, dynamic>>()
+              .map(StudentModule.fromJson)
+              .toList()
+          : const [],
     );
   }
 
@@ -31,8 +121,19 @@ class StudentProfile {
         'first_name': firstName,
         'last_name': lastName,
         'code_massar': codeMassar,
+        'code_apogee': codeApogee,
         'classe_id': classeId,
         'classe_name': classeName,
+        'filiere_id': filiereId,
+        'filiere_name': filiereName,
+        'semestre_id': semestreId,
+        'semestre_name': semestreName,
+        'module_id': moduleId,
+        'module_name': moduleName,
+        'niveau': niveau,
+        'academic_year': academicYear,
+        'created_at': createdAt,
+        'modules': modules.map((m) => m.toJson()).toList(),
       };
 }
 

@@ -35,6 +35,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         provider.setUserProfile(authProvider.user!);
       }
       provider.startScheduleAutoRefresh();
+      // Rafraîchit le profil pour récupérer une éventuelle nouvelle
+      // affectation de classe sans redémarrer l'application.
+      provider.refreshProfile(silent: true);
       if (provider.schedule.isEmpty && !provider.scheduleLoading) {
         provider.loadSchedule();
       }

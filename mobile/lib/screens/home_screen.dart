@@ -5,8 +5,10 @@ import '../l10n/app_strings.dart';
 import '../constants/app_constants.dart';
 import '../constants/app_theme.dart';
 import '../models/attendance_model.dart';
+import '../models/user_model.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/student_provider.dart';
 import '../providers/theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -97,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final themeProvider = context.watch<ThemeProvider>();
+    final studentProvider = context.watch<StudentProvider>();
     final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
@@ -194,9 +197,17 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 20),
 
                           // ── Welcome banner ─────────────────────────────
-                          _WelcomeBanner(user: authProvider.user),
+                          _WelcomeBanner(
+                            user: authProvider.user,
+                            profile: studentProvider.profile?.studentProfile,
+                          ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
+
+                          // ── Aperçu étudiant (modules / séances / présences)
+                          _StudentSnapshot(provider: studentProvider),
+
+                          const SizedBox(height: 22),
 
                           // ── Scan QR button ─────────────────────────────
                           _ScanQrButton(onTap: _navigateToScanner),
@@ -279,8 +290,9 @@ class _HomeScreenState extends State<HomeScreen>
 
 class _WelcomeBanner extends StatelessWidget {
   final dynamic user; // UserModel or null
+  final StudentProfile? profile;
 
-  const _WelcomeBanner({this.user});
+  const _WelcomeBanner({this.user, this.profile});
 
   String get _greeting {
     final hour = DateTime.now().hour;
@@ -295,92 +307,207 @@ class _WelcomeBanner extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF0A3C60),
+                  const Color(0xFF0F6E9F),
+                  const Color(0xFF1D8AC9),
+                ]
+              : [
+                  const Color(0xFF0A4F73),
+                  AppTheme.primary,
+                  AppTheme.secondary,
+                ],
+        ),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(isDark ? 0.3 : 0.4),
-            blurRadius: 20,
+            color: AppTheme.primary.withOpacity(isDark ? 0.25 : 0.35),
+            blurRadius: 24,
             offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.18),
+          width: 1,
+        ),
       ),
-      padding: const EdgeInsets.all(24),
-      child: Row(
+      padding: const EdgeInsets.all(22),
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$_greeting,',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user != null
-                      ? (user.fullName.isNotEmpty
-                          ? user.fullName
-                          : user.email)
-                      : AppStrings.student,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (user?.email != null && user!.fullName.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    user!.email,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white60,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, size: 8, color: AppTheme.successColor),
-                      SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          AppStrings.readyToScan,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          Positioned(
+            right: -20,
+            bottom: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
             ),
           ),
-          const SizedBox(width: 16),
-          // Avatar
-          _buildAvatar(),
+          Positioned(
+            right: 40,
+            top: -30,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.25),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.school_rounded,
+                              size: 11, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'ESPACE ÉTUDIANT',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$_greeting,',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.85),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      user != null
+                          ? (user.fullName.isNotEmpty
+                              ? user.fullName
+                              : user.email)
+                          : AppStrings.student,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (user?.email != null && user!.fullName.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        user!.email,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (profile?.classeName != null &&
+                            profile!.classeName!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4.5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.28),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.class_outlined,
+                                    size: 12, color: Colors.white),
+                                const SizedBox(width: 5),
+                                Text(
+                                  profile!.classeName!,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 4.5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.25),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.circle,
+                                  size: 7, color: Color(0xFF34D399)),
+                              SizedBox(width: 5),
+                              Text(
+                                AppStrings.readyToScan,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              _buildAvatar(),
+            ],
+          ),
         ],
       ),
     );
@@ -389,25 +516,153 @@ class _WelcomeBanner extends StatelessWidget {
   Widget _buildAvatar() {
     final initials = user?.initials as String? ?? '?';
     return Container(
-      width: 60,
-      height: 60,
+      width: 62,
+      height: 62,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
-        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(0.4),
-          width: 2,
+          color: Colors.white.withOpacity(0.45),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Center(
         child: Text(
           initials,
           style: const TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Aperçu étudiant ──────────────────────────────────────────────────────────
+
+class _StudentSnapshot extends StatelessWidget {
+  final StudentProvider provider;
+
+  const _StudentSnapshot({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final modules = provider.profile?.studentProfile?.modules.length ?? 0;
+    final sessions = provider.schedule.length;
+    final attendances = provider.attendanceHistory.length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _SnapshotCard(
+            icon: Icons.menu_book_outlined,
+            value: '$modules',
+            label: 'Modules',
+            color: AppTheme.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SnapshotCard(
+            icon: Icons.calendar_month_outlined,
+            value: '$sessions',
+            label: 'Séances',
+            color: AppTheme.accent,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SnapshotCard(
+            icon: Icons.check_circle_outline_rounded,
+            value: '$attendances',
+            label: 'Présences',
+            color: AppTheme.successColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SnapshotCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _SnapshotCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(isDark ? 0.22 : 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -658,34 +913,36 @@ class _AttendanceHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppTheme.darkCard : AppTheme.lightCard;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.successColor.withOpacity(0.2),
+          color: borderColor,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Status icon
+            // Status icon with soft rounded badge
             Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withOpacity(0.12),
-                shape: BoxShape.circle,
+                color: AppTheme.successColor.withOpacity(isDark ? 0.18 : 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.check_circle_rounded,
@@ -703,14 +960,17 @@ class _AttendanceHistoryCard extends StatelessWidget {
                   if (attendance.studentDetail != null) ...[
                     Text(
                       attendance.studentDetail!.fullName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.lightTextPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Code: ${attendance.studentDetail!.codeMassar}',
+                      'Code: ',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark
@@ -720,10 +980,13 @@ class _AttendanceHistoryCard extends StatelessWidget {
                     ),
                   ] else
                     Text(
-                      'Session #${attendance.session}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      'Séance #',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.lightTextPrimary,
                       ),
                     ),
                   const SizedBox(height: 4),
@@ -731,7 +994,7 @@ class _AttendanceHistoryCard extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.access_time_rounded,
-                        size: 12,
+                        size: 13,
                         color: isDark
                             ? AppTheme.darkTextSecondary
                             : AppTheme.lightTextSecondary,
@@ -740,7 +1003,7 @@ class _AttendanceHistoryCard extends StatelessWidget {
                       Text(
                         attendance.formattedValidationTime,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.5,
                           color: isDark
                               ? AppTheme.darkTextSecondary
                               : AppTheme.lightTextSecondary,
@@ -755,18 +1018,29 @@ class _AttendanceHistoryCard extends StatelessWidget {
             // Badge
             Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withOpacity(0.1),
+                color: AppTheme.successColor.withOpacity(isDark ? 0.18 : 0.1),
                 borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                AppStrings.present,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.successColor,
-                  fontWeight: FontWeight.w600,
+                border: Border.all(
+                  color: AppTheme.successColor.withOpacity(0.3),
+                  width: 0.8,
                 ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, size: 12, color: AppTheme.successColor),
+                  SizedBox(width: 3),
+                  Text(
+                    AppStrings.present,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.successColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

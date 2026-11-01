@@ -118,7 +118,39 @@ class _StudentStatsScreenState extends State<StudentStatsScreen>
             else ...[
               // ── Taux global ──────────────────────────────────────────
               _RateCard(total: total, present: present),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.check_circle_outline_rounded,
+                      value: '$present',
+                      label: 'Présences',
+                      color: AppTheme.successColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.calendar_month_outlined,
+                      value: '$total',
+                      label: 'Séances suivies',
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.menu_book_outlined,
+                      value:
+                          '${provider.profile?.studentProfile?.modules.length ?? 0}',
+                      label: 'Modules',
+                      color: AppTheme.accent,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
               Text('Détail par séance',
                   style: Theme.of(context)
                       .textTheme
@@ -145,39 +177,150 @@ class _RateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rate = total == 0 ? 0.0 : present / total;
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(.28),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: -40,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(.08),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.18),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(Icons.insights_rounded,
+                          color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Taux de présence',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text(
+                      '${(rate * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _MiniStat(label: 'Présences', value: '$present'),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: Colors.white.withOpacity(.2),
+                    ),
+                    _MiniStat(label: 'Total séances', value: '$total'),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: rate,
+                    minHeight: 8,
+                    backgroundColor: Colors.white.withOpacity(.2),
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Petite tuile statistique ───────────────────────────────────────────────
+
+class _StatTile extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 8),
           Text(
-            '${(rate * 100).toStringAsFixed(1)}%',
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.w800),
+            value,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
+            ),
           ),
-          const SizedBox(height: 4),
-          const Text('Taux de présence',
-              style: TextStyle(color: Colors.white70, fontSize: 13)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _MiniStat(label: 'Présences', value: '$present'),
-              _MiniStat(label: 'Total séances', value: '$total'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: rate,
-              minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(.2),
-              color: Colors.white,
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
             ),
           ),
         ],
@@ -214,27 +357,67 @@ class _HistoryDetailCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Card(
-      elevation: 0,
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: AppTheme.successColor,
-          child: Icon(Icons.check_rounded, color: Colors.white),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
         ),
-        title: Text(
-          attendance.studentDetail?.fullName ?? 'Présence',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        subtitle: Text(
-          attendance.formattedValidationTime,
-          style: TextStyle(
-            fontSize: 12,
-            color: isDark
-                ? AppTheme.darkTextSecondary
-                : AppTheme.lightTextSecondary,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppTheme.successColor.withOpacity(isDark ? .2 : .1),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Icon(Icons.check_rounded,
+                color: AppTheme.successColor, size: 20),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  attendance.studentDetail?.fullName ?? 'Présence',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13.5),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  attendance.formattedValidationTime,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.successColor.withOpacity(isDark ? .2 : .1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'Présent',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.successColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,7 +3,10 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
+from django.db.models.functions import Lower
 
 ROLE_CHOICES = [
     ("admin", "Admin"),
@@ -66,6 +69,63 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = "users"
+        constraints = [
+            # Un CIN ne peut appartenir qu'à un seul étudiant. Les valeurs
+            # vides restent autorisées (comptes non étudiants, CIN inconnu).
+            models.UniqueConstraint(
+                fields=["cin"],
+                condition=(
+                    Q(role="student")
+                    & Q(cin__isnull=False)
+                    & ~Q(cin="")
+                ),
+                name="uniq_student_user_cin",
+            ),
+            # Les emails étudiants sont uniques sans distinction de casse.
+            # La contrainte exacte globale sur `email` reste en place.
+            models.UniqueConstraint(
+                Lower("email"),
+                condition=Q(role="student"),
+                name="uniq_student_user_email_ci",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        if self.cin:
+            self.cin = self.cin.strip()
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        self.email = (self.email or "").strip().lower()
+        self.cin = (self.cin or "").strip()
+
+        if self.role != "student":
+            return
+
+        if self.cin:
+            duplicate = (
+                User.objects.filter(role="student", cin__iexact=self.cin)
+                .exclude(pk=self.pk)
+                .first()
+            )
+            if duplicate:
+                raise ValidationError(
+                    {"cin": "Ce CIN est déjà utilisé par un autre étudiant."}
+                )
+
+        if self.email:
+            duplicate = (
+                User.objects.filter(role="student", email__iexact=self.email)
+                .exclude(pk=self.pk)
+                .first()
+            )
+            if duplicate:
+                raise ValidationError(
+                    {"email": "Cette adresse e-mail est déjà utilisée par un autre étudiant."}
+                )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.role})"
@@ -375,6 +435,7 @@ class Student(models.Model):
     last_name = models.CharField(max_length=100)
     code_massar = models.CharField(max_length=50, unique=True)
     code_apogee = models.CharField(max_length=50, blank=True, null=True, verbose_name="Code Apogée")
+    cin = models.CharField(max_length=30, blank=True, default="", null=True, verbose_name="CIN / CNI")
     email = models.EmailField(blank=True, default="")
     phone = models.CharField(max_length=30, blank=True, default="")
     classe = models.ForeignKey(
@@ -392,6 +453,109 @@ class Student(models.Model):
 
     class Meta:
         db_table = "students"
+        constraints = [
+            # Le CNE (code Massar) est déjà unique via `unique=True`.
+            # Le CIN doit être unique parmi les étudiants, hors valeur vide.
+            models.UniqueConstraint(
+                fields=["cin"],
+                condition=Q(cin__isnull=False) & ~Q(cin=""),
+                name="uniq_student_cin",
+            ),
+            # Email unique sans distinction de casse, hors valeur vide.
+            models.UniqueConstraint(
+                Lower("email"),
+                condition=~Q(email=""),
+                name="uniq_student_profile_email_ci",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.code_massar:
+            self.code_massar = self.code_massar.strip()
+        if self.code_apogee:
+            self.code_apogee = self.code_apogee.strip()
+        if self.cin:
+            self.cin = self.cin.strip()
+        if self.email:
+            self.email = self.email.strip().lower()
+        if self.phone:
+            self.phone = self.phone.strip()
+
+        # Conserver la fiche utilisateur alignée pour les écrans qui lisent
+        # encore `user.cin` (profil, administration).
+        if self.cin and self.user_id and self.user.cin != self.cin:
+            self.user.cin = self.cin
+            self.user.save(update_fields=["cin"])
+
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        self.code_massar = (self.code_massar or "").strip()
+        self.cin = (self.cin or "").strip()
+        self.email = (self.email or "").strip().lower()
+
+        if not self.code_massar:
+            raise ValidationError(
+                {"code_massar": "Le CNE (code Massar) est obligatoire."}
+            )
+
+        duplicate_code = (
+            Student.objects.filter(code_massar__iexact=self.code_massar)
+            .exclude(pk=self.pk)
+            .first()
+        )
+        if duplicate_code:
+            raise ValidationError(
+                {
+                    "code_massar": (
+                        "Ce CNE (code Massar) est déjà utilisé par "
+                        f"{duplicate_code.first_name} {duplicate_code.last_name}."
+                    )
+                }
+            )
+
+        if self.cin:
+            duplicate_cin = (
+                Student.objects.filter(cin__iexact=self.cin)
+                .exclude(pk=self.pk)
+                .first()
+            )
+            if duplicate_cin:
+                raise ValidationError(
+                    {"cin": "Ce CIN est déjà utilisé par un autre étudiant."}
+                )
+
+            duplicate_user_cin = (
+                User.objects.filter(role="student", cin__iexact=self.cin)
+                .exclude(pk=self.user_id)
+                .first()
+            )
+            if duplicate_user_cin:
+                raise ValidationError(
+                    {"cin": "Ce CIN est déjà utilisé par un autre étudiant."}
+                )
+
+        if self.email:
+            duplicate_email = (
+                Student.objects.filter(email__iexact=self.email)
+                .exclude(pk=self.pk)
+                .first()
+            )
+            if duplicate_email:
+                raise ValidationError(
+                    {"email": "Cette adresse e-mail est déjà utilisée par un autre étudiant."}
+                )
+
+            duplicate_user_email = (
+                User.objects.filter(email__iexact=self.email)
+                .exclude(pk=self.user_id)
+                .first()
+            )
+            if duplicate_user_email:
+                raise ValidationError(
+                    {"email": "Cette adresse e-mail est déjà utilisée par un autre compte."}
+                )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.code_massar})"

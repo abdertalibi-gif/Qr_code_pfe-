@@ -205,6 +205,7 @@ async function submitAddStudent() {
     last_name: document.getElementById('sLastName').value.trim(),
     code_massar: document.getElementById('sCode').value.trim(),
     email: document.getElementById('sEmail').value.trim() || '',
+    phone: document.getElementById('sPhone').value.trim() || '',
     password: document.getElementById('sPassword').value || '',
     module_id: parseInt(document.getElementById('sModule').value) || null,
   };
@@ -287,6 +288,7 @@ function setupEventListeners() {
     document.getElementById('sLastName').value = '';
     document.getElementById('sCode').value = '';
     document.getElementById('sEmail').value = '';
+    document.getElementById('sPhone').value = '';
     document.getElementById('sPassword').value = '';
     openModal('modalAddStudent');
   });

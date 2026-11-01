@@ -25,6 +25,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from curriculum.models import Module
+from users.constants import SINGLE_FILIERE_MESSAGE, same_filiere
 from users.models import Classe, Student, StudentModuleEnrollment, User
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class ImportRow:
     first_name: str
     email: str
     phone: str = ""
+    password: str = ""
 
 
 @dataclass
@@ -216,11 +218,11 @@ def _build_import_rows(
         if _is_empty_row(row):
             continue
 
-        code = _cell(row, mapping["code"])
-        last_name = _cell(row, mapping["last_name"])
-        first_name = _cell(row, mapping["first_name"])
-        email = _cell(row, mapping["email"]).lower()
-        phone = _cell(row, mapping.get("phone"))
+        code = _cell(row, mapping["code"]).strip()
+        last_name = _cell(row, mapping["last_name"]).strip()
+        first_name = _cell(row, mapping["first_name"]).strip()
+        email = _cell(row, mapping["email"]).strip().lower()
+        phone = _cell(row, mapping.get("phone")).strip()
 
         row_errors: list[str] = []
         if not code:
@@ -235,12 +237,13 @@ def _build_import_rows(
             row_errors.append("Invalid email format.")
 
         if code:
-            if code in seen_codes:
+            code_key = code.casefold()
+            if code_key in seen_codes:
                 row_errors.append(
-                    f"Duplicate Student Code in file (first seen on line {seen_codes[code]})."
+                    f"Duplicate Student Code in file (first seen on line {seen_codes[code_key]})."
                 )
             else:
-                seen_codes[code] = offset
+                seen_codes[code_key] = offset
 
         if email and email in seen_emails:
             row_errors.append(
@@ -270,6 +273,23 @@ def _build_import_rows(
 def _generate_password(length: int = 10) -> str:
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _integrity_message(exc: IntegrityError) -> str:
+    """Message lisible pour une violation d'unicité d'identifiant étudiant."""
+    message = str(exc).lower()
+    if "uniq_student_cin" in message or "students.cin" in message:
+        return "Ce CIN est déjà utilisé par un autre étudiant."
+    if (
+        "uniq_student_profile_email_ci" in message
+        or "uniq_student_user_email_ci" in message
+        or "students.email" in message
+        or "users.email" in message
+    ):
+        return "Cette adresse email est déjà utilisée par un autre étudiant."
+    if "code_massar" in message:
+        return "Ce CNE (code Massar) est déjà utilisé par un autre étudiant."
+    return f"Database constraint violation: {exc}"
 
 
 def _student_payload(student: Student) -> dict[str, Any]:
@@ -317,51 +337,67 @@ def _resolve_classe_for_module(module: Module) -> Classe:
 def _resolve_user_for_row(
     row: ImportRow, student: Student | None
 ) -> tuple[User | None, list[str]]:
+    """Trouve ou crée au plus un compte pour l'étudiant.
+
+    Un étudiant déjà lié à un compte n'en reçoit jamais un second : si l'email
+    du fichier diffère de celui du compte, l'import est bloqué au lieu de
+    modifier l'identifiant existant.
+    """
     if not row.email:
-        return None, []
+        return (student.user if student and student.user_id else None), []
 
     user = User.objects.filter(email__iexact=row.email).first()
-    if user:
+
+    # Étudiant déjà lié à un compte : le compte est la référence.
+    if student is not None and student.user_id:
+        linked = student.user
+        if user is not None and user.pk != linked.pk:
+            return None, [
+                "Cette adresse email est déjà liée à un autre compte étudiant."
+            ]
+        if linked.email and linked.email.strip().lower() != row.email:
+            return None, [
+                "L'email saisi ne correspond pas au compte de cet étudiant "
+                f"(email du compte : {linked.email})."
+            ]
+        if not linked.email:
+            linked.email = row.email
+            try:
+                linked.save(update_fields=["email"])
+            except IntegrityError:
+                return None, [
+                    "Impossible d'ajouter cet email : il est déjà utilisé par un autre compte."
+                ]
+        return linked, []
+
+    if user is not None:
         if user.role != "student":
             return None, [f"Email already used by a {user.role} account."]
         try:
             profile = user.student_profile
         except Student.DoesNotExist:
             profile = None
-        if profile and student and profile.pk != student.pk:
+        if profile is not None and (student is None or profile.pk != student.pk):
             return None, [
                 f"Email already linked to student {profile.code_massar}."
             ]
-        if profile and not student:
-            if profile.code_massar != row.code:
-                return None, [
-                    f"Email already linked to student {profile.code_massar}."
-                ]
-            return user, []
-        if profile and student and profile.pk == student.pk:
-            return user, []
-
-        changed = False
-        if row.first_name and user.first_name != row.first_name:
-            user.first_name = row.first_name
-            changed = True
-        if row.last_name and user.last_name != row.last_name:
-            user.last_name = row.last_name
-            changed = True
-        if changed:
-            user.save(update_fields=["first_name", "last_name"])
         return user, []
 
-    if student and student.user_id:
-        return student.user, []
-
-    user = User.objects.create_user(
-        email=row.email,
-        password=_generate_password(),
-        first_name=row.first_name,
-        last_name=row.last_name,
-        role="student",
-    )
+    # Aucun compte pour cet email : en créer un seul, rattaché à l'étudiant.
+    try:
+        user = User.objects.create_user(
+            email=row.email,
+            password=row.password or _generate_password(),
+            first_name=row.first_name,
+            last_name=row.last_name,
+            role="student",
+        )
+    except IntegrityError:
+        user = User.objects.filter(email__iexact=row.email).first()
+        if user is None:
+            return None, [
+                "Impossible de créer le compte étudiant : cette adresse email est déjà utilisée."
+            ]
     return user, []
 
 
@@ -377,7 +413,9 @@ def _apply_student_updates(student: Student, row: ImportRow, user: User | None) 
         student.last_name = row.last_name
         update_fields.append("last_name")
         changed = True
-    if row.email and student.email != row.email:
+    # Un email déjà renseigné est un identifiant : il n'est jamais remplacé
+    # automatiquement. Seul un email manquant peut être complété.
+    if row.email and not student.email:
         student.email = row.email
         update_fields.append("email")
         changed = True
@@ -403,41 +441,67 @@ def _process_import_row(
 ) -> None:
     sid = transaction.savepoint()
     try:
-        # Look up existing student by email first, then by code_massar
-        student = None
-        if row.email:
-            student = (
-                Student.objects.select_related("user")
-                .filter(email=row.email)
-                .first()
-            )
-        if not student and row.code:
-            student = (
-                Student.objects.select_related("user")
-                .filter(code_massar=row.code)
-                .first()
-            )
+        # Identifier l'étudiant par CNE (code Massar) ou email, sans jamais
+        # fusionner deux identifiants appartenant à des étudiants différents.
+        by_code = (
+            Student.objects.select_related("user")
+            .filter(code_massar__iexact=row.code)
+            .first()
+            if row.code
+            else None
+        )
+        by_email = (
+            Student.objects.select_related("user")
+            .filter(email__iexact=row.email)
+            .first()
+            if row.email
+            else None
+        )
 
-        # If found by email but code_massar differs, check for conflicts
-        if student and row.code and student.code_massar != row.code:
-            other = (
-                Student.objects.filter(code_massar=row.code)
-                .exclude(pk=student.pk)
-                .first()
-            )
-            if other:
+        if by_code and by_email and by_code.pk != by_email.pk:
+            report.errors.append({
+                "line": row.line_number,
+                "code": row.code,
+                "messages": [
+                    "Le CNE et l'email saisis appartiennent à deux étudiants différents."
+                ],
+            })
+            transaction.savepoint_rollback(sid)
+            return
+
+        student = by_code or by_email
+
+        if student is not None:
+            if (
+                row.code
+                and student.code_massar
+                and student.code_massar.strip().casefold() != row.code.casefold()
+            ):
                 report.errors.append({
                     "line": row.line_number,
                     "code": row.code,
                     "messages": [
-                        f"Le code Massar {row.code} appartient déjà à un autre étudiant ({other.first_name} {other.last_name})."
+                        "Le CNE saisi ne correspond pas à l'étudiant existant "
+                        f"(CNE actuel : {student.code_massar})."
                     ],
                 })
                 transaction.savepoint_rollback(sid)
                 return
-            # Safe to update code_massar on the found student
-            student.code_massar = row.code
-            student.save(update_fields=["code_massar"])
+            if (
+                row.email
+                and student.email
+                and student.email.strip().lower() != row.email
+            ):
+                report.errors.append({
+                    "line": row.line_number,
+                    "code": row.code,
+                    "messages": [
+                        "L'email saisi ne correspond pas à l'étudiant existant "
+                        f"(email actuel : {student.email})."
+                    ],
+                })
+                transaction.savepoint_rollback(sid)
+                return
 
         user, user_errors = _resolve_user_for_row(row, student)
         if user_errors:
@@ -453,6 +517,25 @@ def _process_import_row(
             except Student.DoesNotExist:
                 student = None
 
+        # Le compte a pu révéler un profil dont le CNE diffère de la ligne.
+        if (
+            student is not None
+            and by_code is None
+            and row.code
+            and student.code_massar
+            and student.code_massar.strip().casefold() != row.code.casefold()
+        ):
+            report.errors.append({
+                "line": row.line_number,
+                "code": row.code,
+                "messages": [
+                    "Le CNE saisi ne correspond pas à l'étudiant lié à ce compte "
+                    f"(CNE actuel : {student.code_massar})."
+                ],
+            })
+            transaction.savepoint_rollback(sid)
+            return
+
         if student is None:
             student = Student.objects.create(
                 code_massar=row.code,
@@ -465,13 +548,19 @@ def _process_import_row(
             )
             report.created.append(_student_payload(student))
         else:
-            if student.classe_id and module.filiere.name != student.classe.filiere.name:
+            # Une seule filière par étudiant : les modules d'autres semestres
+            # (S1 à S6) sont autorisés dans la même filière, jamais dans une
+            # autre. Un refus ne modifie ni le compte ni les inscriptions.
+            if (
+                student.classe_id
+                and student.classe.filiere_id
+                and module.filiere
+                and not same_filiere(student.classe.filiere, module.filiere)
+            ):
                 report.errors.append({
                     "line": row.line_number,
                     "code": row.code,
-                    "messages": [
-                        "Ce module n'appartient pas à la filière de cet étudiant."
-                    ],
+                    "messages": [SINGLE_FILIERE_MESSAGE],
                 })
                 transaction.savepoint_rollback(sid)
                 return
@@ -499,7 +588,7 @@ def _process_import_row(
             {
                 "line": row.line_number,
                 "code": row.code,
-                "messages": [f"Database constraint violation: {exc}"],
+                "messages": [_integrity_message(exc)],
             }
         )
     except Exception as exc:
@@ -711,8 +800,8 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
         return report.as_dict()
 
     rows_to_process: list[CompleteImportRow] = []
-    seen_codes: dict[str, int] = {}
-    seen_emails: dict[str, int] = {}
+    seen_codes: dict[str, str] = {}
+    seen_emails: dict[str, str] = {}
 
     for offset, row in enumerate(data_rows, start=2):
         if _is_empty_row(row):
@@ -735,10 +824,17 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
             row_errors.append("Prénom obligatoire.")
         if not code:
             row_errors.append("Code Massar obligatoire.")
-        elif code in seen_codes:
-            row_errors.append(f"Code Massar en double (ligne {seen_codes[code]}).")
+        elif (
+            code in seen_codes
+            and seen_codes[code]
+            and email
+            and seen_codes[code] != email
+        ):
+            row_errors.append(
+                "Code Massar déjà associé à un autre email dans ce fichier."
+            )
         else:
-            seen_codes[code] = offset
+            seen_codes.setdefault(code, email)
         if not niveau:
             row_errors.append("Niveau obligatoire.")
         if not filiere:
@@ -750,10 +846,17 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
         if email:
             if not _validate_email_value(email):
                 row_errors.append("Email invalide. Seuls les emails @edu.umi.ac.ma sont acceptés.")
-            elif email in seen_emails:
-                row_errors.append(f"Email en double (ligne {seen_emails[email]}).")
+            elif (
+                email in seen_emails
+                and seen_emails[email]
+                and code
+                and seen_emails[email] != code
+            ):
+                row_errors.append(
+                    "Email déjà associé à un autre Code Massar dans ce fichier."
+                )
             else:
-                seen_emails[email] = offset
+                seen_emails.setdefault(email, code)
 
         if row_errors:
             report.errors.append({"line": offset, "code": code, "messages": row_errors})
@@ -834,23 +937,11 @@ def import_students_complete(uploaded_file) -> dict[str, Any]:
                 code=r.code_massar,
                 last_name=r.nom,
                 first_name=r.prenom,
-                email=r.email,
+                email=(r.email or "").strip().lower(),
                 phone="",
+                password=r.password,
             )
             classe = _resolve_classe_for_module(mod)
-            if r.email:
-                user = User.objects.filter(email__iexact=r.email).first()
-                if user is None:
-                    try:
-                        User.objects.create_user(
-                            email=r.email,
-                            password=r.password,
-                            first_name=r.prenom,
-                            last_name=r.nom,
-                            role="student",
-                        )
-                    except IntegrityError:
-                        pass
             _process_import_row(import_row, mod, classe, report)
 
     result = report.as_dict()

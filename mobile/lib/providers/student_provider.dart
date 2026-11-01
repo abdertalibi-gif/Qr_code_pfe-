@@ -37,6 +37,7 @@ class StudentProvider extends ChangeNotifier {
 
   Timer? _scheduleTimer;
   StudentScheduleWsService? _wsService;
+  int? _wsClasseId;
 
   // ─── Getters ──────────────────────────────────────────────────────────────
   bool get isLoading => _isLoading;
@@ -107,18 +108,28 @@ class StudentProvider extends ChangeNotifier {
   }
 
   /// Connects (or reconnects) the student schedule WebSocket for real-time
-  /// updates. Called after each schedule fetch so the class ID is fresh.
-  Future<void> _connectWebSocket() async {
+  /// updates. Called after each schedule/profile fetch so the class ID is
+  /// always fresh.
+  ///
+  /// [force] forces a reconnection even if the service is already connected
+  /// (used when the student has been reassigned to another class).
+  Future<void> _connectWebSocket({bool force = false}) async {
     final classeId = profile?.studentProfile?.classeId;
-    if (classeId == null) return;
+    if (classeId == null) {
+      _wsService?.dispose();
+      _wsService = null;
+      _wsClasseId = null;
+      return;
+    }
 
-    // Reuse existing connection if already connected for the same class.
-    if (_wsService?.isConnected ?? false) return;
+    // Reuse the existing connection only if it targets the same class.
+    if (!force && _wsService != null && _wsClasseId == classeId) return;
     _wsService?.dispose();
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.accessTokenKey);
 
+    _wsClasseId = classeId;
     _wsService = StudentScheduleWsService(
       classeId: classeId,
       token: token,
@@ -159,12 +170,16 @@ class StudentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Démarre la synchronisation périodique de l'emploi du temps.
+  /// Démarre la synchronisation périodique du profil et de l'emploi du temps.
+  ///
+  /// Le profil est rafraîchi à chaque cycle (même sur l'onglet Profil) afin
+  /// qu'une nouvelle affectation de classe soit visible sans redémarrage.
   void startScheduleAutoRefresh({Duration interval = const Duration(seconds: 30)}) {
     _scheduleTimer?.cancel();
-    _scheduleTimer = Timer.periodic(interval, (_) {
+    _scheduleTimer = Timer.periodic(interval, (_) async {
+      await refreshProfile(silent: true);
       if (_currentTab == StudentTab.schedule || _currentTab == StudentTab.home) {
-        loadSchedule(silent: true);
+        await loadSchedule(silent: true);
       }
     });
   }
@@ -175,9 +190,41 @@ class StudentProvider extends ChangeNotifier {
     _scheduleTimer = null;
   }
 
-  /// Rafraîchit l'emploi du temps lors du retour au premier plan.
-  void refreshOnForeground() {
-    loadSchedule(silent: true);
+  /// Rafraîchit le profil et l'emploi du temps au retour au premier plan.
+  Future<void> refreshOnForeground() async {
+    await refreshProfile(silent: true);
+    await loadSchedule(silent: true);
+  }
+
+  /// Recharge le profil depuis `/auth/me/` sans recharger l'écran.
+  ///
+  /// Si la classe de l'étudiant a changé, l'ancien emploi du temps est vidé,
+  /// le WebSocket est reconnecté sur la nouvelle classe et les séances sont
+  /// rechargées immédiatement.
+  Future<bool> refreshProfile({bool silent = false}) async {
+    final previousClasseId = _profile?.studentProfile?.classeId;
+    try {
+      final raw = await _studentService.fetchStudentProfile();
+      _profile = UserModel.fromJson(raw);
+
+      final classeChanged =
+          previousClasseId != _profile?.studentProfile?.classeId;
+      if (classeChanged) {
+        _schedule.clear();
+        _lastScheduleSync = null;
+        await _connectWebSocket(force: true);
+        await loadSchedule(silent: true);
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      if (!silent) {
+        _errorMessage = e.toString();
+        notifyListeners();
+      }
+      return false;
+    }
   }
 
   /// Sets the student profile from the AuthProvider (avoids a redundant
@@ -191,8 +238,7 @@ class StudentProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      final raw = await _studentService.fetchStudentProfile();
-      _profile = UserModel.fromJson(raw);
+      await refreshProfile();
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -205,6 +251,7 @@ class StudentProvider extends ChangeNotifier {
     _scheduleTimer?.cancel();
     _wsService?.dispose();
     _wsService = null;
+    _wsClasseId = null;
     super.dispose();
   }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../models/attendance_model.dart';
 import '../../models/student_schedule_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/student_provider.dart';
 
 /// Emploi du temps dynamique + Historique des présences.
@@ -83,6 +84,8 @@ class _StudentScheduleScreenState extends State<StudentScheduleScreen>
       ),
       body: Column(
         children: [
+          if (provider.profile?.studentProfile != null)
+            _ClassInfoBanner(profile: provider.profile!.studentProfile!),
           TabBar(
             controller: _tabController,
             tabs: const [
@@ -127,6 +130,7 @@ class _ScheduleTab extends StatelessWidget {
       );
     }
     if (provider.schedule.isEmpty) {
+      final classeName = provider.profile?.studentProfile?.classeName;
       return RefreshIndicator(
         onRefresh: () => provider.loadSchedule(),
         child: ListView(
@@ -136,10 +140,15 @@ class _ScheduleTab extends StatelessWidget {
             Icon(Icons.calendar_month_outlined, size: 56, color: muted),
             const SizedBox(height: 12),
             Center(
-              child: Text(
-                'Aucune séance planifiée pour le moment',
-                style: TextStyle(color: muted, fontSize: 14),
-                textAlign: TextAlign.center,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  (classeName != null && classeName.isNotEmpty)
+                      ? 'Aucune séance planifiée pour $classeName'
+                      : 'Aucune classe ne vous est affectée',
+                  style: TextStyle(color: muted, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ],
@@ -206,6 +215,170 @@ class _ScheduleTab extends StatelessWidget {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
+  }
+}
+
+/// Bandeau « Ma classe » : affiche la classe réellement affectée à l'étudiant.
+/// Les données proviennent de `/auth/me/` (rafraîchi toutes les 30 s).
+class _ClassInfoBanner extends StatelessWidget {
+  final StudentProfile profile;
+  const _ClassInfoBanner({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final details = [
+      profile.filiereName,
+      profile.semestreName,
+      profile.academicYear,
+    ].where((value) => value != null && value.isNotEmpty).cast<String>().join(' · ');
+
+    if (profile.classeName == null || profile.classeName!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final modules = profile.modules;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  AppTheme.primary.withOpacity(.22),
+                  AppTheme.primary.withOpacity(.08),
+                ]
+              : [
+                  AppTheme.primarySoft,
+                  AppTheme.primaryLight,
+                ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? AppTheme.primary.withOpacity(.35)
+              : AppTheme.primaryBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: isDark
+                        ? AppTheme.primary.withOpacity(.35)
+                        : AppTheme.primaryBorder,
+                  ),
+                ),
+                child: Icon(
+                  Icons.school_rounded,
+                  size: 20,
+                  color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.classeName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.lightTextPrimary,
+                      ),
+                    ),
+                    if (details.isNotEmpty)
+                      Text(
+                        details,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: secondary),
+                      ),
+                  ],
+                ),
+              ),
+              if (modules.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.primary.withOpacity(.26)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${modules.length} module${modules.length > 1 ? 's' : ''}',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (modules.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: modules
+                  .take(6)
+                  .map(
+                    (module) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppTheme.darkCard.withOpacity(.65)
+                            : Colors.white.withOpacity(.85),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? AppTheme.darkBorder
+                              : AppTheme.primaryBorder,
+                        ),
+                      ),
+                      child: Text(
+                        module.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.primaryDark,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

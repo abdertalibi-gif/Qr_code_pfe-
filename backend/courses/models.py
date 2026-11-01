@@ -246,6 +246,23 @@ class Session(models.Model):
             return True
         return self.classe_id in user.assigned_classes.values_list("pk", flat=True)
 
+    def roster_students(self):
+        """Étudiants concernés par la séance.
+
+        Inclut les étudiants dont la classe courante est celle de la séance
+        et tous ceux réellement inscrits au module, même si leur classe
+        courante correspond à un autre semestre ou une autre filière.
+        """
+        from django.db.models import Q
+        from users.models import Student
+
+        if not self.module_id:
+            return Student.objects.filter(classe_id=self.classe_id)
+        return Student.objects.filter(
+            Q(classe_id=self.classe_id)
+            | Q(module_enrollments__module_id=self.module_id)
+        ).distinct()
+
     def close_session(self):
         """
         Clôture la séance :
@@ -278,8 +295,9 @@ class Session(models.Model):
                 f"mais va être clôturée quand même: {academic_errors}"
             )
 
-        # Récupérer tous les étudiants de la classe
-        all_students = list(self.classe.students.all())
+        # Récupérer tous les étudiants concernés par la séance (classe +
+        # étudiants inscrits au module, y compris d'autres filières/semestres)
+        all_students = list(self.roster_students())
 
         # Récupérer les IDs des étudiants déjà présents (confirmed)
         present_ids = set(
@@ -379,7 +397,7 @@ class Session(models.Model):
         present_fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
         absent_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
 
-        for student in self.classe.students.order_by("last_name", "first_name"):
+        for student in self.roster_students().order_by("last_name", "first_name"):
             att = att_map.get(student.id)
             if att and att.attendance_status == Attendance.STATUS_CONFIRMED:
                 scan_time = timezone.localtime(att.validation_time).strftime("%H:%M:%S") if att.validation_time else ""

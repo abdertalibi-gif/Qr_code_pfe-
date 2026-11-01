@@ -222,7 +222,21 @@ class MyScheduleListView(ListAPIView):
             student = user.student_profile
         except Student.DoesNotExist:
             return Session.objects.none()
-        if student is None or student.classe_id is None:
+        if student is None:
+            return Session.objects.none()
+
+        # Un étudiant peut suivre des modules dans plusieurs classes, filières
+        # et semestres : l'emploi du temps couvre sa classe courante et toutes
+        # les classes des modules auxquels il est réellement inscrit.
+        enrolled_module_ids = list(
+            student.modules.values_list("id", flat=True)
+        )
+        scope = Q()
+        if student.classe_id is not None:
+            scope |= Q(classe_id=student.classe_id)
+        if enrolled_module_ids:
+            scope |= Q(module_id__in=enrolled_module_ids)
+        if not scope:
             return Session.objects.none()
 
         qs = (
@@ -240,15 +254,13 @@ class MyScheduleListView(ListAPIView):
                 "room",
                 "amphitheater",
             )
-            .filter(classe_id=student.classe_id)
+            .filter(scope)
+            .distinct()
         )
 
         # Filter by the student's enrolled modules if explicit enrollments exist.
         # If the student has no StudentModuleEnrollment rows, all sessions for
         # their class are returned (backward compatible).
-        enrolled_module_ids = list(
-            student.modules.values_list("id", flat=True)
-        )
         if enrolled_module_ids:
             qs = qs.filter(module_id__in=enrolled_module_ids)
 
@@ -378,7 +390,7 @@ class SessionStatsView(APIView):
 
         attendances = Attendance.objects.filter(session=session)
         suspicious = SuspiciousAttempt.objects.filter(session=session)
-        total_students = session.classe.students.count()
+        total_students = session.roster_students().count()
 
         duplicate_attempts = suspicious.filter(
             attempt_type__in=[

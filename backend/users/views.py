@@ -85,7 +85,12 @@ class LoginView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = (
-        User.objects.select_related("student_profile__classe", "department")
+        User.objects.select_related(
+            "student_profile__classe__filiere",
+            "student_profile__classe__semestre",
+            "student_profile__classe__module",
+            "department",
+        )
         .prefetch_related("assigned_classes", "headed_department", "managed_filieres")
         .order_by("-created_at")
     )
@@ -573,10 +578,23 @@ class MeView(APIView):
 
     def get(self, request):
         user = cast(User, request.user)
-        user = User.objects.prefetch_related("assigned_classes").select_related(
-            "student_profile__classe"
-        ).get(pk=user.pk)
-        return Response(UserSerializer(user).data)
+        user = (
+            User.objects
+            .prefetch_related(
+                "assigned_classes",
+                "student_profile__modules__teacher",
+                "student_profile__modules__filiere__semestre",
+            )
+            .select_related(
+                "student_profile__classe__filiere",
+                "student_profile__classe__semestre",
+                "student_profile__classe__module",
+            )
+            .get(pk=user.pk)
+        )
+        return Response(
+            UserSerializer(user, context={"include_modules": True}).data
+        )
 
 
 @api_view(["POST"])
@@ -1868,7 +1886,7 @@ class PasswordResetView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user = User.objects.filter(email=email, is_active=True).first()
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
         msg = "Identifiants incorrects. Veuillez vérifier vos informations."
 
         if user:

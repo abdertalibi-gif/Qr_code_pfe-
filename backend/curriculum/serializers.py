@@ -11,12 +11,13 @@ class ModuleSerializer(serializers.ModelSerializer):
         source="filiere", queryset=Filiere.objects.all()
     )
     filiere_name = serializers.CharField(source="filiere.name", read_only=True)
+    semestre_name = serializers.CharField(source="filiere.semestre.name", read_only=True, default="")
     teacher_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Module
         fields = [
-            "id", "name", "code", "filiere_id", "filiere_name",
+            "id", "name", "code", "filiere_id", "filiere_name", "semestre_name",
             "coefficient", "total_hours", "teacher", "teacher_name",
         ]
 

@@ -110,12 +110,20 @@ class StudentAdmin(admin.ModelAdmin):
         "first_name",
         "last_name",
         "code_massar",
+        "cin",
         "email",
         "phone",
         "classe",
     ]
     list_filter = ["classe"]
-    search_fields = ["first_name", "last_name", "code_massar", "email", "phone"]
+    search_fields = [
+        "first_name",
+        "last_name",
+        "code_massar",
+        "cin",
+        "email",
+        "phone",
+    ]
     inlines = [StudentModuleEnrollmentInline]
 
 

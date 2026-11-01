@@ -1221,13 +1221,23 @@
           <input type="text" id="sLastName" placeholder="Benali" />
         </div>
       </div>
-      <div class="field">
-        <label>Code Massar <span class="req">*</span></label>
-        <input type="text" id="sCode" placeholder="M123456" />
+      <div class="field-row">
+        <div class="field">
+          <label>Code Massar (CNE) <span class="req">*</span></label>
+          <input type="text" id="sCode" placeholder="M123456" />
+        </div>
+        <div class="field">
+          <label>CIN</label>
+          <input type="text" id="sCin" placeholder="ex: AB123456" />
+        </div>
       </div>
       <div class="field">
         <label>Email</label>
-        <input type="email" id="sEmail" placeholder="etudiant@umi.ac.ma" />
+        <input type="email" id="sEmail" placeholder="etudiant@edu.umi.ac.ma" />
+      </div>
+      <div class="field">
+        <label>Téléphone</label>
+        <input type="tel" id="sPhone" placeholder="0612345678" />
       </div>
       <div class="field">
         <label>Mot de passe</label>
@@ -3334,6 +3344,7 @@
     const role = e.target.value;
     if (role === 'student') {
       ['sFirstName','sLastName','sEmail','sPassword'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('sPhone').value = '';
       document.getElementById('sFirstName').value = document.getElementById('uFirstName').value;
       document.getElementById('sLastName').value  = document.getElementById('uLastName').value;
       document.getElementById('sEmail').value     = document.getElementById('uEmail').value;
@@ -3394,7 +3405,9 @@
     const first_name  = document.getElementById('sFirstName').value.trim();
     const last_name   = document.getElementById('sLastName').value.trim();
     const code_massar = document.getElementById('sCode').value.trim();
+    const cin         = document.getElementById('sCin').value.trim();
     const email       = document.getElementById('sEmail').value.trim();
+    const phone       = document.getElementById('sPhone').value.trim();
     const password    = document.getElementById('sPassword').value;
     const moduleId    = document.getElementById('sModule').value;
 
@@ -3404,13 +3417,13 @@
 
     try {
       const body = {
-        first_name, last_name, code_massar, email, password,
+        first_name, last_name, code_massar, cin, email, phone, password,
         module_id: parseInt(moduleId),
       };
       await API.apiFetch('/students/', { method: 'POST', body: JSON.stringify(body) });
       closeModal('modalAddStudent');
       showToast('Étudiant ajouté !', 'success');
-      ['sFirstName','sLastName','sCode','sEmail','sPassword'].forEach(id => document.getElementById(id).value = '');
+      ['sFirstName','sLastName','sCode','sCin','sEmail','sPhone','sPassword'].forEach(id => document.getElementById(id).value = '');
       await loadModuleStudents(moduleStudentsPage);
     } catch (e) {
       showToast(e.message, 'error');
@@ -4075,6 +4088,7 @@ document.getElementById('btnOpenAddClasse').addEventListener('click', async () =
 
   document.getElementById('btnOpenAddStudent').addEventListener('click', () => {
     ['sFirstName','sLastName','sCode','sEmail','sPassword'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('sPhone').value = '';
     document.getElementById('sNiveau').innerHTML = '<option value="">— Sélectionner —</option>';
     document.getElementById('sSemestre').innerHTML = '<option value="">— Sélectionnez d\'abord le niveau —</option>';
     document.getElementById('sSemestre').disabled = true;
