@@ -1748,9 +1748,7 @@
       _renderStudentInfo(user, profile) {
         const rows = [
           { label: 'ID étudiant', value: profile.id ? `#${profile.id}` : '—', strong: true },
-          { label: 'Compte', value: user.id ? `#${user.id}` : '—' },
           { label: 'Code Massar', value: profile.code_massar || '—', strong: true },
-          { label: 'Code Apogée', value: profile.code_apogee || '—' },
           { label: 'Classe', value: profile.classe_name || '—' },
           { label: 'Filière', value: profile.filiere_name || '—' },
           { label: 'Semestre', value: profile.semestre_name || '—' },
@@ -1801,7 +1799,6 @@
           if (module.code) chips.push(`<span class="student-module-chip is-code">${esc(module.code)}</span>`);
           if (module.semestre_name) chips.push(`<span class="student-module-chip">${esc(module.semestre_name)}</span>`);
           if (module.filiere_name) chips.push(`<span class="student-module-chip">${esc(module.filiere_name)}</span>`);
-          if (module.coefficient) chips.push(`<span class="student-module-chip">Coef. ${esc(module.coefficient)}</span>`);
           if (module.teacher_name) chips.push(`<span class="student-module-chip">${esc(module.teacher_name)}</span>`);
 
           return `

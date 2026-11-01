@@ -140,13 +140,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                     value: profile?.codeMassar ?? '—'),
                 const Divider(height: 1),
                 _InfoTile(
-                    icon: Icons.confirmation_number_outlined,
-                    label: 'Code Apogée',
-                    value: (profile?.codeApogee?.isNotEmpty ?? false)
-                        ? profile!.codeApogee!
-                        : '—'),
-                const Divider(height: 1),
-                _InfoTile(
                     icon: Icons.school_outlined,
                     label: 'Classe',
                     value: profile?.classeName ?? '—'),
@@ -651,8 +644,6 @@ class _ModuleCard extends StatelessWidget {
                       _ModuleChip(label: module.semestreName),
                     if (module.filiereName.isNotEmpty)
                       _ModuleChip(label: module.filiereName),
-                    if (module.coefficient > 0)
-                      _ModuleChip(label: 'Coef. ${module.coefficient}'),
                     if (module.teacherName.isNotEmpty)
                       _ModuleChip(label: module.teacherName),
                   ],
