@@ -32,6 +32,7 @@ class StudentProvider extends ChangeNotifier {
   List<AttendanceModel> _attendanceHistory = [];
   List<StudentScheduleItem> _schedule = [];
   UserModel? _profile;
+  int? _selectedClassId;
 
   DateTime? _lastScheduleSync;
 
@@ -49,6 +50,7 @@ class StudentProvider extends ChangeNotifier {
   List<AttendanceModel> get attendanceHistory => _attendanceHistory;
   List<StudentScheduleItem> get schedule => List.unmodifiable(_schedule);
   UserModel? get profile => _profile;
+  int? get selectedClassId => _selectedClassId;
   DateTime? get lastScheduleSync => _lastScheduleSync;
   bool get wsConnected => _wsService?.isConnected ?? false;
 
@@ -80,7 +82,7 @@ class StudentProvider extends ChangeNotifier {
   ///
   /// [silent] évite le spinner plein écran lors des rafraîchissements
   /// automatiques (timer / retour au premier plan).
-  Future<void> loadSchedule({bool silent = false}) async {
+  Future<void> loadSchedule({bool silent = false, int? classId}) async {
     if (_scheduleLoading) return;
     if (!silent) {
       _scheduleLoading = true;
@@ -88,7 +90,7 @@ class StudentProvider extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      _schedule = await _studentService.fetchMySchedule();
+      _schedule = await _studentService.fetchMySchedule(classId: classId ?? _selectedClassId);
       _lastScheduleSync = DateTime.now();
       if (_scheduleError != null) {
         _scheduleError = null;
@@ -179,7 +181,7 @@ class StudentProvider extends ChangeNotifier {
     _scheduleTimer = Timer.periodic(interval, (_) async {
       await refreshProfile(silent: true);
       if (_currentTab == StudentTab.schedule || _currentTab == StudentTab.home) {
-        await loadSchedule(silent: true);
+        await loadSchedule(silent: true, classId: _selectedClassId);
       }
     });
   }
@@ -193,7 +195,7 @@ class StudentProvider extends ChangeNotifier {
   /// Rafraîchit le profil et l'emploi du temps au retour au premier plan.
   Future<void> refreshOnForeground() async {
     await refreshProfile(silent: true);
-    await loadSchedule(silent: true);
+    await loadSchedule(silent: true, classId: _selectedClassId);
   }
 
   /// Recharge le profil depuis `/auth/me/` sans recharger l'écran.
@@ -213,7 +215,7 @@ class StudentProvider extends ChangeNotifier {
         _schedule.clear();
         _lastScheduleSync = null;
         await _connectWebSocket(force: true);
-        await loadSchedule(silent: true);
+        await loadSchedule(silent: true, classId: _selectedClassId);
       }
 
       notifyListeners();
@@ -225,6 +227,13 @@ class StudentProvider extends ChangeNotifier {
       }
       return false;
     }
+  }
+
+  /// Sélectionne/désélectionne une classe pour filtrer l'emploi du temps.
+  /// Passer `null` affiche toutes les classes de l'étudiant.
+  void selectClass(int? classId) {
+    _selectedClassId = classId;
+    notifyListeners();
   }
 
   /// Sets the student profile from the AuthProvider (avoids a redundant

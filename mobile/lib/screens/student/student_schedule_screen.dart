@@ -120,6 +120,11 @@ class _ScheduleTab extends StatelessWidget {
     final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
     final secondaryColor =
         isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final profile = provider.profile?.studentProfile;
+    final classes = profile != null && profile.classeName != null && profile.classeName!.isNotEmpty
+        ? [profile]
+        : <StudentProfile>[];
+
     if (provider.scheduleLoading && provider.schedule.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -129,42 +134,28 @@ class _ScheduleTab extends StatelessWidget {
         onRetry: () => provider.loadSchedule(),
       );
     }
-    if (provider.schedule.isEmpty) {
-      final classeName = provider.profile?.studentProfile?.classeName;
-      return RefreshIndicator(
-        onRefresh: () => provider.loadSchedule(),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 80),
-            Icon(Icons.calendar_month_outlined, size: 56, color: muted),
-            const SizedBox(height: 12),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  (classeName != null && classeName.isNotEmpty)
-                      ? 'Aucune séance planifiée pour $classeName'
-                      : 'Aucune classe ne vous est affectée',
-                  style: TextStyle(color: muted, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
-    final days = _groupByDay(provider.schedule);
+    // Sélecteur de classe (toujours affiché en haut)
+    final selectedClassId = provider.selectedClassId;
+    final isFiltering = selectedClassId != null;
 
     return RefreshIndicator(
-      onRefresh: () => provider.loadSchedule(),
+      onRefresh: () => provider.loadSchedule(classId: selectedClassId),
       color: AppTheme.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          // ── Sélecteur de classe ─────────────────────────────────────
+          if (classes.isNotEmpty)
+            _ClassSelector(
+              classes: classes,
+              selectedClassId: selectedClassId,
+              onSelect: (classId) => provider.selectClass(classId),
+              onSelectAll: () => provider.selectClass(null),
+            ),
+
+          // ── Statut de synchronisation ───────────────────────────────
           if (provider.lastScheduleSync != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -191,15 +182,271 @@ class _ScheduleTab extends StatelessWidget {
                 ],
               ),
             ),
-          ...days.entries.map(
-            (entry) => _DaySection(dayLabel: entry.key, items: entry.value),
-          ),
+
+          // ── Sessions ────────────────────────────────────────────────
+          if (provider.schedule.isEmpty)
+            _EmptySchedule(
+              classeName: profile?.classeName,
+              isFiltering: isFiltering,
+              onShowAll: () => provider.selectClass(null),
+            )
+          else ...[
+            ..._groupByDay(provider.schedule).entries.map(
+              (entry) => _DaySection(dayLabel: entry.key, items: entry.value),
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  static Map<String, List<StudentScheduleItem>> _groupByDay(
+class _ClassSelector extends StatelessWidget {
+  final List<StudentProfile> classes;
+  final int? selectedClassId;
+  final ValueChanged<int?> onSelect;
+  final VoidCallback onSelectAll;
+
+  const _ClassSelector({
+    required this.classes,
+    required this.selectedClassId,
+    required this.onSelect,
+    required this.onSelectAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightMuted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              const Text(
+                'Vos classes',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (selectedClassId != null) ...[
+                const Spacer(),
+                TextButton(
+                  onPressed: onSelectAll,
+                  child: const Text('Toutes les classes'),
+                ),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 150,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: classes.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final classe = classes[index];
+              final isSelected = selectedClassId != null &&
+                  selectedClassId == classe.classeId;
+              final modules = classe.modules;
+              final details = [
+                classe.filiereName,
+                classe.semestreName,
+                classe.academicYear,
+              ].where((v) => v != null && v.isNotEmpty).cast<String>().join(' · ');
+
+              return GestureDetector(
+                onTap: () => onSelect(classe.classeId),
+                child: Container(
+                  width: 200,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primary
+                          : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : (isDark
+                                      ? AppTheme.primary.withOpacity(.15)
+                                      : AppTheme.primaryLight),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.school_rounded,
+                              size: 16,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppTheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              classe.classeName ?? 'Classe',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppTheme.darkTextPrimary
+                                    : AppTheme.lightTextPrimary,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: AppTheme.successColor,
+                            ),
+                        ],
+                      ),
+                      if (details.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          details,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: secondary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      if (modules.isNotEmpty) ...[
+                        Text(
+                          '${modules.length} module${modules.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppTheme.primary
+                                : secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: modules.take(3).map((m) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppTheme.darkCard.withOpacity(.6)
+                                  : Colors.white.withOpacity(.8),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              m.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                color: isDark
+                                    ? AppTheme.darkTextPrimary
+                                    : AppTheme.primaryDark,
+                              ),
+                            ),
+                          )).toList(),
+                        ),
+                      ] else ...[
+                        Text(
+                          'Aucun module',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                            color: secondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptySchedule extends StatelessWidget {
+  final String? classeName;
+  final bool isFiltering;
+  final VoidCallback onShowAll;
+
+  const _EmptySchedule({
+    required this.classeName,
+    required this.isFiltering,
+    required this.onShowAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40),
+            Icon(Icons.calendar_month_outlined, size: 56, color: muted),
+            const SizedBox(height: 12),
+            Text(
+              isFiltering
+                  ? (classeName != null && classeName.isNotEmpty
+                      ? 'Aucune séance planifiée pour $classeName'
+                      : 'Aucune séance pour cette classe')
+                  : (classeName != null && classeName.isNotEmpty
+                      ? 'Aucune séance planifiée pour $classeName'
+                      : 'Aucune classe ne vous est affectée'),
+              style: TextStyle(color: muted, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            if (isFiltering) ...[
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: onShowAll,
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Voir toutes les classes'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+static Map<String, List<StudentScheduleItem>> _groupByDay(
     List<StudentScheduleItem> items,
   ) {
     final grouped = <String, List<StudentScheduleItem>>{};

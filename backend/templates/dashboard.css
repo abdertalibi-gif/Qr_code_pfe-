@@ -2108,6 +2108,37 @@ tr.new-row td {
   font-style: italic;
 }
 
+/* États interactifs des cartes de classe */
+.schedule-class-card[type="button"] {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.schedule-class-card[type="button"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: var(--primary);
+}
+.schedule-class-card--selected {
+  border-color: var(--primary) !important;
+  background: var(--primary-light) !important;
+}
+.schedule-class-card--back {
+  background: var(--surface) !important;
+  border: 2px dashed var(--border) !important;
+}
+.schedule-class-card--back .schedule-class-title {
+  color: var(--primary) !important;
+}
+.schedule-class-card--back .schedule-class-sub {
+  color: var(--text-secondary) !important;
+}
+.schedule-class-card--back .schedule-class-label {
+  color: var(--muted) !important;
+}
+.schedule-class-card--back .schedule-class-value {
+  color: var(--text-secondary) !important;
+}
+
 .schedule-empty {
   text-align: center;
   padding: 3rem 1.5rem;

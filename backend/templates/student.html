@@ -1676,6 +1676,7 @@
     const studentPage = {
       currentUser: null,
       schedule: [],
+      selectedClassId: null,
       ws: null,
       pollTimer: null,
       pollRunning: false,
@@ -1829,6 +1830,7 @@
         const grid = document.getElementById('scheduleClassesGrid');
         if (!classesSection || !grid) return;
 
+        const classeId = profile.classe_id;
         const classeName = profile.classe_name || '—';
         const filiereName = profile.filiere_name || '—';
         const semestreName = profile.semestre_name || '—';
@@ -1836,8 +1838,22 @@
         const academicYear = profile.academic_year || '—';
         const modules = Array.isArray(profile.modules) ? profile.modules : [];
 
-        let html = `
-          <div class="schedule-class-card">
+        let html = '';
+
+        // Bouton "Toutes les classes" (affiché quand une classe est sélectionnée)
+        if (this.selectedClassId) {
+          html += `
+            <button class="schedule-class-card schedule-class-card--back" type="button" onclick="studentPage.selectClass(null)">
+              <span class="schedule-class-title">← Toutes les classes</span>
+              <span class="schedule-class-sub">Afficher toutes les séances</span>
+            </button>
+          `;
+        }
+
+        // Carte de la classe courante (cliquable)
+        const isSelected = this.selectedClassId && String(this.selectedClassId) === String(classeId);
+        html += `
+          <div class="schedule-class-card ${isSelected ? 'schedule-class-card--selected' : ''}" type="button" onclick="studentPage.selectClass(${classeId})">
             <div class="schedule-class-title">${esc(classeName)}</div>
             <div class="schedule-class-sub">${esc(filiereName)} · ${esc(semestreName)}</div>
             <div><span class="schedule-class-label">Niveau</span><div class="schedule-class-value">${esc(niveau)}</div></div>
@@ -1846,9 +1862,10 @@
           </div>
         `;
 
+        // Cartes détaillées par module (une par module inscrit)
         if (modules.length) {
           html += modules.map(module => `
-            <div class="schedule-class-card">
+            <div class="schedule-class-card ${isSelected ? 'schedule-class-card--selected' : ''}" type="button" onclick="studentPage.selectClass(${classeId})">
               <div class="schedule-class-title">${esc(module.name || 'Module')}</div>
               <div class="schedule-class-sub">${esc(module.filiere_name || '—')} · ${esc(module.semestre_name || '—')}</div>
               ${module.code ? `<div><span class="schedule-class-label">Code</span><div class="schedule-class-value">${esc(module.code)}</div></div>` : ''}
@@ -1860,6 +1877,12 @@
 
         grid.innerHTML = html;
         classesSection.style.display = (modules.length || classeName !== '—') ? 'block' : 'none';
+      },
+
+      selectClass(classId) {
+        this.selectedClassId = classId;
+        this._renderScheduleClasses();
+        this.loadSchedule(false, classId);
       },
 
       /**
@@ -1880,7 +1903,7 @@
             String(previousClasseId ?? '') !== String(this.classeId ?? '');
           if (classeChanged) {
             this._reconnectWebSocket();
-            await this.loadSchedule(true);
+            await this.loadSchedule(true, this.selectedClassId);
           }
           this._renderScheduleClasses();
         } catch (e) {
@@ -1910,10 +1933,12 @@
         return this.currentUser?.student_profile?.classe_id;
       },
 
-      async loadSchedule(silent = false) {
+      async loadSchedule(silent = false, classId = null) {
         if (!silent) this._setSyncStatus('syncing');
+        this.selectedClassId = classId ?? null;
+        const params = classId ? `?classe_id=${encodeURIComponent(classId)}` : '';
         try {
-          const data = await API.apiFetch('/attendance/my-schedule/');
+          const data = await API.apiFetch(`/attendance/my-schedule/${params}`);
           this.schedule = Array.isArray(data) ? data : (data.results || []);
           this._renderSchedule();
           this._setSyncStatus('connected');
@@ -1933,21 +1958,26 @@
       },
 
       refreshSchedule() {
-        this.loadSchedule(false);
+        this.loadSchedule(false, this.selectedClassId);
       },
 
       _renderSchedule() {
         const container = document.getElementById('scheduleContainer');
         if (!this.schedule.length) {
-          const classeName = this.currentUser?.student_profile?.classe_name;
+          const profile = this.currentUser?.student_profile || {};
+          const classeName = this.selectedClassId
+            ? profile.classe_name || '—'
+            : (profile.classe_name || '—');
+          const filterLabel = this.selectedClassId ? ` pour ${esc(classeName)}` : '';
           container.innerHTML = `
           <div class="schedule-empty">
             <div class="schedule-empty-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
             <div>${classeName
-              ? `Aucune séance prévue pour ${esc(classeName)}.`
+              ? `Aucune séance prévue${filterLabel}.`
               : window.I18N.scheduleNoClass}</div>
+            ${this.selectedClassId ? `<button class="btn btn-primary" onclick="studentPage.selectClass(null)" style="margin-top:0.6rem">Voir toutes les classes</button>` : ''}
           </div>
         `;
           this._updateScheduleStats({}, 0);
@@ -1988,9 +2018,16 @@
         }
         if (subtitle) {
           const dayCount = Object.keys(days).length;
-          subtitle.textContent = total
-            ? `${total} séance${total > 1 ? 's' : ''} · ${dayCount} jour${dayCount > 1 ? 's' : ''}`
-            : 'Séances de votre classe';
+          if (this.selectedClassId) {
+            const profile = this.currentUser?.student_profile || {};
+            subtitle.textContent = total
+              ? `${total} séance${total > 1 ? 's' : ''} · ${profile.classe_name || 'Classe sélectionnée'}`
+              : `Aucune séance pour ${profile.classe_name || 'cette classe'}`;
+          } else {
+            subtitle.textContent = total
+              ? `${total} séance${total > 1 ? 's' : ''} · ${dayCount} jour${dayCount > 1 ? 's' : ''}`
+              : 'Séances de votre classe';
+          }
         }
       },
 
@@ -2181,7 +2218,7 @@
             // Le profil d'abord : une réaffectation de classe doit être
             // détectée avant de recharger l'emploi du temps / le WebSocket.
             await this.refreshProfile();
-            await this.loadSchedule(true);
+            await this.loadSchedule(true, this.selectedClassId);
           } finally {
             this.pollRunning = false;
           }

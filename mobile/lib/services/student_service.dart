@@ -65,8 +65,11 @@ class StudentService {
   ///
   /// Renvoie les séances de la classe de l'étudiant avec leur statut calculé
   /// (a_venir / en_cours / terminee / annulee) et l'indicateur `qrOpen`.
-  Future<List<StudentScheduleItem>> fetchMySchedule() async {
-    final response = await _client.get(AppConstants.myScheduleEndpoint);
+  ///
+  /// [classId] filtre les séances par classe (optionnel).
+  Future<List<StudentScheduleItem>> fetchMySchedule({int? classId}) async {
+    final query = classId != null ? '?classe_id=$classId' : '';
+    final response = await _client.get('${AppConstants.myScheduleEndpoint}$query');
     final data = _unwrapList(response.data);
     return data.map(StudentScheduleItem.fromJson).toList();
   }
