@@ -2139,6 +2139,118 @@ tr.new-row td {
   color: var(--text-secondary) !important;
 }
 
+/* En-tête de carte de classe avec compteur de séances */
+.schedule-class-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+.schedule-class-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  background: var(--primary-light);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+/* Sessions à l'intérieur de la carte de classe */
+.schedule-class-sessions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+}
+.schedule-class-no-sessions {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+/* Mini carte de séance à l'intérieur d'une classe */
+.schedule-mini-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.schedule-mini-card:hover {
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.schedule-mini-card.ongoing {
+  border-color: var(--success);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
+}
+.schedule-mini-card.cancelled {
+  opacity: 0.6;
+}
+.schedule-mini-time {
+  min-width: 90px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-align: center;
+}
+.schedule-mini-content {
+  flex: 1;
+  min-width: 0;
+}
+.schedule-mini-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+.schedule-mini-title.cancelled {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.schedule-mini-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+.schedule-mini-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+.schedule-mini-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.schedule-mini-status.en_cours {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.schedule-mini-status.annulee {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.schedule-mini-status.a_venir {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.schedule-mini-status.terminee {
+  background: var(--muted-soft);
+  color: var(--muted);
+}
+
 .schedule-empty {
   text-align: center;
   padding: 3rem 1.5rem;

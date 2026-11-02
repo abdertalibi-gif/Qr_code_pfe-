@@ -121,9 +121,6 @@ class _ScheduleTab extends StatelessWidget {
     final secondaryColor =
         isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
     final profile = provider.profile?.studentProfile;
-    final classes = profile != null && profile.classeName != null && profile.classeName!.isNotEmpty
-        ? [profile]
-        : <StudentProfile>[];
 
     if (provider.scheduleLoading && provider.schedule.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -135,26 +132,75 @@ class _ScheduleTab extends StatelessWidget {
       );
     }
 
-    // Sélecteur de classe (toujours affiché en haut)
-    final selectedClassId = provider.selectedClassId;
-    final isFiltering = selectedClassId != null;
+    // Grouper les séances par classe_id
+    final sessionsByClass = <int?, List<StudentScheduleItem>>{};
+    for (final item in provider.schedule) {
+      sessionsByClass.putIfAbsent(item.classe, () => []).add(item);
+    }
+    // Trier chaque groupe par date/heure
+    sessionsByClass.forEach((_, items) {
+      items.sort((a, b) {
+        final da = a.date.compareTo(b.date);
+        if (da != 0) return da;
+        return a.startMinutes.compareTo(b.startMinutes);
+      });
+    });
+
+    // Classe de l'étudiant (depuis le profil)
+    final studentClasseId = profile?.classeId;
+    final studentClasseName = profile?.classeName;
+
+    // Construire la liste des classes à afficher : d'abord celle de l'étudiant,
+    // puis les autres classes qui ont des séances
+    final displayClasses = <MapEntry<int?, Map<String, dynamic>>>[];
+    if (studentClasseId != null) {
+      displayClasses.add(MapEntry(
+        studentClasseId,
+        {
+          'name': studentClasseName ?? 'Classe',
+          'filiere': profile?.filiereName ?? '—',
+          'semestre': profile?.semestreName ?? '—',
+          'niveau': profile?.niveau ?? '—',
+          'academicYear': profile?.academicYear ?? '—',
+          'modules': profile?.modules ?? const [],
+        },
+      ));
+    }
+    sessionsByClass.forEach((cid, items) {
+      if (cid != null && cid != studentClasseId) {
+        // Utiliser les infos de la première séance pour cette classe
+        final first = items.first;
+        displayClasses.add(MapEntry(
+          cid,
+          {
+            'name': first.classeName.isNotEmpty ? first.classeName : 'Classe #$cid',
+            'filiere': first.filiereName.isNotEmpty ? first.filiereName : '—',
+            'semestre': first.semestreName.isNotEmpty ? first.semestreName : '—',
+            'niveau': first.niveauLabel.isNotEmpty ? first.niveauLabel : '—',
+            'academicYear': '—',
+            'modules': const <StudentModule>[],
+          },
+        ));
+      }
+    });
+
+    if (displayClasses.isEmpty && provider.schedule.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => provider.loadSchedule(),
+        color: AppTheme.primary,
+        child: _EmptySchedule(
+          classeName: studentClasseName,
+        ),
+      );
+    }
 
     return RefreshIndicator(
-      onRefresh: () => provider.loadSchedule(classId: selectedClassId),
+      onRefresh: () => provider.loadSchedule(),
       color: AppTheme.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 24),
         children: [
-          // ── Sélecteur de classe ─────────────────────────────────────
-          if (classes.isNotEmpty)
-            _ClassSelector(
-              classes: classes,
-              selectedClassId: selectedClassId,
-              onSelect: (classId) => provider.selectClass(classId),
-              onSelectAll: () => provider.selectClass(null),
-            ),
-
           // ── Statut de synchronisation ───────────────────────────────
           if (provider.lastScheduleSync != null)
             Padding(
@@ -183,16 +229,207 @@ class _ScheduleTab extends StatelessWidget {
               ),
             ),
 
-          // ── Sessions ────────────────────────────────────────────────
-          if (provider.schedule.isEmpty)
-            _EmptySchedule(
-              classeName: profile?.classeName,
-              isFiltering: isFiltering,
-              onShowAll: () => provider.selectClass(null),
-            )
-          else ...[
-            ..._groupByDay(provider.schedule).entries.map(
-              (entry) => _DaySection(dayLabel: entry.key, items: entry.value),
+          // ── Classes avec leurs séances ─────────────────────────────
+          ...displayClasses.map((entry) {
+            final classeId = entry.key;
+            final info = entry.value;
+            final sessions = sessionsByClass[classeId] ?? const <StudentScheduleItem>[];
+            return _ClassSessionCard(
+              classeId: classeId,
+              classeName: info['name'] as String,
+              filiereName: info['filiere'] as String,
+              semestreName: info['semestre'] as String,
+              niveau: info['niveau'] as String,
+              academicYear: info['academicYear'] as String,
+              modules: info['modules'] as List<StudentModule>,
+              sessions: sessions,
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Carte de classe avec ses séances à l'intérieur ─────────────────
+
+class _ClassSessionCard extends StatelessWidget {
+  final int? classeId;
+  final String classeName;
+  final String filiereName;
+  final String semestreName;
+  final String niveau;
+  final String academicYear;
+  final List<StudentModule> modules;
+  final List<StudentScheduleItem> sessions;
+
+  const _ClassSessionCard({
+    required this.classeId,
+    required this.classeName,
+    required this.filiereName,
+    required this.semestreName,
+    required this.niveau,
+    required this.academicYear,
+    required this.modules,
+    required this.sessions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightMuted;
+    final hasSessions = sessions.isNotEmpty;
+    final details = [
+      filiereName,
+      semestreName,
+      academicYear,
+    ].where((v) => v != null && v.isNotEmpty && v != '—').cast<String>().join(' · ');
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête de la classe
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppTheme.primary.withOpacity(.15)
+                      : AppTheme.primaryLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.school_rounded,
+                  size: 18,
+                  color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      classeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.lightTextPrimary,
+                      ),
+                    ),
+                    if (details.isNotEmpty)
+                      Text(
+                        details,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: secondary),
+                      ),
+                    if (modules.isNotEmpty)
+                      Text(
+                        '${modules.length} module${modules.length > 1 ? 's' : ''}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: hasSessions
+                      ? AppTheme.successColor.withOpacity(.12)
+                      : AppTheme.lightMuted.withOpacity(.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  hasSessions
+                      ? '${sessions.length} séance${sessions.length > 1 ? 's' : ''}'
+                      : 'Aucune séance',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: hasSessions
+                        ? AppTheme.successColor
+                        : secondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Niveau et année
+          if (niveau.isNotEmpty && niveau != '—') ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _InfoChip(icon: Icons.stairs_outlined, label: niveau),
+                if (academicYear.isNotEmpty && academicYear != '—')
+                  _InfoChip(icon: Icons.today, label: academicYear),
+              ],
+            ),
+          ],
+
+          // Séances de la classe
+          if (hasSessions) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Séances',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: secondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...sessions.map((session) => _MiniSessionRow(session: session)),
+          ] else ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.darkCard.withOpacity(.3)
+                    : AppTheme.lightCard.withOpacity(.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.event_busy,
+                    size: 20,
+                    color: secondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Aucune séance programmée pour cette classe.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: secondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -201,193 +438,220 @@ class _ScheduleTab extends StatelessWidget {
   }
 }
 
-class _ClassSelector extends StatelessWidget {
-  final List<StudentProfile> classes;
-  final int? selectedClassId;
-  final ValueChanged<int?> onSelect;
-  final VoidCallback onSelectAll;
-
-  const _ClassSelector({
-    required this.classes,
-    required this.selectedClassId,
-    required this.onSelect,
-    required this.onSelectAll,
-  });
+/// Petite puce d'information
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final secondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppTheme.darkCard.withOpacity(.6)
+            : Colors.white.withOpacity(.8),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: AppTheme.primary),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppTheme.darkTextPrimary : AppTheme.primaryDark,
+            ),
+          ),
+        ],
+      ),
+    ),
+  }
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(
-            children: [
-              const Text(
-                'Vos classes',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+/// Petite ligne de séance à l'intérieur d'une carte de classe
+class _MiniSessionRow extends StatelessWidget {
+  final StudentScheduleItem session;
+  const _MiniSessionRow({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOngoing = session.status == ScheduleStatus.ongoing;
+    final isCancelled = session.status == ScheduleStatus.cancelled;
+    final secondaryColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightMuted;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isOngoing
+              ? AppTheme.successColor
+              : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+          width: isOngoing ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Horaire
+          Container(
+            width: 72,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  session.startTime,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isOngoing
+                        ? AppTheme.successColor
+                        : (isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.lightTextPrimary),
+                  ),
                 ),
-              ),
-              if (selectedClassId != null) ...[
-                const Spacer(),
-                TextButton(
-                  onPressed: onSelectAll,
-                  child: const Text('Toutes les classes'),
+                const SizedBox(height: 2),
+                Text(
+                  session.endTime,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: secondaryColor,
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
-        SizedBox(
-          height: 150,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: classes.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final classe = classes[index];
-              final isSelected = selectedClassId != null &&
-                  selectedClassId == classe.classeId;
-              final modules = classe.modules;
-              final details = [
-                classe.filiereName,
-                classe.semestreName,
-                classe.academicYear,
-              ].where((v) => v != null && v.isNotEmpty).cast<String>().join(' · ');
-
-              return GestureDetector(
-                onTap: () => onSelect(classe.classeId),
-                child: Container(
-                  width: 200,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppTheme.primary
-                          : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.primary
-                                  : (isDark
-                                      ? AppTheme.primary.withOpacity(.15)
-                                      : AppTheme.primaryLight),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.school_rounded,
-                              size: 16,
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppTheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              classe.classeName ?? 'Classe',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? AppTheme.darkTextPrimary
-                                    : AppTheme.lightTextPrimary,
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            const Icon(
-                              Icons.check_circle,
-                              size: 16,
-                              color: AppTheme.successColor,
-                            ),
-                        ],
+          const SizedBox(width: 8),
+          // Ligne verticale
+          Container(
+            width: 3,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isOngoing
+                  ? AppTheme.successColor
+                  : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Contenu
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        session.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isCancelled
+                              ? secondaryColor
+                              : (isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary),
+                          decoration: isCancelled
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
                       ),
-                      if (details.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          details,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: secondary,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      if (modules.isNotEmpty) ...[
-                        Text(
-                          '${modules.length} module${modules.length > 1 ? 's' : ''}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? AppTheme.primary
-                                : secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: modules.take(3).map((m) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppTheme.darkCard.withOpacity(.6)
-                                  : Colors.white.withOpacity(.8),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              m.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                color: isDark
-                                    ? AppTheme.darkTextPrimary
-                                    : AppTheme.primaryDark,
-                              ),
-                            ),
-                          )).toList(),
-                        ),
-                      ] else ...[
-                        Text(
-                          'Aucun module',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontStyle: FontStyle.italic,
-                            color: secondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 6),
+                    _SessionTypeBadge(type: session.sessionTypeLabel),
+                  ],
                 ),
-              );
-            },
+                const SizedBox(height: 6),
+                _MiniInfoRow(icon: Icons.person_outline_rounded, text: session.teacherName.isEmpty ? '—' : session.teacherName),
+                const SizedBox(height: 3),
+                _MiniInfoRow(icon: Icons.place_outlined, text: session.locationDisplay),
+                const SizedBox(height: 3),
+                _MiniInfoRow(icon: Icons.calendar_today, text: session.date),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _SessionStatusChip(status: session.status),
+                    if (session.qrOpen) const _QrOpenBadgeMini(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de type de séance (mini)
+class _SessionTypeBadge extends StatelessWidget {
+  final String type;
+  const _SessionTypeBadge({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppTheme.primary.withOpacity(0.18)
+            : AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        type,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// Mini ligne d'information
+class _MiniInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _MiniInfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? AppTheme.darkMuted : AppTheme.lightMuted;
+    final textColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    return Row(
+      children: [
+        Icon(icon, size: 12, color: iconColor),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color: textColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -395,15 +659,94 @@ class _ClassSelector extends StatelessWidget {
   }
 }
 
+/// Puce de statut (mini)
+class _SessionStatusChip extends StatelessWidget {
+  final ScheduleStatus status;
+  const _SessionStatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = switch (status) {
+      ScheduleStatus.upcoming =>
+        isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+      ScheduleStatus.ongoing => AppTheme.successColor,
+      ScheduleStatus.finished =>
+        isDark ? AppTheme.darkMuted : AppTheme.lightMuted,
+      ScheduleStatus.cancelled => AppTheme.errorColor,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (status == ScheduleStatus.ongoing) ...[
+            const SizedBox(
+              width: 7,
+              height: 7,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppTheme.successColor),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge QR ouvert (mini)
+class _QrOpenBadgeMini extends StatelessWidget {
+  const _QrOpenBadgeMini();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandColor = isDark ? AppTheme.primaryOnDark : AppTheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: brandColor.withOpacity(isDark ? .2 : .12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.qr_code_2_rounded, size: 12, color: brandColor),
+          const SizedBox(width: 5),
+          Text(
+            'Présence ouverte',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: brandColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── État vide de l'emploi du temps ────────────────────────────────────
+
 class _EmptySchedule extends StatelessWidget {
   final String? classeName;
-  final bool isFiltering;
-  final VoidCallback onShowAll;
 
   const _EmptySchedule({
     required this.classeName,
-    required this.isFiltering,
-    required this.onShowAll,
   });
 
   @override
@@ -421,24 +764,12 @@ class _EmptySchedule extends StatelessWidget {
             Icon(Icons.calendar_month_outlined, size: 56, color: muted),
             const SizedBox(height: 12),
             Text(
-              isFiltering
-                  ? (classeName != null && classeName.isNotEmpty
-                      ? 'Aucune séance planifiée pour $classeName'
-                      : 'Aucune séance pour cette classe')
-                  : (classeName != null && classeName.isNotEmpty
-                      ? 'Aucune séance planifiée pour $classeName'
-                      : 'Aucune classe ne vous est affectée'),
+              classeName != null && classeName.isNotEmpty
+                  ? 'Aucune séance planifiée pour $classeName'
+                  : 'Aucune classe ne vous est affectée',
               style: TextStyle(color: muted, fontSize: 14),
               textAlign: TextAlign.center,
             ),
-            if (isFiltering) ...[
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: onShowAll,
-                icon: const Icon(Icons.arrow_back, size: 18),
-                label: const Text('Voir toutes les classes'),
-              ),
-            ],
           ],
         ),
       ),

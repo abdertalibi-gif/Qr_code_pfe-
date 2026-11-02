@@ -1676,7 +1676,6 @@
     const studentPage = {
       currentUser: null,
       schedule: [],
-      selectedClassId: null,
       ws: null,
       pollTimer: null,
       pollRunning: false,
@@ -1824,7 +1823,7 @@
         }).join('');
       },
 
-      _renderScheduleClasses() {
+      _renderScheduleClassesWithSessions() {
         const profile = this.currentUser?.student_profile || {};
         const classesSection = document.getElementById('scheduleClassesSection');
         const grid = document.getElementById('scheduleClassesGrid');
@@ -1838,51 +1837,81 @@
         const academicYear = profile.academic_year || '—';
         const modules = Array.isArray(profile.modules) ? profile.modules : [];
 
-        let html = '';
-
-        // Bouton "Toutes les classes" (affiché quand une classe est sélectionnée)
-        if (this.selectedClassId) {
-          html += `
-            <button class="schedule-class-card schedule-class-card--back" type="button" onclick="studentPage.selectClass(null)">
-              <span class="schedule-class-title">← Toutes les classes</span>
-              <span class="schedule-class-sub">Afficher toutes les séances</span>
-            </button>
-          `;
+        // Grouper les séances par classe_id
+        const sessionsByClass = {};
+        for (const session of this.schedule) {
+          const cid = session.classe;
+          if (!sessionsByClass[cid]) sessionsByClass[cid] = [];
+          sessionsByClass[cid].push(session);
         }
 
-        // Carte de la classe courante (cliquable)
-        const isSelected = this.selectedClassId && String(this.selectedClassId) === String(classeId);
+        // Trier les séances de chaque classe par date/heure
+        for (const cid of Object.keys(sessionsByClass)) {
+          sessionsByClass[cid].sort((a, b) => {
+            if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+            return a.start_time < b.start_time ? -1 : 1;
+          });
+        }
+
+        let html = '';
+
+        // Carte de la classe courante avec ses séances à l'intérieur
+        const classSessions = sessionsByClass[classeId] || [];
+        const hasSessions = classSessions.length > 0;
+
         html += `
-          <div class="schedule-class-card ${isSelected ? 'schedule-class-card--selected' : ''}" type="button" onclick="studentPage.selectClass(${classeId})">
-            <div class="schedule-class-title">${esc(classeName)}</div>
-            <div class="schedule-class-sub">${esc(filiereName)} · ${esc(semestreName)}</div>
+          <div class="schedule-class-card">
+            <div class="schedule-class-header">
+              <div>
+                <div class="schedule-class-title">${esc(classeName)}</div>
+                <div class="schedule-class-sub">${esc(filiereName)} · ${esc(semestreName)}</div>
+              </div>
+              <div class="schedule-class-badge">${hasSessions ? classSessions.length + ' séance' + (classSessions.length > 1 ? 's' : '') : 'Aucune séance'}</div>
+            </div>
             <div><span class="schedule-class-label">Niveau</span><div class="schedule-class-value">${esc(niveau)}</div></div>
             <div><span class="schedule-class-label">Année</span><div class="schedule-class-value">${esc(academicYear)}</div></div>
-            ${modules.length ? `<div class="schedule-module-tag">${esc(modules.length)} module${modules.length > 1 ? 's' : ''} inscrit${modules.length > 1 ? 's' : ''}</div>` : '<div class="schedule-no-modules">Aucun module inscrit</div>'}
+            ${modules.length ? `<div class="schedule-module-tag">${esc(modules.length)} module${modules.length > 1 ? 's' : ''}</div>` : '<div class="schedule-no-modules">Aucun module inscrit</div>'}
+
+            <!-- Séances de cette classe -->
+            <div class="schedule-class-sessions">
+              ${hasSessions ? classSessions.map(session => this._renderMiniSessionCard(session)).join('') : '<div class="schedule-class-no-sessions">Aucune séance programmée pour cette classe.</div>'}
+            </div>
           </div>
         `;
 
-        // Cartes détaillées par module (une par module inscrit)
-        if (modules.length) {
-          html += modules.map(module => `
-            <div class="schedule-class-card ${isSelected ? 'schedule-class-card--selected' : ''}" type="button" onclick="studentPage.selectClass(${classeId})">
-              <div class="schedule-class-title">${esc(module.name || 'Module')}</div>
-              <div class="schedule-class-sub">${esc(module.filiere_name || '—')} · ${esc(module.semestre_name || '—')}</div>
-              ${module.code ? `<div><span class="schedule-class-label">Code</span><div class="schedule-class-value">${esc(module.code)}</div></div>` : ''}
-              ${module.teacher_name ? `<div><span class="schedule-class-label">Enseignant</span><div class="schedule-class-value">${esc(module.teacher_name)}</div></div>` : ''}
-              <div class="schedule-module-tag">Module inscrit</div>
-            </div>
-          `).join('');
-        }
-
         grid.innerHTML = html;
-        classesSection.style.display = (modules.length || classeName !== '—') ? 'block' : 'none';
+        classesSection.style.display = 'block';
       },
 
-      selectClass(classId) {
-        this.selectedClassId = classId;
-        this._renderScheduleClasses();
-        this.loadSchedule(false, classId);
+      /**
+       * Rendu d'une séance simplifiée à l'intérieur d'une carte de classe.
+       */
+      _renderMiniSessionCard(session) {
+        const status = session.status || 'a_venir';
+        const statusClass = this._statusClass(status);
+        const statusLabel = this._statusLabel(status);
+        const typeLabel = this._typeLabel(session.session_type);
+        const isOngoing = status === 'en_cours';
+        const isCancelled = status === 'annulee';
+        const locationDisplay = this._locationDisplay(session);
+
+        return `
+        <div class="schedule-mini-card ${isOngoing ? 'ongoing' : ''} ${isCancelled ? 'cancelled' : ''}">
+          <div class="schedule-mini-time">${this._formatTime(session.start_time)} – ${this._formatTime(session.end_time)}</div>
+          <div class="schedule-mini-content">
+            <div class="schedule-mini-title ${isCancelled ? 'cancelled' : ''}">${esc(session.module_name || session.subject || '?')}</div>
+            <div class="schedule-mini-sub">${esc(session.teacher_name || '—')}</div>
+            <div class="schedule-mini-info">
+              <span><strong>${typeLabel}</strong></span>
+              <span>•</span>
+              <span>${this._formatDateOnly(session.date)}</span>
+              <span>•</span>
+              <span>${esc(locationDisplay)}</span>
+            </div>
+            <span class="schedule-mini-status ${statusClass}">${esc(statusLabel)}</span>
+          </div>
+        </div>
+        `;
       },
 
       /**
@@ -1903,9 +1932,9 @@
             String(previousClasseId ?? '') !== String(this.classeId ?? '');
           if (classeChanged) {
             this._reconnectWebSocket();
-            await this.loadSchedule(true, this.selectedClassId);
+            await this.loadSchedule(true);
           }
-          this._renderScheduleClasses();
+          this._renderScheduleClassesWithSessions();
         } catch (e) {
           // Silencieux : le polling suivant réessaiera, on garde les
           // dernières données connues pour ne pas casser l'interface.
@@ -1933,14 +1962,12 @@
         return this.currentUser?.student_profile?.classe_id;
       },
 
-      async loadSchedule(silent = false, classId = null) {
+      async loadSchedule(silent = false) {
         if (!silent) this._setSyncStatus('syncing');
-        this.selectedClassId = classId ?? null;
-        const params = classId ? `?classe_id=${encodeURIComponent(classId)}` : '';
         try {
-          const data = await API.apiFetch(`/attendance/my-schedule/${params}`);
+          const data = await API.apiFetch('/attendance/my-schedule/');
           this.schedule = Array.isArray(data) ? data : (data.results || []);
-          this._renderSchedule();
+          this._renderScheduleClassesWithSessions();
           this._setSyncStatus('connected');
         } catch (e) {
           this._setSyncStatus('error', e.message);
@@ -1958,7 +1985,7 @@
       },
 
       refreshSchedule() {
-        this.loadSchedule(false, this.selectedClassId);
+        this.loadSchedule(false);
       },
 
       _renderSchedule() {
@@ -2218,7 +2245,7 @@
             // Le profil d'abord : une réaffectation de classe doit être
             // détectée avant de recharger l'emploi du temps / le WebSocket.
             await this.refreshProfile();
-            await this.loadSchedule(true, this.selectedClassId);
+            await this.loadSchedule(true);
           } finally {
             this.pollRunning = false;
           }
