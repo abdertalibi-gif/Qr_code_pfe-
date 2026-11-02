@@ -220,6 +220,7 @@ class _ScheduleTab extends StatelessWidget {
 
 /// Bandeau « Ma classe » : affiche la classe réellement affectée à l'étudiant.
 /// Les données proviennent de `/auth/me/` (rafraîchi toutes les 30 s).
+/// Même sans aucune séance créée, la classe et les modules inscrits apparaissent.
 class _ClassInfoBanner extends StatelessWidget {
   final StudentProfile profile;
   const _ClassInfoBanner({required this.profile});
@@ -343,7 +344,6 @@ class _ClassInfoBanner extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: modules
-                  .take(6)
                   .map(
                     (module) => Container(
                       padding: const EdgeInsets.symmetric(
@@ -359,21 +359,54 @@ class _ClassInfoBanner extends StatelessWidget {
                               : AppTheme.primaryBorder,
                         ),
                       ),
-                      child: Text(
-                        module.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTheme.darkTextPrimary
-                              : AppTheme.primaryDark,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            module.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.primaryDark,
+                            ),
+                          ),
+                          if (module.code.isNotEmpty)
+                            Text(
+                              module.code,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppTheme.darkMuted
+                                    : AppTheme.lightMuted,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   )
                   .toList(),
+            ),
+          ],
+          if (modules.isEmpty) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Text(
+                'Aucun module inscrit',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  color: secondary,
+                ),
+              ),
             ),
           ],
         ],
@@ -594,6 +627,16 @@ class _SessionCard extends StatelessWidget {
                   _InfoRow(
                     icon: Icons.place_outlined,
                     text: item.locationDisplay,
+                  ),
+                  const SizedBox(height: 4),
+                  _InfoRow(
+                    icon: Icons.class_outlined,
+                    text: item.classeName.isEmpty ? '—' : item.classeName,
+                  ),
+                  const SizedBox(height: 4),
+                  _InfoRow(
+                    icon: Icons.school_outlined,
+                    text: item.academicLabel,
                   ),
                   const SizedBox(height: 10),
                   Wrap(
