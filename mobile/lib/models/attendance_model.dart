@@ -17,12 +17,12 @@ class StudentDetail {
 
   factory StudentDetail.fromJson(Map<String, dynamic> json) {
     return StudentDetail(
-      id: json['id'] as int,
-      firstName: json['first_name'] as String? ?? '',
-      lastName: json['last_name'] as String? ?? '',
-      codeMassar: json['code_massar'] as String? ?? '',
-      field: json['field'] as String? ?? '',
-      createdAt: json['created_at'] as String? ?? '',
+      id: (json['id'] as num).toInt(),
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      codeMassar: json['code_massar']?.toString() ?? '',
+      field: json['field']?.toString() ?? '',
+      createdAt: json['created_at']?.toString() ?? '',
     );
   }
 
@@ -65,13 +65,13 @@ class AttendanceModel {
 
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
     return AttendanceModel(
-      id: json['id'] as int,
-      student: json['student'] as int,
-      session: json['session'] as int,
-      validationTime: json['validation_time'] as String? ?? '',
-      ipAddress: json['ip_address'] as String?,
-      deviceId: json['device_id'] as String? ?? '',
-      attendanceStatus: json['attendance_status'] as String? ?? 'confirmed',
+      id: (json['id'] as num).toInt(),
+      student: (json['student'] as num).toInt(),
+      session: (json['session'] as num).toInt(),
+      validationTime: json['validation_time']?.toString() ?? '',
+      ipAddress: json['ip_address']?.toString(),
+      deviceId: json['device_id']?.toString() ?? '',
+      attendanceStatus: json['attendance_status']?.toString() ?? 'confirmed',
       latitude: _num(json['latitude']),
       longitude: _num(json['longitude']),
       studentDetail: json['student_detail'] != null

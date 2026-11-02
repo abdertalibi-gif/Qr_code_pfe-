@@ -113,32 +113,32 @@ class SessionModel {
 
   factory SessionModel.fromJson(Map<String, dynamic> json) {
     return SessionModel(
-      id: json['id'] as int,
-      subject: json['subject'] as String? ?? '',
-      moduleId: json['module_id'] as int?,
-      moduleName: json['module_name'] as String?,
-      teacher: json['teacher'] as int?,
-      teacherName: json['teacher_name'] as String? ?? '',
-      classe: json['classe'] as int?,
-      classeName: json['classe_name'] as String? ?? '',
-      classeField: json['classe_field'] as String? ?? '',
-      locationType: json['location_type'] as String? ?? 'block',
-      block: json['block'] as int?,
-      blockName: json['block_name'] as String?,
-      room: json['room'] as int?,
-      roomName: json['room_name'] as String?,
-      amphitheater: json['amphitheater'] as int?,
-      amphitheaterName: json['amphitheater_name'] as String?,
-      date: json['date'] as String? ?? '',
-      startTime: json['start_time'] as String? ?? '',
-      endTime: json['end_time'] as String? ?? '',
-      qrToken: json['qr_token'] as String?,
-      qrSessionId: json['qr_session_id'] as String? ?? '',
-      qrExpiresAt: json['qr_expires_at'] as String?,
-      attendanceRadiusMeters: json['attendance_radius_meters'] as int? ?? 50,
+      id: (json['id'] as num).toInt(),
+      subject: json['subject']?.toString() ?? '',
+      moduleId: (json['module_id'] as num?)?.toInt(),
+      moduleName: json['module_name']?.toString(),
+      teacher: (json['teacher'] as num?)?.toInt(),
+      teacherName: json['teacher_name']?.toString() ?? '',
+      classe: (json['classe'] as num?)?.toInt(),
+      classeName: json['classe_name']?.toString() ?? '',
+      classeField: json['classe_field']?.toString() ?? '',
+      locationType: json['location_type']?.toString() ?? 'block',
+      block: (json['block'] as num?)?.toInt(),
+      blockName: json['block_name']?.toString(),
+      room: (json['room'] as num?)?.toInt(),
+      roomName: json['room_name']?.toString(),
+      amphitheater: (json['amphitheater'] as num?)?.toInt(),
+      amphitheaterName: json['amphitheater_name']?.toString(),
+      date: json['date']?.toString() ?? '',
+      startTime: json['start_time']?.toString() ?? '',
+      endTime: json['end_time']?.toString() ?? '',
+      qrToken: json['qr_token']?.toString(),
+      qrSessionId: json['qr_session_id']?.toString() ?? '',
+      qrExpiresAt: json['qr_expires_at']?.toString(),
+      attendanceRadiusMeters: (json['attendance_radius_meters'] as num?)?.toInt() ?? 50,
       isActive: json['is_active'] as bool? ?? true,
       isClosed: json['is_closed'] as bool? ?? false,
-      sessionType: json['session_type'] as String? ?? 'Cours',
+      sessionType: json['session_type']?.toString() ?? 'Cours',
       isQrValid: json['is_qr_valid'] as bool? ?? false,
       isWithinSessionWindow: json['is_within_session_window'] as bool? ?? false,
       canGenerateQr: json['can_generate_qr'] as bool? ?? false,
@@ -195,16 +195,16 @@ class SessionQrPayload {
 
   factory SessionQrPayload.fromJson(Map<String, dynamic> json) {
     return SessionQrPayload(
-      qrToken: json['qr_token'] as String? ?? '',
-      qrSessionId: json['qr_session_id'] as String? ?? '',
-      qrExpiresAt: json['qr_expires_at'] as String?,
-      qrUrl: json['qr_url'] as String?,
+      qrToken: json['qr_token']?.toString() ?? '',
+      qrSessionId: json['qr_session_id']?.toString() ?? '',
+      qrExpiresAt: json['qr_expires_at']?.toString(),
+      qrUrl: json['qr_url']?.toString(),
       attendanceRadiusMeters:
-          json['attendance_radius_meters'] as int? ?? 50,
-      locationLatitude: json['location_latitude'] as String?,
-      locationLongitude: json['location_longitude'] as String?,
+          (json['attendance_radius_meters'] as num?)?.toInt() ?? 50,
+      locationLatitude: json['location_latitude']?.toString(),
+      locationLongitude: json['location_longitude']?.toString(),
       isQrValid: json['is_qr_valid'] as bool? ?? false,
-      qrImageBase64: json['qr_image_base64'] as String?,
+      qrImageBase64: json['qr_image_base64']?.toString(),
     );
   }
 
@@ -247,16 +247,16 @@ class SessionStats {
   factory SessionStats.fromJson(Map<String, dynamic> json) {
     final rawLocations = json['locations'];
     return SessionStats(
-      sessionId: json['session_id'] as int? ?? 0,
-      subject: json['subject'] as String? ?? '',
-      totalStudentsInClass: json['total_students_in_class'] as int? ?? 0,
-      attendanceCount: json['attendance_count'] as int? ?? 0,
+      sessionId: (json['session_id'] as num?)?.toInt() ?? 0,
+      subject: json['subject']?.toString() ?? '',
+      totalStudentsInClass: (json['total_students_in_class'] as num?)?.toInt() ?? 0,
+      attendanceCount: (json['attendance_count'] as num?)?.toInt() ?? 0,
       attendanceRate: (json['attendance_rate'] as num?)?.toDouble() ?? 0,
-      duplicateAttempts: json['duplicate_attempts'] as int? ?? 0,
-      geofenceViolations: json['geofence_violations'] as int? ?? 0,
+      duplicateAttempts: (json['duplicate_attempts'] as num?)?.toInt() ?? 0,
+      geofenceViolations: (json['geofence_violations'] as num?)?.toInt() ?? 0,
       suspiciousAttemptsTotal:
-          json['suspicious_attempts_total'] as int? ?? 0,
-      uniqueDevices: json['unique_devices'] as int? ?? 0,
+          (json['suspicious_attempts_total'] as num?)?.toInt() ?? 0,
+      uniqueDevices: (json['unique_devices'] as num?)?.toInt() ?? 0,
       locations: rawLocations is List
           ? rawLocations
               .map((e) => LocationPoint.fromJson(e as Map<String, dynamic>))
@@ -328,18 +328,18 @@ class SuspiciousAttempt {
 
   factory SuspiciousAttempt.fromJson(Map<String, dynamic> json) {
     return SuspiciousAttempt(
-      id: json['id'] as int,
-      session: json['session'] as int? ?? 0,
-      sessionSubject: json['session_subject'] as String? ?? '',
-      sessionDate: json['session_date'] as String? ?? '',
-      attemptType: json['attempt_type'] as String? ?? '',
-      codeMassar: json['code_massar'] as String?,
-      firstName: json['first_name'] as String? ?? '',
-      lastName: json['last_name'] as String? ?? '',
-      ipAddress: json['ip_address'] as String?,
-      deviceId: json['device_id'] as String? ?? '',
-      errorMessage: json['error_message'] as String?,
-      createdAt: json['created_at'] as String? ?? '',
+      id: (json['id'] as num).toInt(),
+      session: (json['session'] as num?)?.toInt() ?? 0,
+      sessionSubject: json['session_subject']?.toString() ?? '',
+      sessionDate: json['session_date']?.toString() ?? '',
+      attemptType: json['attempt_type']?.toString() ?? '',
+      codeMassar: json['code_massar']?.toString(),
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      ipAddress: json['ip_address']?.toString(),
+      deviceId: json['device_id']?.toString() ?? '',
+      errorMessage: json['error_message']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
     );
   }
 
@@ -392,11 +392,11 @@ class GlobalStats {
   factory GlobalStats.fromJson(Map<String, dynamic> json) {
     final rawDaily = json['daily_attendance'];
     return GlobalStats(
-      totalPresent: json['total_present'] as int? ?? 0,
-      totalAttendance: json['total_attendance'] as int? ?? 0,
+      totalPresent: (json['total_present'] as num?)?.toInt() ?? 0,
+      totalAttendance: (json['total_attendance'] as num?)?.toInt() ?? 0,
       attendanceRate: (json['attendance_rate'] as num?)?.toDouble() ?? 0,
-      activeClasses: json['active_classes'] as int? ?? 0,
-      totalStudents: json['total_students'] as int? ?? 0,
+      activeClasses: (json['active_classes'] as num?)?.toInt() ?? 0,
+      totalStudents: (json['total_students'] as num?)?.toInt() ?? 0,
       daily: rawDaily is List
           ? rawDaily
               .map((e) => DailyAttendance.fromJson(e as Map<String, dynamic>))
@@ -422,9 +422,9 @@ class DailyAttendance {
 
   factory DailyAttendance.fromJson(Map<String, dynamic> json) {
     return DailyAttendance(
-      date: json['date'] as String? ?? '',
-      present: json['present'] as int? ?? 0,
-      total: json['total'] as int? ?? 0,
+      date: json['date']?.toString() ?? '',
+      present: (json['present'] as num?)?.toInt() ?? 0,
+      total: (json['total'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -453,14 +453,14 @@ class StudentItem {
 
   factory StudentItem.fromJson(Map<String, dynamic> json) {
     return StudentItem(
-      id: json['id'] as int,
-      firstName: json['first_name'] as String? ?? '',
-      lastName: json['last_name'] as String? ?? '',
-      codeMassar: json['code_massar'] as String? ?? '',
-      email: json['email'] as String?,
-      phone: json['phone'] as String?,
-      classeName: json['classe_name'] as String?,
-      classe: json['classe'] as int?,
+      id: (json['id'] as num).toInt(),
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      codeMassar: json['code_massar']?.toString() ?? '',
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      classeName: json['classe_name']?.toString(),
+      classe: (json['classe'] as num?)?.toInt(),
     );
   }
 
@@ -493,27 +493,27 @@ SessionAttendance({
 
   factory SessionAttendance.fromJson(Map<String, dynamic> json) {
     return SessionAttendance(
-      id: json['id'] as int,
-      student: json['student'] as int? ?? 0,
-      session: json['session'] as int? ?? 0,
-      validationTime: json['validation_time'] as String? ?? '',
-      ipAddress: json['ip_address'] as String?,
-      deviceId: json['device_id'] as String? ?? '',
+      id: (json['id'] as num).toInt(),
+      student: (json['student'] as num?)?.toInt() ?? 0,
+      session: (json['session'] as num?)?.toInt() ?? 0,
+      validationTime: json['validation_time']?.toString() ?? '',
+      ipAddress: json['ip_address']?.toString(),
+      deviceId: json['device_id']?.toString() ?? '',
       studentDetail: json['student_detail'] != null
           ? StudentDetail.fromJson(
               json['student_detail'] as Map<String, dynamic>)
           : null,
-      attendanceStatus: json['attendance_status'] as String? ?? 'confirmed',
+      attendanceStatus: json['attendance_status']?.toString() ?? 'confirmed',
       latitude: (json['latitude'] is num)
           ? (json['latitude'] as num).toDouble()
           : null,
       longitude: (json['longitude'] is num)
           ? (json['longitude'] as num).toDouble()
           : null,
-      studentName: json['student_name'] as String? ?? '',
-      studentCodeMassar: json['student_code_massar'] as String? ?? '',
-      subject: json['subject'] as String? ?? '',
-      sessionDate: json['session_date'] as String? ?? '',
+      studentName: json['student_name']?.toString() ?? '',
+      studentCodeMassar: json['student_code_massar']?.toString() ?? '',
+      subject: json['subject']?.toString() ?? '',
+      sessionDate: json['session_date']?.toString() ?? '',
     );
   }
 }

@@ -4950,7 +4950,8 @@ tbody.innerHTML = list.map(function (d) {
     if (btn) {
       var sem = document.getElementById('absSemestre')?.value;
       var fil = document.getElementById('absFiliere')?.value;
-      btn.disabled = !(sem && fil);
+      var mod = document.getElementById('absModule')?.value;
+      btn.disabled = !(sem && fil && mod);
     }
   }
 
@@ -4964,6 +4965,7 @@ tbody.innerHTML = list.map(function (d) {
     v = document.getElementById('absTeacher') ? document.getElementById('absTeacher').value : ''; if (v) p.teacher_id = v;
     v = document.getElementById('absDateFrom') ? document.getElementById('absDateFrom').value : ''; if (v) p.date_from = v;
     v = document.getElementById('absDateTo') ? document.getElementById('absDateTo').value : ''; if (v) p.date_to = v;
+    v = document.getElementById('absStudentSearch') ? document.getElementById('absStudentSearch').value : ''; if (v) p.student_id = v;
     return p;
   }
 
@@ -4994,12 +4996,12 @@ tbody.innerHTML = list.map(function (d) {
     set('absStatTeachers', s.total_teachers);
     set('absStatModules', s.total_modules);
 
-    renderAbsenceTable('absStudentBody', d.by_student, ['student__code_massar', 'student_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Étudiant', 'Total', 'Absences', 'Taux']);
+    renderAbsenceTable('absStudentBody', d.by_student, ['code_massar', 'student_name', 'total', 'absent_count', 'rate'], ['Code Massar', 'Étudiant', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absTeacherBody', d.by_teacher, ['teacher_name', 'total', 'absent_count', 'rate'], ['Enseignant', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absModuleBody', d.by_module, ['module_name', 'total', 'absent_count', 'rate'], ['Module', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absFiliereBody', d.by_filiere, ['filiere_name', 'total', 'absent_count', 'rate'], ['Filière', 'Total', 'Absences', 'Taux']);
     renderAbsenceTable('absPeriodBody', d.by_day, ['date', 'present', 'absent', 'total', 'rate'], ['Date', 'Présents', 'Absents', 'Total', 'Taux']);
-    renderAbsenceTable('absRecentBody', d.recent_absences, ['student', 'student__code_massar', 'module', 'teacher', 'date', 'time'], ['Étudiant', 'Code Massar', 'Module', 'Enseignant', 'Date', 'Heure']);
+    renderAbsenceTable('absRecentBody', d.recent_absences, ['student', 'code_massar', 'module', 'teacher', 'date', 'time'], ['Étudiant', 'Code Massar', 'Module', 'Enseignant', 'Date', 'Heure']);
     var cnt = document.getElementById('cntAbsenceStats');
     if (cnt) cnt.textContent = s.total ?? Z;
   }

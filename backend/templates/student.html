@@ -547,6 +547,196 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* ── Section Vos classes et modules ──────────────────────────── */
+    .schedule-modules-block {
+      background: #FFFFFF;
+      border: 1px solid var(--student-border);
+      border-radius: var(--student-radius);
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 1.35rem;
+      box-shadow: var(--student-shadow-sm);
+    }
+
+    .schedule-modules-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 0.95rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--student-border-subtle);
+    }
+
+    .schedule-modules-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.96rem;
+      font-weight: 800;
+      color: var(--student-text);
+    }
+
+    .schedule-modules-title svg {
+      color: var(--student-primary);
+    }
+
+    .schedule-modules-hint {
+      font-size: 0.76rem;
+      color: var(--student-muted);
+      font-weight: 500;
+    }
+
+    .schedule-semester-group {
+      margin-bottom: 0.9rem;
+    }
+
+    .schedule-semester-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .schedule-semester-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--student-primary-dark);
+      background: var(--student-primary-light);
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      margin-bottom: 0.55rem;
+      border: 1px solid rgba(15, 125, 184, 0.2);
+    }
+
+    .schedule-semester-modules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    .schedule-module-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid var(--student-border);
+      background: #FAFCFE;
+      color: var(--student-text);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      text-align: left;
+    }
+
+    .schedule-module-btn:hover {
+      background: var(--student-primary-light);
+      border-color: rgba(15, 125, 184, 0.4);
+      color: var(--student-primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px -2px rgba(15, 125, 184, 0.18);
+    }
+
+    .schedule-module-btn .btn-mod-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 125, 184, 0.12);
+      color: var(--student-primary);
+      font-size: 0.72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    /* ── Barre de filtre actif avec bouton Retour ─────────────────── */
+    .active-module-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 0.95rem 1.25rem;
+      border-radius: var(--student-radius);
+      background: linear-gradient(135deg, #0A4368 0%, #0F6E9F 100%);
+      color: #FFFFFF;
+      margin-bottom: 1.35rem;
+      box-shadow: 0 10px 24px -10px rgba(10, 67, 104, 0.45);
+      animation: student-rise 0.3s ease both;
+    }
+
+    .active-module-details {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .active-module-badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .active-module-details h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #FFFFFF;
+    }
+
+    .active-module-sem {
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: rgba(242, 140, 40, 0.35);
+      color: #FED7AA;
+      border: 1px solid rgba(242, 140, 40, 0.5);
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+    }
+
+    .btn-return-modules {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background: #FFFFFF;
+      color: var(--student-primary-dark);
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      transition: all 0.18s ease;
+    }
+
+    .btn-return-modules:hover {
+      background: #F8FAFC;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    .student-module-chip.is-semestre {
+      background: rgba(15, 125, 184, 0.12);
+      border-color: rgba(15, 125, 184, 0.3);
+      color: var(--student-primary-dark);
+      font-weight: 700;
+    }
+
+    .student-module-card {
+      cursor: pointer;
+    }
+
     /* ── Grille des Modules ──────────────────────────────────────── */
     .student-modules-grid {
       display: grid;
@@ -1560,6 +1750,40 @@
 
     <!-- ── Emploi du temps ──────────────────────────────────────────── -->
     <div class="schedule-tab-content student-tab-panel" id="tabContentSchedule" style="display:block">
+
+      <!-- ── Vos classes et modules (regroupés par semestre) ── -->
+      <div class="schedule-modules-block" id="scheduleModulesBlock">
+        <div class="schedule-modules-header">
+          <div class="schedule-modules-title">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            <span>Vos classes et modules</span>
+          </div>
+          <span class="schedule-modules-hint">Cliquez sur un module pour afficher uniquement ses séances</span>
+        </div>
+        <div class="schedule-modules-list" id="scheduleModulesList">
+          <!-- Chargé dynamiquement par semestre -->
+        </div>
+      </div>
+
+      <!-- ── Bannière de filtre actif ── -->
+      <div class="active-module-bar" id="activeModuleBar" style="display:none">
+        <div class="active-module-details">
+          <span class="active-module-badge">Module sélectionné</span>
+          <h3 id="activeModuleName">—</h3>
+          <span class="active-module-sem" id="activeModuleSem">—</span>
+        </div>
+        <button class="btn-return-modules" id="btnReturnModules" onclick="studentPage.clearModuleFilter()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Retour aux modules
+        </button>
+      </div>
+
       <div class="student-schedule-header">
         <div>
           <h2>Emploi du temps</h2>
@@ -1578,13 +1802,7 @@
         </div>
       </div>
 
-      <!-- ── Vos classes et modules ─────────────────────────────────── -->
-      <div class="schedule-classes-section" id="scheduleClassesSection" style="display:none">
-        <h3 style="margin:0 0 .5rem;font-size:.95rem;color:var(--student-text-secondary)">Vos classes et modules</h3>
-        <div class="schedule-classes-grid" id="scheduleClassesGrid">
-          <!-- Rempli dynamiquement depuis /auth/me/ (classe + modules inscrits) -->
-        </div>
-      </div>
+
 
       <div id="scheduleContainer">
         <div class="schedule-empty">
@@ -1676,6 +1894,9 @@
     const studentPage = {
       currentUser: null,
       schedule: [],
+      selectedModuleId: null,
+      selectedModuleName: '',
+      selectedModuleSemestre: '',
       ws: null,
       pollTimer: null,
       pollRunning: false,
@@ -1752,21 +1973,20 @@
 
         this._renderStudentInfo(user, profile);
         this._renderModules(profile);
+        this._renderScheduleModules(profile);
       },
 
       _renderStudentInfo(user, profile) {
         const rows = [
           { label: 'ID étudiant', value: profile.id ? `#${profile.id}` : '—', strong: true },
           { label: 'Code Massar', value: profile.code_massar || '—', strong: true },
-          { label: 'Classe', value: profile.classe_name || '—' },
           { label: 'Filière', value: profile.filiere_name || '—' },
           { label: 'Semestre', value: profile.semestre_name || '—' },
           { label: 'Niveau', value: profile.niveau || '—' },
           { label: 'Année universitaire', value: profile.academic_year || '—' },
           { label: 'Email', value: user.email || '—' },
-          { label: 'Téléphone', value: user.phone || '—' },
-          { label: 'CIN', value: user.cin || '—' },
-          { label: 'Inscrit depuis', value: this._formatDateOnly(profile.created_at || user.created_at) },
+          { label: 'Téléphone', value: user.phone || profile.phone || '—' },
+          { label: 'CNI', value: user.cin || profile.cin || '—' },
         ];
 
         document.getElementById('studentInfoGrid').innerHTML = rows.map(row => `
@@ -1811,107 +2031,16 @@
           if (module.teacher_name) chips.push(`<span class="student-module-chip">${esc(module.teacher_name)}</span>`);
 
           return `
-          <article class="student-module-card">
+          <article class="student-module-card" onclick="studentPage.selectModuleAndGoToSchedule(${module.id}, '${esc(name)}', '${esc(module.semestre_name || '')}')">
             <div class="student-module-icon">${esc(initial)}</div>
             <div class="student-module-body">
               <div class="student-module-name">${esc(name)}</div>
               <div class="student-module-meta">
-                ${chips.join('') || '<span class="student-module-chip">Module du semestre</span>'}
+                ${chips.join('') || '<span class="student-module-chip">Module</span>'}
               </div>
             </div>
           </article>`;
         }).join('');
-      },
-
-      _renderScheduleClassesWithSessions() {
-        const profile = this.currentUser?.student_profile || {};
-        const classesSection = document.getElementById('scheduleClassesSection');
-        const grid = document.getElementById('scheduleClassesGrid');
-        if (!classesSection || !grid) return;
-
-        const classeId = profile.classe_id;
-        const classeName = profile.classe_name || '—';
-        const filiereName = profile.filiere_name || '—';
-        const semestreName = profile.semestre_name || '—';
-        const niveau = profile.niveau || '—';
-        const academicYear = profile.academic_year || '—';
-        const modules = Array.isArray(profile.modules) ? profile.modules : [];
-
-        // Grouper les séances par classe_id
-        const sessionsByClass = {};
-        for (const session of this.schedule) {
-          const cid = session.classe;
-          if (!sessionsByClass[cid]) sessionsByClass[cid] = [];
-          sessionsByClass[cid].push(session);
-        }
-
-        // Trier les séances de chaque classe par date/heure
-        for (const cid of Object.keys(sessionsByClass)) {
-          sessionsByClass[cid].sort((a, b) => {
-            if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-            return a.start_time < b.start_time ? -1 : 1;
-          });
-        }
-
-        let html = '';
-
-        // Carte de la classe courante avec ses séances à l'intérieur
-        const classSessions = sessionsByClass[classeId] || [];
-        const hasSessions = classSessions.length > 0;
-
-        html += `
-          <div class="schedule-class-card">
-            <div class="schedule-class-header">
-              <div>
-                <div class="schedule-class-title">${esc(classeName)}</div>
-                <div class="schedule-class-sub">${esc(filiereName)} · ${esc(semestreName)}</div>
-              </div>
-              <div class="schedule-class-badge">${hasSessions ? classSessions.length + ' séance' + (classSessions.length > 1 ? 's' : '') : 'Aucune séance'}</div>
-            </div>
-            <div><span class="schedule-class-label">Niveau</span><div class="schedule-class-value">${esc(niveau)}</div></div>
-            <div><span class="schedule-class-label">Année</span><div class="schedule-class-value">${esc(academicYear)}</div></div>
-            ${modules.length ? `<div class="schedule-module-tag">${esc(modules.length)} module${modules.length > 1 ? 's' : ''}</div>` : '<div class="schedule-no-modules">Aucun module inscrit</div>'}
-
-            <!-- Séances de cette classe -->
-            <div class="schedule-class-sessions">
-              ${hasSessions ? classSessions.map(session => this._renderMiniSessionCard(session)).join('') : '<div class="schedule-class-no-sessions">Aucune séance programmée pour cette classe.</div>'}
-            </div>
-          </div>
-        `;
-
-        grid.innerHTML = html;
-        classesSection.style.display = 'block';
-      },
-
-      /**
-       * Rendu d'une séance simplifiée à l'intérieur d'une carte de classe.
-       */
-      _renderMiniSessionCard(session) {
-        const status = session.status || 'a_venir';
-        const statusClass = this._statusClass(status);
-        const statusLabel = this._statusLabel(status);
-        const typeLabel = this._typeLabel(session.session_type);
-        const isOngoing = status === 'en_cours';
-        const isCancelled = status === 'annulee';
-        const locationDisplay = this._locationDisplay(session);
-
-        return `
-        <div class="schedule-mini-card ${isOngoing ? 'ongoing' : ''} ${isCancelled ? 'cancelled' : ''}">
-          <div class="schedule-mini-time">${this._formatTime(session.start_time)} – ${this._formatTime(session.end_time)}</div>
-          <div class="schedule-mini-content">
-            <div class="schedule-mini-title ${isCancelled ? 'cancelled' : ''}">${esc(session.module_name || session.subject || '?')}</div>
-            <div class="schedule-mini-sub">${esc(session.teacher_name || '—')}</div>
-            <div class="schedule-mini-info">
-              <span><strong>${typeLabel}</strong></span>
-              <span>•</span>
-              <span>${this._formatDateOnly(session.date)}</span>
-              <span>•</span>
-              <span>${esc(locationDisplay)}</span>
-            </div>
-            <span class="schedule-mini-status ${statusClass}">${esc(statusLabel)}</span>
-          </div>
-        </div>
-        `;
       },
 
       /**
@@ -1934,10 +2063,7 @@
             this._reconnectWebSocket();
             await this.loadSchedule(true);
           }
-          this._renderScheduleClassesWithSessions();
         } catch (e) {
-          // Silencieux : le polling suivant réessaiera, on garde les
-          // dernières données connues pour ne pas casser l'interface.
           console.warn('Student profile refresh failed:', e.message);
         }
       },
@@ -1965,9 +2091,12 @@
       async loadSchedule(silent = false) {
         if (!silent) this._setSyncStatus('syncing');
         try {
-          const data = await API.apiFetch('/attendance/my-schedule/');
+          const url = this.selectedModuleId
+            ? `/attendance/my-schedule/?module_id=${encodeURIComponent(this.selectedModuleId)}`
+            : '/attendance/my-schedule/';
+          const data = await API.apiFetch(url);
           this.schedule = Array.isArray(data) ? data : (data.results || []);
-          this._renderScheduleClassesWithSessions();
+          this._renderSchedule();
           this._setSyncStatus('connected');
         } catch (e) {
           this._setSyncStatus('error', e.message);
@@ -1991,20 +2120,19 @@
       _renderSchedule() {
         const container = document.getElementById('scheduleContainer');
         if (!this.schedule.length) {
-          const profile = this.currentUser?.student_profile || {};
-          const classeName = this.selectedClassId
-            ? profile.classe_name || '—'
-            : (profile.classe_name || '—');
-          const filterLabel = this.selectedClassId ? ` pour ${esc(classeName)}` : '';
+          const isModuleFiltered = !!this.selectedModuleId;
+          const msg = isModuleFiltered
+            ? "Aucune séance n'est programmée pour ce module."
+            : (this.currentUser?.student_profile?.classe_name
+              ? `Aucune séance prévue pour ${esc(this.currentUser.student_profile.classe_name)}.`
+              : window.I18N.scheduleNoClass);
           container.innerHTML = `
           <div class="schedule-empty">
             <div class="schedule-empty-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
-            <div>${classeName
-              ? `Aucune séance prévue${filterLabel}.`
-              : window.I18N.scheduleNoClass}</div>
-            ${this.selectedClassId ? `<button class="btn btn-primary" onclick="studentPage.selectClass(null)" style="margin-top:0.6rem">Voir toutes les classes</button>` : ''}
+            <div>${esc(msg)}</div>
+            ${isModuleFiltered ? `<button class="btn btn-primary" onclick="studentPage.clearModuleFilter()" style="margin-top:0.8rem">Retour aux modules</button>` : ''}
           </div>
         `;
           this._updateScheduleStats({}, 0);
@@ -2089,6 +2217,10 @@
                   <span><strong>Type :</strong> ${esc(typeLabel)}</span>
                 </div>
                 <div class="schedule-info-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span><strong>Date :</strong> ${this._formatDateOnly(item.date)}</span>
+                </div>
+                <div class="schedule-info-item">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   <span><strong>Lieu :</strong> ${esc(locationDisplay)}</span>
                 </div>
@@ -2118,6 +2250,99 @@
           </div>
         </div>
       `;
+      },
+
+      // ─── Module Filtering in Schedule ──────────────────────────────────────
+
+      _renderScheduleModules(profile) {
+        const listEl = document.getElementById('scheduleModulesList');
+        if (!listEl) return;
+        const modules = Array.isArray(profile.modules) ? profile.modules : [];
+        if (!modules.length) {
+          listEl.innerHTML = '<div style="color:var(--student-muted);font-size:0.82rem;padding:0.4rem 0;">Aucun module disponible.</div>';
+          return;
+        }
+
+        // Grouper les modules par semestre (ex: S2, S3, S5)
+        const groups = {};
+        for (const m of modules) {
+          const sem = m.semestre_name || 'Autres';
+          if (!groups[sem]) groups[sem] = [];
+          groups[sem].push(m);
+        }
+
+        // Trier les semestres (S1 -> S6, puis Autres)
+        const sortedSemestres = Object.keys(groups).sort((a, b) => {
+          const numA = parseInt(a.replace(/\D/g, '')) || 99;
+          const numB = parseInt(b.replace(/\D/g, '')) || 99;
+          return numA - numB;
+        });
+
+        let html = '';
+        for (const sem of sortedSemestres) {
+          const semModules = groups[sem];
+          html += `
+          <div class="schedule-semester-group">
+            <div class="schedule-semester-label">${esc(sem)}</div>
+            <div class="schedule-semester-modules">
+              ${semModules.map(m => {
+            const initial = (m.name?.[0] || '?').toUpperCase();
+            const isActive = this.selectedModuleId === m.id;
+            return `
+                <button type="button" class="schedule-module-btn ${isActive ? 'is-active' : ''}"
+                  onclick="studentPage.filterByModule(${m.id}, '${esc(m.name)}', '${esc(sem)}')">
+                  <span class="btn-mod-icon">${esc(initial)}</span>
+                  <span>${esc(m.name)}</span>
+                </button>`;
+          }).join('')}
+            </div>
+          </div>`;
+        }
+        listEl.innerHTML = html;
+      },
+
+      async filterByModule(moduleId, moduleName, semestreName) {
+        this.selectedModuleId = moduleId;
+        this.selectedModuleName = moduleName;
+        this.selectedModuleSemestre = semestreName;
+
+        const bar = document.getElementById('activeModuleBar');
+        const block = document.getElementById('scheduleModulesBlock');
+        const nameEl = document.getElementById('activeModuleName');
+        const semEl = document.getElementById('activeModuleSem');
+
+        if (nameEl) nameEl.textContent = moduleName;
+        if (semEl) semEl.textContent = semestreName ? `${semestreName}` : '';
+        if (bar) bar.style.display = 'flex';
+        if (block) block.style.display = 'none';
+
+        // Recharger l'emploi du temps filtré
+        await this.loadSchedule(false);
+      },
+
+      async clearModuleFilter() {
+        this.selectedModuleId = null;
+        this.selectedModuleName = '';
+        this.selectedModuleSemestre = '';
+
+        const bar = document.getElementById('activeModuleBar');
+        const block = document.getElementById('scheduleModulesBlock');
+        if (bar) bar.style.display = 'none';
+        if (block) block.style.display = 'block';
+
+        // Re-rendre la liste des modules pour retirer l'état actif
+        const profile = this.currentUser?.student_profile || {};
+        this._renderScheduleModules(profile);
+
+        // Recharger l'emploi du temps complet
+        await this.loadSchedule(false);
+      },
+
+      async selectModuleAndGoToSchedule(moduleId, moduleName, semestreName) {
+        // Basculer vers l'onglet Emploi du temps
+        const tabSchedule = document.getElementById('tabSchedule');
+        if (tabSchedule) tabSchedule.click();
+        await this.filterByModule(moduleId, moduleName, semestreName);
       },
 
       // ─── Attendance History ────────────────────────────────────────────────
@@ -2318,6 +2543,7 @@
         return `${now.getFullYear()}-${month}-${day}`;
       },
 
+
       _formatTime(timeStr) {
         if (!timeStr) return '—';
         return timeStr.substring(0, 5);
@@ -2363,7 +2589,6 @@
         const map = { Cours: 'Cours', TD: 'TD', TP: 'TP', Exam: 'Examen', Other: 'Autre' };
         return map[sessionType] || 'Cours';
       },
-
       _locationDisplay(item) {
         if (item.amphitheater_name) return `Amphi ${item.amphitheater_name}`;
         const parts = [];

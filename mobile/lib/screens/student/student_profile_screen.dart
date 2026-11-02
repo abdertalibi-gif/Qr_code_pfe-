@@ -140,11 +140,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                     value: profile?.codeMassar ?? '—'),
                 const Divider(height: 1),
                 _InfoTile(
-                    icon: Icons.school_outlined,
-                    label: 'Classe',
-                    value: profile?.classeName ?? '—'),
-                const Divider(height: 1),
-                _InfoTile(
                     icon: Icons.account_tree_outlined,
                     label: 'Filière',
                     value: profile?.filiereName ?? '—'),
@@ -166,18 +161,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                 const Divider(height: 1),
                 _InfoTile(
                     icon: Icons.badge_outlined,
-                    label: 'CIN',
-                    value: user?.cin?.isNotEmpty == true ? user!.cin! : '—'),
+                    label: 'CNI',
+                    value: user?.cin?.isNotEmpty == true ? user!.cin! : (profile?.cin ?? '—')),
                 const Divider(height: 1),
                 _InfoTile(
                     icon: Icons.phone_outlined,
                     label: 'Téléphone',
-                    value: user?.phone.isNotEmpty == true ? user!.phone : '—'),
-                const Divider(height: 1),
-                _InfoTile(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Inscrit depuis',
-                    value: _formatDate(profile?.createdAt ?? user?.createdAt)),
+                    value: user?.phone.isNotEmpty == true ? user!.phone : (profile?.phone ?? '—')),
               ],
             ),
           ),
@@ -322,10 +312,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
     );
   }
 
-  static String _formatDate(String? value) {
-    if (value == null || value.isEmpty) return '—';
-    return value.length >= 10 ? value.substring(0, 10) : value;
-  }
 }
 
 // ─── Carte identité ──────────────────────────────────────────────────────────
@@ -582,7 +568,6 @@ class _ModuleCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
         borderRadius: BorderRadius.circular(AppTheme.radius),
@@ -590,68 +575,95 @@ class _ModuleCard extends StatelessWidget {
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.primary.withOpacity(.18)
-                  : AppTheme.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? AppTheme.primary.withOpacity(.35)
-                    : AppTheme.primaryBorder,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                initial,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTheme.radius),
+          onTap: () {
+            final studentProv = context.read<StudentProvider>();
+            studentProv.filterByModule(
+              module.id,
+              module.name,
+              module.semestreName,
+            );
+            studentProv.setTab(StudentTab.schedule);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  module.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.primary.withOpacity(.18)
+                        : AppTheme.primarySoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.primary.withOpacity(.35)
+                          : AppTheme.primaryBorder,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? AppTheme.primaryOnDark : AppTheme.primary,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (module.code.isNotEmpty)
-                      _ModuleChip(
-                        label: module.code,
-                        highlighted: true,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        module.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    if (module.semestreName.isNotEmpty)
-                      _ModuleChip(label: module.semestreName),
-                    if (module.filiereName.isNotEmpty)
-                      _ModuleChip(label: module.filiereName),
-                    if (module.teacherName.isNotEmpty)
-                      _ModuleChip(label: module.teacherName),
-                  ],
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (module.code.isNotEmpty)
+                            _ModuleChip(
+                              label: module.code,
+                              highlighted: true,
+                            ),
+                          if (module.semestreName.isNotEmpty)
+                            _ModuleChip(label: module.semestreName),
+                          if (module.filiereName.isNotEmpty)
+                            _ModuleChip(label: module.filiereName),
+                          if (module.teacherName.isNotEmpty)
+                            _ModuleChip(label: module.teacherName),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: isDark ? AppTheme.darkMuted : AppTheme.lightMuted,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

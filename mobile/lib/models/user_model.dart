@@ -66,6 +66,8 @@ class StudentProfile {
   final String? niveau;
   final String? academicYear;
   final String? createdAt;
+  final String? cin;
+  final String? phone;
   final List<StudentModule> modules;
 
   StudentProfile({
@@ -85,6 +87,8 @@ class StudentProfile {
     this.niveau,
     this.academicYear,
     this.createdAt,
+    this.cin,
+    this.phone,
     this.modules = const [],
   });
 
@@ -107,6 +111,8 @@ class StudentProfile {
       niveau: json['niveau'] as String?,
       academicYear: json['academic_year'] as String?,
       createdAt: json['created_at'] as String?,
+      cin: json['cin'] as String?,
+      phone: json['phone'] as String?,
       modules: rawModules is List
           ? rawModules
               .whereType<Map<String, dynamic>>()
@@ -133,6 +139,8 @@ class StudentProfile {
         'niveau': niveau,
         'academic_year': academicYear,
         'created_at': createdAt,
+        'cin': cin,
+        'phone': phone,
         'modules': modules.map((m) => m.toJson()).toList(),
       };
 }

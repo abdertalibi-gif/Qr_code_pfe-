@@ -204,10 +204,14 @@ class MyAttendanceListView(ListAPIView):
 class MyScheduleListView(ListAPIView):
     """Emploi du temps de l'étudiant (lecture seule).
 
-    Renvoie exclusivement les séances de la classe de l'étudiant connecté.
-    Si l'étudiant possède des inscriptions module (StudentModuleEnrollment),
-    seules les séances de ces modules sont retournées — jamais celles des
-    autres classes ou d'autres modules.
+    Renvoie les séances de la classe courante de l'étudiant **et** celles de
+    tous les modules auxquels il est réellement inscrit (S1 → S6).  L'union
+    est volontaire : une classe affectée par l'administration doit apparaître
+    même si la ligne d'inscription au module n'a pas encore été créée.
+
+    Aucune séance d'une autre classe / d'un autre module n'est retournée.
+    Les données proviennent uniquement des modèles Django (Session, Classe,
+    Module, Filière, Semestre) : aucune liste codée en dur.
 
     Tous les filtres sont appliqués côté backend (Django).  Le token QR de
     validation n'est jamais exposé.
@@ -258,11 +262,10 @@ class MyScheduleListView(ListAPIView):
             .distinct()
         )
 
-        # Filter by the student's enrolled modules if explicit enrollments exist.
-        # If the student has no StudentModuleEnrollment rows, all sessions for
-        # their class are returned (backward compatible).
-        if enrolled_module_ids:
-            qs = qs.filter(module_id__in=enrolled_module_ids)
+        # `scope` contient déjà l'union classe courante + modules inscrits.
+        # Ne pas ajouter ici un filtre sur `enrolled_module_ids` : cela
+        # supprimerait les séances d'une classe nouvellement créée/affectée
+        # par l'administrateur tant que l'inscription module n'existe pas.
 
         date_filter = self.request.query_params.get("date")
         if date_filter:
@@ -280,7 +283,37 @@ class MyScheduleListView(ListAPIView):
         if module_id:
             qs = qs.filter(module_id=module_id)
 
-        return qs.order_by("date", "start_time")
+        niveau = self.request.query_params.get("niveau")
+        if niveau:
+            qs = qs.filter(
+                Q(niveau=niveau)
+                | Q(filiere__niveau=niveau)
+                | Q(classe__niveau=niveau)
+                | Q(module__filiere__niveau=niveau)
+            )
+
+        filiere_id = self.request.query_params.get("filiere_id")
+        if filiere_id:
+            qs = qs.filter(
+                Q(filiere_id=filiere_id)
+                | Q(classe__filiere_id=filiere_id)
+                | Q(module__filiere_id=filiere_id)
+            )
+
+        semestre_id = self.request.query_params.get("semestre_id")
+        if semestre_id:
+            qs = qs.filter(
+                Q(semestre_id=semestre_id)
+                | Q(filiere__semestre_id=semestre_id)
+                | Q(classe__semestre_id=semestre_id)
+                | Q(module__filiere__semestre_id=semestre_id)
+            )
+
+        classe_id = self.request.query_params.get("classe_id")
+        if classe_id:
+            qs = qs.filter(classe_id=classe_id)
+
+        return qs.order_by("date", "start_time", "id")
 
 
 class AllAttendanceListView(ListAPIView):

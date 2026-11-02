@@ -149,26 +149,52 @@ class StudentScheduleSerializer(serializers.ModelSerializer):
 
     N'expose jamais qr_token / qr_session_id — l'étudiant ne doit pas pouvoir
     valider lui-même sa présence avec le QR de l'enseignant.
+
+    Les informations académiques (niveau, filière, semestre) sont toujours
+    résolues depuis la base : champs propres de la séance, sinon filière /
+    semestre de la classe, sinon ceux du module.  Une séance ancienne dont les
+    champs académiques n'ont pas été renseignés reste donc affichable.
     """
 
+    module_id = serializers.IntegerField(read_only=True)
     module_name = serializers.CharField(source="module.name", read_only=True)
     teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
     block_name = serializers.CharField(source="block.name", read_only=True)
     room_name = serializers.CharField(source="room.name", read_only=True)
     amphitheater_name = serializers.CharField(source="amphitheater.name", read_only=True)
     classe_name = serializers.SerializerMethodField()
+    niveau = serializers.SerializerMethodField()
+    niveau_label = serializers.SerializerMethodField()
+    filiere_id = serializers.SerializerMethodField()
+    filiere_name = serializers.SerializerMethodField()
+    semestre_id = serializers.SerializerMethodField()
+    semestre_name = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     qr_open = serializers.SerializerMethodField()
+
+    NIVEAU_LABELS = {
+        "LIC": "Licence",
+        "LIC_EXC": "Licence Excellence",
+        "MAS": "Master",
+        "MAS_EXC": "Master Parcours d'excellence",
+    }
 
     class Meta:
         model = Session
         fields = [
             "id",
             "subject",
+            "module_id",
             "module_name",
             "teacher_name",
             "classe",
             "classe_name",
+            "niveau",
+            "niveau_label",
+            "filiere_id",
+            "filiere_name",
+            "semestre_id",
+            "semestre_name",
             "location_type",
             "block_name",
             "room_name",
@@ -185,8 +211,65 @@ class StudentScheduleSerializer(serializers.ModelSerializer):
             "qr_open",
         ]
 
+    # ── Résolution des informations académiques ──────────────────────────
+
+    def _filiere(self, obj):
+        if obj.filiere_id:
+            return obj.filiere
+        classe = getattr(obj, "classe", None)
+        if classe is not None and classe.filiere_id:
+            return classe.filiere
+        module = getattr(obj, "module", None)
+        if module is not None and module.filiere_id:
+            return module.filiere
+        return None
+
+    def _semestre(self, obj):
+        if obj.semestre_id:
+            return obj.semestre
+        filiere = self._filiere(obj)
+        if filiere is not None and filiere.semestre_id:
+            return filiere.semestre
+        classe = getattr(obj, "classe", None)
+        if classe is not None and classe.semestre_id:
+            return classe.semestre
+        return None
+
+    def _niveau(self, obj):
+        if obj.niveau:
+            return obj.niveau
+        filiere = self._filiere(obj)
+        if filiere is not None and filiere.niveau:
+            return filiere.niveau
+        classe = getattr(obj, "classe", None)
+        if classe is not None and classe.niveau:
+            return classe.niveau
+        return ""
+
     def get_classe_name(self, obj):
-        return str(obj.classe)
+        return str(obj.classe) if obj.classe_id else "—"
+
+    def get_niveau(self, obj):
+        return self._niveau(obj)
+
+    def get_niveau_label(self, obj):
+        return self.NIVEAU_LABELS.get(self._niveau(obj), self._niveau(obj))
+
+    def get_filiere_id(self, obj):
+        filiere = self._filiere(obj)
+        return filiere.id if filiere is not None else None
+
+    def get_filiere_name(self, obj):
+        filiere = self._filiere(obj)
+        return filiere.name if filiere is not None else ""
+
+    def get_semestre_id(self, obj):
+        semestre = self._semestre(obj)
+        return semestre.id if semestre is not None else None
+
+    def get_semestre_name(self, obj):
+        semestre = self._semestre(obj)
+        return semestre.name if semestre is not None else ""
 
     def get_status(self, obj):
         from django.utils import timezone

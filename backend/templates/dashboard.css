@@ -2108,37 +2108,6 @@ tr.new-row td {
   font-style: italic;
 }
 
-/* États interactifs des cartes de classe */
-.schedule-class-card[type="button"] {
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-}
-.schedule-class-card[type="button"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border-color: var(--primary);
-}
-.schedule-class-card--selected {
-  border-color: var(--primary) !important;
-  background: var(--primary-light) !important;
-}
-.schedule-class-card--back {
-  background: var(--surface) !important;
-  border: 2px dashed var(--border) !important;
-}
-.schedule-class-card--back .schedule-class-title {
-  color: var(--primary) !important;
-}
-.schedule-class-card--back .schedule-class-sub {
-  color: var(--text-secondary) !important;
-}
-.schedule-class-card--back .schedule-class-label {
-  color: var(--muted) !important;
-}
-.schedule-class-card--back .schedule-class-value {
-  color: var(--text-secondary) !important;
-}
-
 /* En-tête de carte de classe avec compteur de séances */
 .schedule-class-header {
   display: flex;
@@ -2154,6 +2123,63 @@ tr.new-row td {
   background: var(--primary-light);
   color: var(--primary);
   white-space: nowrap;
+}
+
+/* ---- Modules ---- */
+
+/* Étiquette de semestre */
+.schedule-semester-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: var(--primary-light);
+  border-radius: 6px;
+  margin-top: 0.25rem;
+}
+
+/* Carte de module */
+.schedule-module-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.schedule-module-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/• Nom du module */
+.schedule-module-name {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+/* Semestre du module */
+.schedule-module-semestre {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+/* Code du module */
+.schedule-module-code {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.2rem;
+}
+/* Enseignant du module */
+.schedule-module-teacher {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
 }
 
 /* Sessions à l'intérieur de la carte de classe */

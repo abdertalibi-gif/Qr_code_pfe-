@@ -34,6 +34,9 @@ class StudentProvider extends ChangeNotifier {
   UserModel? _profile;
 
   DateTime? _lastScheduleSync;
+  int? _selectedModuleId;
+  String? _selectedModuleName;
+  String? _selectedModuleSemestre;
 
   Timer? _scheduleTimer;
   StudentScheduleWsService? _wsService;
@@ -51,6 +54,9 @@ class StudentProvider extends ChangeNotifier {
   UserModel? get profile => _profile;
   DateTime? get lastScheduleSync => _lastScheduleSync;
   bool get wsConnected => _wsService?.isConnected ?? false;
+  int? get selectedModuleId => _selectedModuleId;
+  String? get selectedModuleName => _selectedModuleName;
+  String? get selectedModuleSemestre => _selectedModuleSemestre;
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -80,7 +86,10 @@ class StudentProvider extends ChangeNotifier {
   ///
   /// [silent] évite le spinner plein écran lors des rafraîchissements
   /// automatiques (timer / retour au premier plan).
-  Future<void> loadSchedule({bool silent = false}) async {
+  Future<void> loadSchedule({bool silent = false, int? moduleId}) async {
+    if (moduleId != null) {
+      _selectedModuleId = moduleId;
+    }
     if (_scheduleLoading) return;
     if (!silent) {
       _scheduleLoading = true;
@@ -88,7 +97,7 @@ class StudentProvider extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      _schedule = await _studentService.fetchMySchedule();
+      _schedule = await _studentService.fetchMySchedule(moduleId: _selectedModuleId);
       _lastScheduleSync = DateTime.now();
       if (_scheduleError != null) {
         _scheduleError = null;
@@ -105,6 +114,20 @@ class StudentProvider extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  void filterByModule(int moduleId, String moduleName, String semestreName) {
+    _selectedModuleId = moduleId;
+    _selectedModuleName = moduleName;
+    _selectedModuleSemestre = semestreName;
+    loadSchedule(moduleId: moduleId);
+  }
+
+  void clearModuleFilter() {
+    _selectedModuleId = null;
+    _selectedModuleName = null;
+    _selectedModuleSemestre = null;
+    loadSchedule();
   }
 
   /// Connects (or reconnects) the student schedule WebSocket for real-time

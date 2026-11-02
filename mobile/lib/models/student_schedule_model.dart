@@ -28,10 +28,17 @@ enum ScheduleStatus {
 class StudentScheduleItem {
   final int id;
   final String subject;
+  final int? moduleId;
   final String? moduleName;
   final String teacherName;
   final int? classe;
   final String classeName;
+  final String niveau;
+  final String niveauLabel;
+  final int? filiereId;
+  final String filiereName;
+  final int? semestreId;
+  final String semestreName;
   final String locationType;
   final String? blockName;
   final String? roomName;
@@ -50,10 +57,17 @@ class StudentScheduleItem {
   const StudentScheduleItem({
     required this.id,
     required this.subject,
+    this.moduleId,
     this.moduleName,
     this.teacherName = '',
     this.classe,
     this.classeName = '',
+    this.niveau = '',
+    this.niveauLabel = '',
+    this.filiereId,
+    this.filiereName = '',
+    this.semestreId,
+    this.semestreName = '',
     this.locationType = 'block',
     this.blockName,
     this.roomName,
@@ -74,10 +88,17 @@ class StudentScheduleItem {
     return StudentScheduleItem(
       id: json['id'] as int,
       subject: json['subject'] as String? ?? '',
+      moduleId: json['module_id'] as int?,
       moduleName: json['module_name'] as String?,
       teacherName: json['teacher_name'] as String? ?? '',
       classe: json['classe'] as int?,
       classeName: json['classe_name'] as String? ?? '',
+      niveau: json['niveau'] as String? ?? '',
+      niveauLabel: json['niveau_label'] as String? ?? '',
+      filiereId: json['filiere_id'] as int?,
+      filiereName: json['filiere_name'] as String? ?? '',
+      semestreId: json['semestre_id'] as int?,
+      semestreName: json['semestre_name'] as String? ?? '',
       locationType: json['location_type'] as String? ?? 'block',
       blockName: json['block_name'] as String?,
       roomName: json['room_name'] as String?,
@@ -115,6 +136,16 @@ class StudentScheduleItem {
   String get title => (moduleName != null && moduleName!.isNotEmpty)
       ? moduleName!
       : (subject.isNotEmpty ? subject : 'Séance #$id');
+
+  /// Contexte académique de la séance : filière · semestre · niveau.
+  String get academicLabel {
+    final parts = <String>[
+      if (filiereName.isNotEmpty) filiereName,
+      if (semestreName.isNotEmpty) semestreName,
+      if (niveauLabel.isNotEmpty) niveauLabel,
+    ];
+    return parts.isNotEmpty ? parts.join(' · ') : '—';
+  }
 
   /// Lieu affichable (Amphi X / Bloc — Salle).
   String get locationDisplay {
