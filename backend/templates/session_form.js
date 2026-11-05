@@ -186,6 +186,11 @@
           <div class="multiselect-options" id="sfClasseOptions" style="display:none"></div>
         </div>
       </div>
+      <div class="field" id="sfClasseLocationField">
+        <label>Lieu de la séance</label>
+        <input type="text" id="sfClasseLocation" value="—" readonly
+          style="background:var(--bg-section,#F8FAFC);color:var(--text,#12324A);cursor:default" />
+      </div>
       <div class="field">
         <label>Heure de fin <span class="req">*</span></label>
         <input type="time" id="sfEndTime" value="16:00" />
@@ -338,6 +343,8 @@
         summary.textContent = f.placeholder;
         summary.classList.add('placeholder');
       }
+      var loc = this._el('sfClasseLocation');
+      if (loc) loc.value = '—';
       this._enabled.classe = false;
     },
 
@@ -351,6 +358,7 @@
       }
       this._sel.classe = vals;
       this.classeId = vals.length ? Number(vals[0]) : null;
+      this._updateClasseLocation(list, vals);
       var summary = this._el(this._fields.classe.summary);
       if (!summary) return;
       if (!vals.length) {
@@ -369,6 +377,79 @@
       }
       summary.textContent = names.join(', ');
       summary.classList.remove('placeholder');
+    },
+
+    /**
+     * Construit le libellé du lieu réellement enregistré sur la classe.
+     * - Bloc + Salle       → « Bloc 2 – Salle 4 »
+     * - Amphithéâtre       → « Amphithéâtre A »
+     * - Bloc + Amphi       → « Bloc 3 – Amphithéâtre B »
+     * Retourne « Lieu non défini » si aucune localisation n'est renseignée.
+     */
+    _classLocationLabel(cls) {
+      if (!cls) return 'Lieu non défini';
+
+      // Source de vérité : libellé calculé côté backend (modèle Classe.location_display),
+      // cohérent avec la configuration Bloc/Salle/Amphi enregistrée sur la classe.
+      var ld = cls.location_display;
+      if (ld && ld !== '—') {
+        return ld.replace(/ - /g, ' – ');
+      }
+
+      // Reconstitution depuis les champs bruts (fallback si location_display absent).
+      var type = cls.location_type || '';
+      var block = cls.block_name || (cls.block && cls.block.name) || '';
+      var room = cls.room_name || (cls.room && cls.room.name) || '';
+      var amphi = cls.amphitheater_name || (cls.amphitheater && cls.amphitheater.name) || '';
+
+      var parts = [];
+      if (type === 'BLOC' || type === 'BOTH_ALLOWED') {
+        if (block && room) parts.push(block + ' – ' + room);
+        else if (block) parts.push(block);
+        else if (room) parts.push(room);
+      }
+      if (type === 'AMPHI' || type === 'BOTH_ALLOWED') {
+        if (amphi) parts.push(amphi);
+      }
+      // Type absent/inconnu : afficher uniquement ce qui est réellement stocké.
+      if (!parts.length) {
+        if (block && room) parts.push(block + ' – ' + room);
+        else if (block) parts.push(block);
+        else if (room) parts.push(room);
+        if (amphi) parts.push(amphi);
+      }
+      return parts.length ? parts.join(' – ') : 'Lieu non défini';
+    },
+
+    /**
+     * Met à jour le champ en lecture seule « Lieu de la séance » à partir
+     * de la (des) classe(s) sélectionnée(s), sans saisie supplémentaire.
+     * Pour les enseignants, les objets de liste sont réduits à {id, name} :
+     * on récupère donc l'objet complet depuis _allClasses / _teacherClasses.
+     */
+    _updateClasseLocation(list, vals) {
+      var input = this._el('sfClasseLocation');
+      if (!input) return;
+
+      if (!vals || !vals.length) {
+        input.value = '—';
+        return;
+      }
+
+      // Index des objets de classe complets (disposent de location_display/block_name/…)
+      var all = (this._allClasses || []).concat(this._teacherClasses || []);
+      var byId = {};
+      all.forEach(function (c) { if (c && c.id != null) byId[String(c.id)] = c; });
+
+      var self = this;
+      var labels = [];
+      vals.forEach(function (id) {
+        var cls = byId[String(id)] || (list && list.find(function (c) { return String(c.id) === String(id); }));
+        var label = self._classLocationLabel(cls);
+        if (labels.indexOf(label) === -1) labels.push(label);
+      });
+
+      input.value = labels.length === 1 ? labels[0] : 'Plusieurs lieux';
     },
 
     _renderClasseList(list) {
