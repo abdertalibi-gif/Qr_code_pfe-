@@ -188,8 +188,24 @@
       </div>
       <div class="field" id="sfClasseLocationField">
         <label>Lieu de la séance</label>
-        <input type="text" id="sfClasseLocation" value="—" readonly
-          style="background:var(--bg-section,#F8FAFC);color:var(--text,#12324A);cursor:default" />
+        <div class="field" style="margin:0">
+          <label style="display:block;font-size:.85rem;margin:0 0 .25rem;color:var(--muted)">Type de lieu</label>
+          <select id="sfLocationType">
+            <option value="">— Aucun lieu —</option>
+            <option value="block">Bloc + Salle</option>
+            <option value="amphitheater">Amphithéâtre</option>
+          </select>
+        </div>
+        <div class="field" id="sfBlockGroup" style="display:none;margin:0">
+          <label style="display:block;font-size:.85rem;margin:0 0 .25rem;color:var(--muted)">Bloc</label>
+          <select id="sfBlock"><option value="">— Sélectionner un bloc —</option></select>
+          <label style="display:block;font-size:.85rem;margin:.5rem 0 .25rem;color:var(--muted)">Salle</label>
+          <select id="sfRoom" disabled><option value="">— Sélectionner d'abord le bloc —</option></select>
+        </div>
+        <div class="field" id="sfAmphiGroup" style="display:none;margin:0">
+          <label style="display:block;font-size:.85rem;margin:0 0 .25rem;color:var(--muted)">Amphithéâtre</label>
+          <select id="sfAmphi"><option value="">— Sélectionner un amphithéâtre —</option></select>
+        </div>
       </div>
       <div class="field">
         <label>Heure de fin <span class="req">*</span></label>
@@ -343,8 +359,18 @@
         summary.textContent = f.placeholder;
         summary.classList.add('placeholder');
       }
-      var loc = this._el('sfClasseLocation');
-      if (loc) loc.value = '—';
+      var loc = this._el('sfLocationType');
+      var blockGroup = this._el('sfBlockGroup');
+      var amphiGroup = this._el('sfAmphiGroup');
+      var blockSel = this._el('sfBlock');
+      var roomSel = this._el('sfRoom');
+      var amphiSel = this._el('sfAmphi');
+      if (loc) loc.value = '';
+      if (blockGroup) blockGroup.style.display = 'none';
+      if (amphiGroup) amphiGroup.style.display = 'none';
+      if (blockSel) blockSel.value = '';
+      if (roomSel) { roomSel.value = ''; roomSel.disabled = true; }
+      if (amphiSel) amphiSel.value = '';
       this._enabled.classe = false;
     },
 
@@ -358,7 +384,17 @@
       }
       this._sel.classe = vals;
       this.classeId = vals.length ? Number(vals[0]) : null;
-      this._updateClasseLocation(list, vals);
+      // Pré-remplir le lieu de la séance depuis la classe sélectionnée (création uniquement).
+      // Le lieu de la classe reste inchangé : seule la séance reçoit le lieu choisi.
+      if (!this._editingId && vals.length) {
+        var firstCls = null;
+        if (this.userRole === 'teacher') {
+          firstCls = this._teacherClasses.find(function (c) { return String(c.id) === String(vals[0]); });
+        } else {
+          firstCls = (list || []).find(function (x) { return String(x.id) === String(vals[0]); });
+        }
+        if (firstCls) this._applyClassLocation(firstCls);
+      }
       var summary = this._el(this._fields.classe.summary);
       if (!summary) return;
       if (!vals.length) {
@@ -1036,6 +1072,34 @@
       }
 
       document.getElementById('sfSubmit').addEventListener('click', function () { self._submit(); });
+
+      // Sélecteurs de lieu : type → afficher/masquer groupes ; bloc → salles
+      var locType = document.getElementById('sfLocationType');
+      var blockSel = document.getElementById('sfBlock');
+      var roomSel = document.getElementById('sfRoom');
+      var amphiSel = document.getElementById('sfAmphi');
+      var blockGroup = document.getElementById('sfBlockGroup');
+      var amphiGroup = document.getElementById('sfAmphiGroup');
+
+      if (locType) {
+        locType.addEventListener('change', function () {
+          var v = locType.value;
+          blockGroup.style.display = v === 'block' ? '' : 'none';
+          amphiGroup.style.display = v === 'amphitheater' ? '' : 'none';
+          blockSel.value = '';
+          roomSel.value = '';
+          roomSel.disabled = true;
+          amphiSel.value = '';
+          self._populateLocationSelects();
+        });
+      }
+      if (blockSel) {
+        blockSel.addEventListener('change', function () {
+          roomSel.disabled = !blockSel.value;
+          if (!blockSel.value) roomSel.value = '';
+          self._populateLocationSelects();
+        });
+      }
     },
 
     /* ── SUBMIT ── */
@@ -1078,6 +1142,30 @@
         // Édition : conserver la date et l'heure de début existantes.
         bodyCore.date = date;
         bodyCore.start_time = startTime;
+      }
+
+      // ── Lieu de la séance (valeur réelle choisie pour cette séance uniquement,
+      // sans jamais toucher au lieu original de la classe) ──
+      var locTypeEl = document.getElementById('sfLocationType');
+      var blockSel = document.getElementById('sfBlock');
+      var roomSel = document.getElementById('sfRoom');
+      var amphiSel = document.getElementById('sfAmphi');
+      var locType = locTypeEl ? locTypeEl.value : '';
+      if (locType === 'block') {
+        bodyCore.location_type = 'block';
+        bodyCore.block = blockSel && blockSel.value ? Number(blockSel.value) : null;
+        bodyCore.room = roomSel && roomSel.value ? Number(roomSel.value) : null;
+        bodyCore.amphitheater = null;
+      } else if (locType === 'amphitheater') {
+        bodyCore.location_type = 'amphitheater';
+        bodyCore.amphitheater = amphiSel && amphiSel.value ? Number(amphiSel.value) : null;
+        bodyCore.block = null;
+        bodyCore.room = null;
+      } else {
+        bodyCore.location_type = null;
+        bodyCore.block = null;
+        bodyCore.room = null;
+        bodyCore.amphitheater = null;
       }
 
       if (this.userRole !== 'teacher') {
