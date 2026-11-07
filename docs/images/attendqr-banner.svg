@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <defs>
+    <linearGradient id="banner-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A192F;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1D2B45;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A192F;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F7DB8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="300" fill="url(#banner-grad)" />
+  
+  <!-- Subtle QR pattern background -->
+  <g fill="#FFFFFF" opacity="0.03">
+    <rect x="100" y="50" width="20" height="20" />
+    <rect x="140" y="50" width="20" height="20" opacity="0.6" />
+    <rect x="180" y="50" width="20" height="20" />
+    <rect x="900" y="200" width="20" height="20" />
+    <rect x="940" y="200" width="20" height="20" opacity="0.6" />
+    <rect x="980" y="200" width="20" height="20" />
+    <rect x="300" y="150" width="20" height="20" opacity="0.6" />
+    <rect x="340" y="150" width="20" height="20" />
+    <rect x="380" y="150" width="20" height="20" opacity="0.6" />
+  </g>
+  
+  <!-- AttendQR Logo (simplified) -->
+  <g transform="translate(60, 40)">
+    <circle cx="85" cy="85" r="75" fill="none" stroke="url(#accent-grad)" stroke-width="3" opacity="0.9" />
+    <rect x="50" y="50" width="30" height="30" fill="#FFFFFF" rx="2" />
+    <rect x="75" y="75" width="30" height="30" fill="#0A192F" />
+    <rect x="100" y="100" width="10" height="10" fill="#FFFFFF" />
+    <rect x="130" y="50" width="20" height="20" fill="#FFFFFF" opacity="0.8" />
+    <rect x="50" y="130" width="20" height="20" fill="#FFFFFF" opacity="0.8" />
+    <rect x="110" y="110" width="15" height="15" fill="#FFFFFF" opacity="0.6" />
+    <path d="M75 120 L90 135 L120 105" fill="none" stroke="url(#accent-grad)" stroke-width="5" stroke-linecap="round" />
+  </g>
+  
+  <!-- Title -->
+  <text x="210" y="90" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="42" font-weight="800" fill="#FFFFFF" letter-spacing="-0.5">AttendQR</text>
+  
+  <!-- Tagline -->
+  <text x="210" y="135" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" fill="#00D4FF" font-weight="500" letter-spacing="0.5">Smart QR Code Attendance Management System</text>
+  
+  <!-- Role badges -->
+  <g transform="translate(210, 175)">
+    <rect x="0" y="0" width="110" height="34" fill="#FFFFFF" opacity="0.1" rx="8" stroke="#00D4FF" stroke-width="1" />
+    <text x="15" y="24" font-family="'Segoe UI', sans-serif" font-size="13" fill="#FFFFFF" font-weight="600">🎓 Admin</text>
+    
+    <rect x="125" y="0" width="130" height="34" fill="#FFFFFF" opacity="0.1" rx="8" stroke="#00D4FF" stroke-width="1" />
+    <text x="140" y="24" font-family="'Segoe UI', sans-serif" font-size="13" fill="#FFFFFF" font-weight="600">👨‍🏫 Teacher</text>
+    
+    <rect x="270" y="0" width="130" height="34" fill="#FFFFFF" opacity="0.1" rx="8" stroke="#00D4FF" stroke-width="1" />
+    <text x="285" y="24" font-family="'Segoe UI', sans-serif" font-size="13" fill="#FFFFFF" font-weight="600">📱 Student</text>
+  </g>
+  
+  <!-- Tech stack chips -->
+  <g transform="translate(210, 230)">
+    <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8899AA">Python · Django · DRF · Flutter · PostgreSQL · JWT</text>
+  </g>
+</svg>

@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A192F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#050A14;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#16253A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F1E30;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F7DB8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="20" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <rect width="1400" height="800" fill="url(#bg-grad)" />
+  
+  <!-- Mobile frame -->
+  <g transform="translate(50, 50)">
+    <rect x="0" y="0" width="380" height="700" fill="#0A192F" rx="40" />
+    <rect x="0" y="0" width="380" height="50" fill="#050A14" rx="40 40 0 0" />
+    <rect x="165" y="8" width="50" height="8" fill="#FFFFFF" rx="4" />
+    
+    <!-- Header -->
+    <rect x="20" y="70" width="340" height="60" fill="#16253A" rx="16" stroke="#1E3A5A" stroke-width="1" />
+    <text x="40" y="105" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Nouvelle séance</text>
+    <rect x="315" y="82" width="28" height="28" fill="#00D4FF" rx="8" />
+    <text x="329" y="102" font-family="'Segoe UI', sans-serif" font-size="16" fill="#0A192F" text-anchor="middle" font-weight="700">✕</text>
+    
+    <!-- Class selector -->
+    <text x="40" y="160" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Classe</text>
+    <rect x="40" y="175" width="300" height="52" fill="#050A14" rx="12" stroke="#2A4A6E" stroke-width="1" />
+    <text x="55" y="205" font-family="'Segoe UI', sans-serif" font-size="14" fill="#B0C0D0">Licence S1 – Digitalisation</text>
+    
+    <!-- Location preview -->
+    <text x="40" y="240" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Lieu de la séance</td>
+    <rect x="40" y="255" width="300" height="72" fill="#050A14" rx="12" stroke="#2A4A6E" stroke-width="1" />
+    <text x="55" y="278" font-family="'Segoe UI', sans-serif" font-size="13" fill="#00D4FF" font-weight="600">Bloc 2 – Salle 4</text>
+    <text x="55" y="298" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Pré-rempli depuis la classe · Modifiable</text>
+    
+    <!-- Session type -->
+    <text x="40" y="340" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Type de séance</text>
+    <rect x="40" y="355" width="300" height="52" fill="#050A14" rx="12" stroke="#2A4A6E" stroke-width="1" />
+    <text x="55" y="385" font-family="'Segoe UI', sans-serif" font-size="14" fill="#B0C0D0">Cours ▼</text>
+    
+    <!-- Date & Time -->
+    <text x="40" y="420" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Date et heure</text>
+    <rect x="40" y="435" width="300" height="52" fill="#050A14" rx="12" stroke="#2A4A6E" stroke-width="1" />
+    <text x="55" y="465" font-family="'Segoe UI', sans-serif" font-size="14" fill="#B0C0D0">07 nov. 2026 · 14:00 – 16:00</text>
+    
+    <!-- Location type selector -->
+    <text x="40" y="510" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Type de lieu</text>
+    <rect x="40" y="525" width="300" height="44" fill="#050A14" rx="12" stroke="#2A4A6E" stroke-width="1" />
+    <text x="55" y="553" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Bloc + Salle ▼</text>
+    
+    <!-- Availability -->
+    <rect x="40" y="590" width="300" height="44" fill="#10B981" opacity="0.1" rx="12" border="#10B981" border-width="1" />
+    <text x="55" y="616" font-family="'Segoe UI', sans-serif" font-size="12" fill="#10B981">✓ 3 salles et 1 amphis disponibles à ces horaires</text>
+    
+    <!-- Submit -->
+    <rect x="40" y="660" width="300" height="56" fill="url(#accent-grad)" rx="16" />
+    <text x="190" y="694" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0A192F" text-anchor="middle">Créer la séance</text>
+  </g>
+  
+  <!-- Info panel -->
+  <g transform="translate(480, 50)">
+    <rect x="0" y="0" width="400" height="700" fill="#050A14" rx="20" filter="url(#shadow)" stroke="#1E3A5A" stroke-width="1" />
+    
+    <text x="30" y="50" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="700" fill="#FFFFFF">Fonctionnalités Enseignant</text>
+    
+    <g transform="translate(30, 90)">
+      <rect x="0" y="0" width="340" height="100" fill="url(#card-grad)" rx="12" />
+      <circle cx="25" cy="25" r="20" fill="#00D4FF" opacity="0.2" />
+      <text x="25" y="31" font-family="'Segoe UI', sans-serif" font-size="18" fill="#00D4FF" text-anchor="middle">📋</text>
+      <text x="55" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Créer une séance</text>
+      <text x="55" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Sélectionnez une classe, définissez date/heure</text>
+    </g>
+    
+    <g transform="translate(30, 210)">
+      <rect x="0" y="0" width="340" height="100" fill="url(#card-grad)" rx="12" />
+      <circle cx="25" cy="25" r="20" fill="#00D4FF" opacity="0.2" />
+      <text x="25" y="31" font-family="'Segoe UI', sans-serif" font-size="18" fill="#00D4FF" text-anchor="middle">📱</text>
+      <text x="55" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Afficher le QR Code</text>
+      <text x="55" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Générez un QR à afficher aux étudiants</text>
+    </g>
+    
+    <g transform="translate(30, 330)">
+      <rect x="0" y="0" width="340" height="100" fill="url(#card-grad)" rx="12" />
+      <circle cx="25" cy="25" r="20" fill="#00D4FF" opacity="0.2" />
+      <text x="25" y="31" font-family="'Segoe UI', sans-serif" font-size="18" fill="#00D4FF" text-anchor="middle">📊</text>
+      <text x="55" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Voir les présences</text>
+      <text x="55" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Consultez le taux de présence en temps réel</text>
+    </g>
+    
+    <g transform="translate(30, 450)">
+      <rect x="0" y="0" width="340" height="100" fill="url(#card-grad)" rx="12" />
+      <circle cx="25" cy="25" r="20" fill="#00D4FF" opacity="0.2" />
+      <text x="25" y="31" font-family="'Segoe UI', sans-serif" font-size="18" fill="#00D4FF" text-anchor="middle">📄</text>
+      <text x="55" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Exporter les rapports</text>
+      <text x="55" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Téléchargez les rapports Excel par séance</text>
+    </g>
+    
+    <!-- Location modification note -->
+    <rect x="30" y="580" width="340" height="120" fill="#F28C28" opacity="0.1" rx="16" stroke="#F28C28" stroke-width="1" />
+    <text x="45" y="610" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#F28C28">💡 Lieu modifiable</text>
+    <text x="45" y="630" font-family="'Segoe UI', sans-serif" font-size="11" fill="#B0C0D0">Le lieu de la classe est proposé automatiquement,</text>
+    <text x="45" y="648" font-family="'Segoe UI', sans-serif" font-size="11" fill="#B0C0D0">mais l'enseignant peut le modifier pour chaque séance.</text>
+    <text x="45" y="666" font-family="'Segoe UI', sans-serif" font-size="11" fill="#B0C0D0">La configuration originale de la classe est préservée.</text>
+  </g>
+</svg>
