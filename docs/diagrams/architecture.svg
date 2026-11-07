@@ -1,87 +1,94 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
   <defs>
-    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1D2B45;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0A192F;stop-opacity:1" />
+    <linearGradient id="arch-card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A1A1A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D0D0D;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0F7DB8;stop-opacity:1" />
+    <linearGradient id="red-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#DC143C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B5121B;stop-opacity:1" />
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feGaussianBlur stdDeviation="20" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#00D4FF" />
+      <polygon points="0 0, 10 3.5, 0 7" fill="#DC143C" />
     </marker>
   </defs>
   
+  <!-- Background -->
+  <rect width="1400" height="800" fill="#0D0D0D" />
+  
   <!-- Title -->
-  <text x="600" y="40" font-family="'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#FFFFFF" text-anchor="middle">AttendQR — System Architecture</text>
+  <text x="700" y="45" font-family="'Segoe UI', sans-serif" font-size="26" font-weight="800" fill="#FFFFFF" text-anchor="middle">AttendQR — System Architecture</text>
+  <text x="700" y="68" font-family="'Segoe UI', sans-serif" font-size="14" fill="#DC143C" font-weight="600" letter-spacing="1" text-anchor="middle">PREMIUM RED / BLACK DESIGN SYSTEM</text>
   
   <!-- Client Layer -->
-  <g transform="translate(40, 90)">
-    <rect x="0" y="0" width="340" height="200" fill="url(#card-grad)" rx="12" filter="url(#shadow)" />
-    <rect x="0" y="0" width="340" height="8" fill="url(#accent-grad)" rx="4" />
-    <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">📱 Client Applications</text>
-    <text x="20" y="60" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Flutter Mobile App (Android/iOS)</text>
-    <text x="20" y="85" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Web Admin Dashboard (Django Templates)</text>
-    <text x="20" y="110" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Web Teacher &amp; Student Portals</text>
-    <text x="20" y="140" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">QR Scanner &amp; Attendance Validation</text>
-    <text x="20" y="170" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Roles: Admin • Teacher • Student</text>
+  <g transform="translate(50, 110)">
+    <rect x="0" y="0" width="380" height="220" fill="url(#arch-card)" rx="16" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
+    <rect x="0" y="0" width="380" height="6" fill="url(#red-grad)" rx="4" />
+    <text x="22" y="32" font-family="'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#FFFFFF">📱 Client Applications</text>
+    <text x="22" y="64" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Flutter Mobile (Android/iOS)</text>
+    <text x="22" y="88" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Web Admin Dashboard (Django)</text>
+    <text x="22" y="112" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Web Teacher &amp; Student Portals</text>
+    <text x="22" y="136" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">QR Scanner &amp; Attendance Validation</text>
+    <text x="22" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Roles: Admin • Teacher • Student</text>
+    <text x="22" y="184" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">HTTPS / WSS Secure</text>
   </g>
   
   <!-- API Layer -->
-  <g transform="translate(430, 90)">
-    <rect x="0" y="0" width="340" height="200" fill="url(#card-grad)" rx="12" filter="url(#shadow)" />
-    <rect x="0" y="0" width="340" height="8" fill="url(#accent-grad)" rx="4" />
-    <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">🔌 API Layer (Django REST Framework)</text>
-    <text x="20" y="60" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">REST API /api/v1/</text>
-    <text x="20" y="85" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">JWT Authentication (SimpleJWT)</text>
-    <text x="20" y="110" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Rate Limiting &amp; CORS</text>
-    <text x="20" y="135" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Swagger / ReDoc Documentation</text>
-    <text x="20" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Serializers &amp; ViewSets</text>
+  <g transform="translate(510, 110)">
+    <rect x="0" y="0" width="380" height="220" fill="url(#arch-card)" rx="16" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
+    <rect x="0" y="0" width="380" height="6" fill="url(#red-grad)" rx="4" />
+    <text x="22" y="32" font-family="'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#FFFFFF">🔌 API Layer</text>
+    <text x="22" y="64" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">REST API /api/v1/</text>
+    <text x="22" y="88" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">JWT Authentication</text>
+    <text x="22" y="112" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Rate Limiting &amp; CORS</text>
+    <text x="22" y="136" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Swagger / ReDoc</text>
+    <text x="22" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Serializers &amp; ViewSets</text>
+    <text x="22" y="184" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">DRF 3.15.2</text>
   </g>
   
   <!-- Backend Layer -->
-  <g transform="translate(820, 90)">
-    <rect x="0" y="0" width="340" height="200" fill="url(#card-grad)" rx="12" filter="url(#shadow)" />
-    <rect x="0" y="0" width="340" height="8" fill="url(#accent-grad)" rx="4" />
-    <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">⚙️ Backend (Django + Daphne)</text>
-    <text x="20" y="60" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Django 6.0 + Daphne ASGI</text>
-    <text x="20" y="85" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">WebSocket (Channels) — Live Sessions</text>
-    <text x="20" y="110" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">QR Code Generation &amp; Validation</text>
-    <text x="20" y="135" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Email (Brevo SMTP)</text>
-    <text x="20" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Admin Dashboard Templates</text>
+  <g transform="translate(970, 110)">
+    <rect x="0" y="0" width="380" height="220" fill="url(#arch-card)" rx="16" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
+    <rect x="0" y="0" width="380" height="6" fill="url(#red-grad)" rx="4" />
+    <text x="22" y="32" font-family="'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#FFFFFF">⚙️ Backend</text>
+    <text x="22" y="64" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Django 6.0 + Daphne ASGI</text>
+    <text x="22" y="88" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">WebSocket (Channels)</text>
+    <text x="22" y="112" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">QR Code Generation</text>
+    <text x="22" y="136" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Email (SMTP)</text>
+    <text x="22" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Admin Templates</text>
+    <text x="22" y="184" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Gunicorn / Daphne</text>
   </g>
   
   <!-- Data Layer -->
-  <g transform="translate(430, 340)">
-    <rect x="0" y="0" width="340" height="220" fill="url(#card-grad)" rx="12" filter="url(#shadow)" />
-    <rect x="0" y="0" width="340" height="8" fill="url(#accent-grad)" rx="4" />
-    <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">🗄️ Data Layer</text>
-    <text x="20" y="60" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">PostgreSQL (Neon)</text>
-    <text x="20" y="85" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Users, Classes, Sessions, Attendance</text>
-    <text x="20" y="110" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Redis (Channels — WebSocket)</text>
-    <text x="20" y="135" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Media: QR Codes, Reports</text>
-    <text x="20" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">Migrations &amp; Models</text>
-    <text x="20" y="190" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">SSL: sslmode=require</text>
+  <g transform="translate(510, 380)">
+    <rect x="0" y="0" width="380" height="240" fill="url(#arch-card)" rx="16" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
+    <rect x="0" y="0" width="380" height="6" fill="url(#red-grad)" rx="4" />
+    <text x="22" y="32" font-family="'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#FFFFFF">🗄️ Data Layer</text>
+    <text x="22" y="64" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">PostgreSQL (Neon)</text>
+    <text x="22" y="88" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Users, Classes, Sessions</text>
+    <text x="22" y="112" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Redis (Channels)</text>
+    <text x="22" y="136" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Media: QR Codes</text>
+    <text x="22" y="160" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">Migrations &amp; Models</text>
+    <text x="22" y="184" font-family="'Segoe UI', sans-serif" font-size="13" fill="#E0E0E0">SSL: sslmode=require</text>
   </g>
   
   <!-- Arrows -->
-  <path d="M210 190 Q320 190 410 200" fill="none" stroke="#00D4FF" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.8" />
-  <path d="M600 290 Q600 300 600 340" fill="none" stroke="#00D4FF" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.8" />
-  <path d="M600 560 Q600 310 800 300" fill="none" stroke="#00D4FF" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.8" />
+  <path d="M240 220 Q340 220 490 230" fill="none" stroke="#DC143C" stroke-width="2.5" marker-end="url(#arrowhead)" opacity="0.9" />
+  <path d="M700 330 Q700 340 700 380" fill="none" stroke="#DC143C" stroke-width="2.5" marker-end="url(#arrowhead)" opacity="0.9" />
+  <path d="M700 620 Q700 320 1150 320" fill="none" stroke="#DC143C" stroke-width="2.5" marker-end="url(#arrowhead)" opacity="0.9" />
   
   <!-- Legend -->
-  <g transform="translate(900, 580)">
-    <rect x="0" y="0" width="260" height="100" fill="#0A192F" rx="8" opacity="0.6" />
-    <text x="15" y="25" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Legend</text>
-    <line x1="15" y1="40" x2="35" y2="40" stroke="#00D4FF" stroke-width="2" />
-    <text x="45" y="44" font-family="'Segoe UI', sans-serif" font-size="12" fill="#B0C0D0">Data flow</text>
-    <text x="140" y="44" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8899AA">HTTPS / WSS</text>
-    <text x="15" y="65" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8899AA">Premium SaaS Architecture</text>
-    <text x="15" y="85" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8899AA">AttendQR — 2026</text>
+  <g transform="translate(1050, 640)">
+    <rect x="0" y="0" width="300" height="120" fill="#1A1A1A" rx="8" stroke="#B5121B" stroke-width="1" opacity="0.9" />
+    <text x="15" y="25" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#FFFFFF">LEGEND</text>
+    <line x1="15" y1="45" x2="35" y2="45" stroke="#DC143C" stroke-width="2.5" />
+    <text x="45" y="49" font-family="'Segoe UI', sans-serif" font-size="12" fill="#E0E0E0">Data Flow</text>
+    <text x="140" y="49" font-family="'Segoe UI', sans-serif" font-size="12" fill="#888888">HTTPS / WSS</text>
+    <text x="15" y="70" font-family="'Segoe UI', sans-serif" font-size="12" fill="#888888">RED / BLACK PREMIUM</text>
+    <text x="15" y="90" font-family="'Segoe UI', sans-serif" font-size="12" fill="#888888">AttendQR · 2026</text>
   </g>
 </svg>

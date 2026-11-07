@@ -2,209 +2,200 @@
 
 <div align="center">
 
-<img src="docs/images/attendqr-banner.svg" alt="AttendQR Banner" width="100%" />
+<img src="docs/images/attendqr-banner.svg" alt="AttendQR Premium Banner" width="100%" />
 
 **Système intelligent de gestion des présences par code QR — Administration, Enseignants, Étudiants**
 
-[![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-6.0-green?logo=django&logoColor=white)](https://www.djangoproject.com/)
-[![DRF](https://img.shields.io/badge/Django%20REST%20Framework-3.15-red?logo=django&logoColor=white)](https://www.django-rest-framework.org/)
-[![Flutter](https://img.shields.io/badge/Flutter-3.11-blue?logo=flutter&logoColor=white)](https://flutter.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![JWT](https://img.shields.io/badge/Authentication-JWT-black?logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
-[![Django Channels](https://img.shields.io/badge/WebSocket-Django%20Channels-orange)](https://channels.readthedocs.io/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.13-0D0D0D?logo=python&logoColor=white)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-6.0-DC143C?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![DRF](https://img.shields.io/badge/Django%20REST%20Framework-3.15-B5121B?logo=django&logoColor=white)](https://www.django-rest-framework.org/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.11-0D0D0D?logo=flutter&logoColor=white)](https://flutter.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-DC143C?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![JWT](https://img.shields.io/badge/Authentication-JWT-B5121B?logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
+[![Django Channels](https://img.shields.io/badge/WebSocket-Django%20Channels-0D0D0D?logo=channels&logoColor=white)](https://channels.readthedocs.io/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-B5121B?logo=docker&logoColor=white)](https://www.docker.com/)
 
-[📖 Documentation](#installation) · [🚀 Démarrage rapide](#running-the-project) · [📡 API Documentation](#api-documentation) · [🏗️ Déploiement](#deployment)
+[📖 Installation](#installation) · [🚀 Quick Start](#quick-start) · [📡 API Documentation](#api-documentation) · [🏗️ Deployment](#deployment)
 
 </div>
 
 ---
 
-## 📋 Table des matières
+## 📋 Table of Contents
 
-- [À propos du projet](#à-propos-du-projet)
-- [Aperçu visuel](#aperçu-visuel)
-- [Fonctionnalités principales](#fonctionnalités-principales)
-- [Architecture système](#architecture-système)
-- [Stack technologique](#stack-technologique)
-- [Structure du projet](#structure-du-projet)
+- [About the Project](#about-the-project)
+- [Visual Preview](#visual-preview)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
 - [Installation](#installation)
-- [Configuration environnement](#configuration-environnement)
-- [Lancement du projet](#lancement-du-projet)
-- [Documentation API](#documentation-api)
-- [Modèle de données](#modèle-de-données)
-- [Flux QR Code](#flux-qr-code)
-- [Sécurité](#sécurité)
-- [Déploiement](#déploiement)
-- [Tests](#tests)
-- [Feuille de route](#feuille-de-route)
-- [Auteur et crédits](#auteur-et-crédits)
+- [Environment Configuration](#environment-configuration)
+- [Running the Project](#running-the-project)
+- [API Documentation](#api-documentation)
+- [Database Model](#database-model)
+- [QR Code Workflow](#qr-code-workflow)
+- [Security](#security)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [Roadmap](#roadmap)
+- [Author & Credits](#author--credits)
 
 ---
 
-## À propos du projet
+## About the Project
 
-**AttendQR** est une plateforme complète de gestion des présences scolaires et universitaires par code QR. Elle permet aux administrateurs, enseignants et étudiants de gérer les séances de cours, de générer des QR codes de présence et de valider les présences en temps réel via une application mobile Flutter et une interface web Django.
+**AttendQR** is a complete QR-code based attendance management system for schools and universities. It enables administrators, teachers, and students to manage course sessions, generate QR attendance codes, and validate presence in real-time — via a Flutter mobile application and a Django web interface.
 
-### Problème résolu
+### Problem it solves
 
-La gestion manuelle des présences en classe est chronophage, sujette aux erreurs et difficile à auditer. AttendQR automatise ce processus grâce à :
-- La génération de QR codes uniques par séance
-- La validation géolocalisée (géofence 50m)
-- Le contrôle de fenêtre temporaire (session active uniquement)
-- L'export de rapports Excel
+Manual attendance tracking is time-consuming, error-prone, and difficult to audit. AttendQR automates the process with:
 
-### Objectifs
+- Unique QR codes generated per session
+- Geolocation validation (50m geofence)
+- Time-window control (active sessions only)
+- Excel report exports
 
-- Simplifier le point de présence pour les enseignants
-- Offrir aux étudiants une validation rapide via mobile
-- Fournir aux administrateurs une vue globale et des rapports exploitables
+### Objectives
 
-### Avantages principaux
+- Simplify attendance taking for teachers
+- Provide students with fast mobile validation
+- Give administrators a global view and actionable reports
 
-| Avantage | Description |
-|----------|-------------|
-| ⚡ **Rapide** | Validation de présence en quelques secondes via scan QR |
-| 📍 **Sécurisé** | Géofence et contrôle de la fenêtre temporelle |
-| 📊 **Traçable** | Historique des présences et rapports Excel |
-| 👥 **Multi-rôles** | Admin, Enseignant, Étudiant avec permissions adaptées |
-| 🔐 **Authentifié** | JWT avec access token (1h) et refresh token (7j) |
+### Key Benefits
 
----
-
-## Aperçu visuel
-
-### Page de connexion
-
-<div align="center">
-
-<img src="docs/images/mockup-login.svg" alt="Page de connexion AttendQR" width="600" />
-
-*Illustration conceptuelle basée sur le template `login.html` du projet.*
-
-</div>
-
-### Tableau de bord Administrateur
-
-<div align="center">
-
-<img src="docs/images/mockup-admin.svg" alt="Dashboard Admin AttendQR" width="900" />
-
-*Illustration conceptuelle basée sur les templates `admin_*.html` du projet.*
-
-</div>
-
-### Formulaire Enseignant — Nouvelle séance
-
-<div align="center">
-
-<img src="docs/images/mockup-teacher.svg" alt="Formulaire Enseignant AttendQR" width="600" />
-
-*Illustration conceptuelle basée sur `session_form_screen.dart` du projet mobile.*
-
-</div>
-
-### Application mobile Étudiant
-
-<div align="center">
-
-<img src="docs/images/mockup-student.svg" alt="Application mobile Étudiant AttendQR" width="900" />
-
-*Illustration conceptuelle basée sur les écrans Flutter du projet.*
-
-</div>
-
-> 💡 Les captures ci-dessus sont des **illustrations conceptuelles** basées sur les templates et écrans du projet. Elles ne constituent pas des captures d'écran de l'application en cours d'exécution.
+| Benefit | Description |
+|---------|-------------|
+| ⚡ **Fast** | Presence validated in seconds via QR scan |
+| 📍 **Secure** | Geofence and time-window controls |
+| 📊 **Traceable** | Attendance history and Excel reports |
+| 👥 **Multi-role** | Admin, Teacher, Student with dedicated permissions |
+| 🔐 **Authenticated** | JWT access token (1h) + refresh token (7d) |
 
 ---
 
-## Fonctionnalités principales
+## Visual Preview
 
-### 🎓 Administrateur
+<div align="center">
 
-- Gestion des utilisateurs (création, modification, suppression)
-- Gestion des classes, filières, semestres et modules
-- Gestion des enseignants et étudiants
-- Gestion des lieux (blocs, salles, amphithéâtres)
-- Visualisation de toutes les séances et présences
-- Export de rapports Excel
-- Tableau de bord avec statistiques globales
+<img src="docs/images/mockup-login.svg" alt="AttendQR Login Page" width="600" />
 
-### 👨‍🏫 Enseignant
+*Concept illustration based on the project's `login.html` template.*
 
-- Création de séances de cours
-- Sélection d'une classe parmi ses affectations
-- Génération et affichage du QR Code de séance
-- **Lieu de séance** : pré-rempli automatiquement depuis la classe, modifiable si nécessaire (la classe originale n'est jamais modifiée)
-- Validation des présences en temps réel
-- Consultation des statistiques de ses séances
-- Export de rapports mensuels
+</div>
 
-### 📱 Étudiant
+<div align="center">
 
-- Consultation de son emploi du temps par semestre
-- Scan du QR Code pour valider sa présence
-- Validation géolocalisée (géofence 50m)
-- Historique de ses présences
-- Réception de confirmation immédiate
+<img src="docs/images/mockup-admin.svg" alt="AttendQR Admin Dashboard" width="900" />
+
+*Concept illustration based on the project's `admin_*.html` templates.*
+
+</div>
+
+<div align="center">
+
+<img src="docs/images/mockup-teacher.svg" alt="AttendQR Teacher Form" width="600" />
+
+*Concept illustration based on `session_form_screen.dart` in the mobile app.*
+
+</div>
+
+<div align="center">
+
+<img src="docs/images/mockup-student.svg" alt="AttendQR Student Mobile" width="900" />
+
+*Concept illustration based on the Flutter screens in the mobile app.*
+
+</div>
+
+> 💡 The visuals above are **concept illustrations** based on the project's templates and screens. They are not live screenshots of the running application.
+
+---
+
+## Key Features
+
+### 🎓 Administrator
+
+- User management (create, edit, delete)
+- Class, filière, semester, and module management
+- Teacher and student management
+- Location management (blocks, rooms, amphitheaters)
+- View all sessions and attendance records
+- Excel report exports
+- Global statistics dashboard
+
+### 👨‍🏫 Teacher
+
+- Create course sessions
+- Select a class from assigned classes
+- Generate and display session QR Code
+- **Session location**: pre-filled automatically from the class, editable if needed (the original class configuration is never modified)
+- Real-time attendance validation
+- View session statistics
+- Monthly report exports
+
+### 📱 Student
+
+- View timetable by semester
+- Scan QR Code to validate presence
+- Geolocation validation (50m geofence)
+- Attendance history
+- Instant confirmation
 
 ### 📱 QR Code Attendance
 
-- Génération d'un token QR unique par séance (validité 20 min par défaut)
-- Affichage du QR sur l'écran de l'enseignant
-- Scan par l'étudiant via l'application mobile
-- Contrôle de la géolocalisation et de la fenêtre temporelle
-- Enregistrement immédiat de la présence
+- Unique QR token generated per session (20 min default validity)
+- QR displayed on teacher's screen
+- Student scans via mobile app
+- Geolocation and time-window controls
+- Immediate attendance recording
 
-### 📊 Rapports et analytics
+### 📊 Reports & Analytics
 
-- Statistiques globales (nombre d'utilisateurs, classes, enseignants, séances)
-- Rapports de présence par séance
-- Rapports mensuels pour les enseignants
-- Export au format Excel
+- Global statistics (users, classes, teachers, sessions)
+- Attendance reports per session
+- Monthly reports for teachers
+- Excel export
 
-### 🔐 Sécurité
+### 🔐 Security
 
-- Authentification JWT (SimpleJWT)
-- Access token : 1 heure | Refresh token : 7 jours
-- Rate limiting (30 req/min anonyme, 120 req/min utilisateur)
-- Contrôle d'accès basé sur les rôles (RBAC)
-- Géo-fencing (radius 50m)
-- Protection CSRF et CORS configurés
+- JWT authentication (SimpleJWT)
+- Access token: 1 hour | Refresh token: 7 days
+- Rate limiting (30 req/min anonymous, 120 req/min user)
+- Role-Based Access Control (RBAC)
+- Geofencing (50m radius)
+- CSRF and CORS protection
 
 ---
 
-## Architecture système
+## System Architecture
 
 <div align="center">
 
 <img src="docs/diagrams/architecture.svg" alt="AttendQR System Architecture" width="100%" />
 
-*Architecture système — composants et flux de données.*
+*System architecture — components and data flows.*
 
 </div>
 
-### Composants
-
-| Couche | Technologie | Rôle |
-|--------|-------------|------|
-| **Client** | Flutter Mobile, Templates Django Web | Interface utilisateur, scan QR, dashboards |
-| **API** | Django REST Framework | Endpoints REST `/api/v1/`, authentification JWT |
-| **Backend** | Django 6.0 + Daphne (ASGI) | Logique métier, WebSocket temps réel |
-| **Base de données** | PostgreSQL (Neon) | Utilisateurs, classes, séances, présences |
-| **Cache / WS** | Redis (optionnel en prod) | Channel layer pour WebSocket |
+| Layer | Technology | Role |
+|-------|------------|------|
+| **Client** | Flutter Mobile, Django Web Templates | UI, QR scan, dashboards |
+| **API** | Django REST Framework | REST endpoints `/api/v1/`, JWT auth |
+| **Backend** | Django 6.0 + Daphne (ASGI) | Business logic, live WebSocket |
+| **Database** | PostgreSQL (Neon) | Users, classes, sessions, attendance |
+| **Cache / WS** | Redis (optional prod) | Channel layer for WebSocket |
 
 ---
 
-## Stack technologique
+## Technology Stack
 
 <div align="center">
 
 <table>
   <tr>
-    <td><b>Catégorie</b></td>
-    <td><b>Technologie</b></td>
+    <td><b>Category</b></td>
+    <td><b>Technology</b></td>
     <td><b>Version</b></td>
     <td><b>Usage</b></td>
   </tr>
@@ -212,10 +203,10 @@ La gestion manuelle des présences en classe est chronophage, sujette aux erreur
     <td>Backend</td>
     <td>Python</td>
     <td>3.13</td>
-    <td>Langage principal</td>
+    <td>Main language</td>
   </tr>
   <tr>
-    <td>Framework Web</td>
+    <td>Web Framework</td>
     <td>Django</td>
     <td>6.0.5</td>
     <td>Application, ORM, templates</td>
@@ -224,46 +215,46 @@ La gestion manuelle des présences en classe est chronophage, sujette aux erreur
     <td>API</td>
     <td>Django REST Framework</td>
     <td>3.15.2</td>
-    <td>Endpoints REST, serializers</td>
+    <td>REST endpoints, serializers</td>
   </tr>
   <tr>
-    <td>Authentification</td>
+    <td>Authentication</td>
     <td>SimpleJWT</td>
     <td>5.3.1</td>
-    <td>Tokens d'accès et de rafraîchissement</td>
+    <td>Access & refresh tokens</td>
   </tr>
   <tr>
-    <td>Temps réel</td>
+    <td>Real-time</td>
     <td>Django Channels + Daphne</td>
     <td>4.1.0 / 4.1.2</td>
-    <td>WebSocket, sessions live</td>
+    <td>WebSocket, live sessions</td>
   </tr>
   <tr>
-    <td>Base de données</td>
+    <td>Database</td>
     <td>PostgreSQL</td>
     <td>15+ (Neon)</td>
-    <td>Stockage des données</td>
+    <td>Data storage</td>
   </tr>
   <tr>
     <td>Mobile</td>
     <td>Flutter (Dart)</td>
     <td>SDK 3.11.5</td>
-    <td>Application Android/iOS</td>
+    <td>Android/iOS app</td>
   </tr>
   <tr>
-    <td>Serveur d'app</td>
+    <td>App Server</td>
     <td>Daphne / Gunicorn</td>
     <td>4.1.2 / 23.0.0</td>
-    <td>Serveur ASGI / WSGI</td>
+    <td>ASGI / WSGI server</td>
   </tr>
   <tr>
     <td>Email</td>
     <td>Brevo SMTP</td>
     <td>—</td>
-    <td>Réinitialisation de mot de passe</td>
+    <td>Password reset</td>
   </tr>
   <tr>
-    <td>Conteneurisation</td>
+    <td>Containerization</td>
     <td>Docker + Docker Compose</td>
     <td>—</td>
     <td>PostgreSQL, Redis, Backend</td>
@@ -274,62 +265,62 @@ La gestion manuelle des présences en classe est chronophage, sujette aux erreur
 
 ---
 
-## Structure du projet
+## Project Structure
 
 ```
 attendance-system-QR/
-├── backend/                          # Application Django
+├── backend/                          # Django application
 │   ├── config/                       # Settings, URLs, WSGI/ASGI
-│   ├── courses/                      # Sessions, cours
-│   ├── users/                        # Utilisateurs, classes, auth
-│   ├── attendance/                   # Gestion des présences
-│   ├── curriculum/                   # Filières, semestres, modules
-│   ├── templates/                    # Templates HTML (Admin, Teacher, Student)
-│   ├── staticfiles/                  # Fichiers statiques collectés
-│   ├── media/                        # Uploads (QR codes, rapports)
-│   ├── requirements.txt              # Dépendances Python
-│   ├── Dockerfile                    # Image Docker du backend
-│   ├── manage.py                     # Point d'entrée Django
-│   └── venv/                         # Environnement virtuel local
-├── mobile/                           # Application Flutter
+│   ├── courses/                      # Sessions, courses
+│   ├── users/                        # Users, classes, auth
+│   ├── attendance/                   # Attendance management
+│   ├── curriculum/                   # Filières, semesters, modules
+│   ├── templates/                    # HTML templates (Admin, Teacher, Student)
+│   ├── staticfiles/                  # Collected static files
+│   ├── media/                        # Uploads (QR codes, reports)
+│   ├── requirements.txt              # Python dependencies
+│   ├── Dockerfile                    # Backend Docker image
+│   ├── manage.py                     # Django entry point
+│   └── venv/                         # Local virtual environment
+├── mobile/                           # Flutter application
 │   ├── lib/
-│   │   ├── constants/                # Constantes, configuration API
+│   │   ├── constants/                # Constants, API config
 │   │   ├── core/                     # RBAC, Router, Storage
-│   │   ├── features/                 # Fonctionnalités (sessions, dashboard, etc.)
-│   │   ├── models/                   # Modèles de données (Classe, Session, etc.)
-│   │   ├── providers/                # Gestion d'état (Provider)
-│   │   ├── repositories/             # Accès aux données
-│   │   ├── screens/                  # Écrans (Login, Sessions, QR Scanner, etc.)
-│   │   ├── services/                 # Services API (Dio client, Auth, etc.)
-│   │   ├── shared/                   # Widgets et utilitaires partagés
-│   │   └── main.dart                 # Point d'entrée Flutter
-│   ├── pubspec.yaml                  # Dépendances Flutter
-│   ├── android/                      # Projet Android natif
-│   └── ios/                          # Projet iOS natif
+│   │   ├── features/                 # Features (sessions, dashboard, etc.)
+│   │   ├── models/                   # Data models (Classe, Session, etc.)
+│   │   ├── providers/                # State management (Provider)
+│   │   ├── repositories/             # Data access
+│   │   ├── screens/                  # Screens (Login, Sessions, QR Scanner, etc.)
+│   │   ├── services/                 # API services (Dio client, Auth, etc.)
+│   │   ├── shared/                   # Shared widgets & utilities
+│   │   └── main.dart                 # Flutter entry point
+│   ├── pubspec.yaml                  # Flutter dependencies
+│   ├── android/                      # Native Android project
+│   └── ios/                          # Native iOS project
 ├── docs/
-│   ├── images/                       # Assets visuels (banner, logo, mockups)
-│   └── diagrams/                     # Diagrammes (architecture, workflow, ER)
+│   ├── images/                       # Visual assets (banner, logo, mockups)
+│   └── diagrams/                     # Diagrams (architecture, workflow, ER)
 ├── docker-compose.yml                # Orchestration (PostgreSQL, Redis, Backend)
-├── .env.example                      # Modèle de configuration (sans secrets)
-├── .gitignore                        # Fichiers ignorés par Git
-└── README.md                         # Ce document
+├── .env.example                      # Configuration template (no secrets)
+├── .gitignore                        # Git ignored files
+└── README.md                         # This document
 ```
 
 ---
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
-| Outil | Version minimale |
-|-------|------------------|
+| Tool | Minimum Version |
+|------|-----------------|
 | Python | 3.12+ |
-| pip | Dernière |
-| PostgreSQL | 15+ (ou utiliser Neon) |
-| Flutter | SDK 3.11.5+ (pour le mobile) |
-| Docker (optionnel) | 20.10+ |
+| pip | Latest |
+| PostgreSQL | 15+ (or use Neon) |
+| Flutter | SDK 3.11.5+ (for mobile) |
+| Docker (optional) | 20.10+ |
 
-### Clonage du repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/abdertalibi-gif/Qr_code_pfe-.git
@@ -338,24 +329,24 @@ cd attendance-system-QR
 
 ---
 
-## Configuration environnement
+## Environment Configuration
 
-Créez un fichier `.env` à la racine du projet (basé sur `.env.example`) :
+Create a `.env` file at the project root (based on `.env.example`):
 
 ```ini
-# Base de données (format URL PostgreSQL)
+# Database (PostgreSQL connection URL)
 DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
 
-# Clé secrète Django (générer une valeur unique — NE PAS réutiliser celle par défaut)
+# Django secret key (generate a unique value — do not reuse the default)
 DJANGO_SECRET_KEY=change-me-with-a-random-50-char-string
 
-# Mode debug (True uniquement en développement)
+# Debug mode (True only in development)
 DJANGO_DEBUG=False
 
-# Hôtes autorisés en production (séparés par des espaces)
+# Authorized hosts in production (space-separated)
 ALLOWED_HOSTS=yourdomain.com api.yourdomain.com
 
-# SMTP (Brevo pour les emails de réinitialisation)
+# SMTP (Brevo for password reset emails)
 EMAIL_HOST=smtp-relay.brevo.com
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
@@ -363,95 +354,93 @@ EMAIL_HOST_USER=change-me@example.com
 EMAIL_HOST_PASSWORD=change-me
 DEFAULT_FROM_EMAIL=noreply@yourdomain.com
 
-# URL publique du site
+# Public site URL
 SITE_BASE_URL=https://yourdomain.com
 
-# Schéma de lien profond de l'application mobile
+# Mobile app deep link scheme
 APP_DEEP_LINK_SCHEME=presenceqr
 
-# Durée de validité du token QR (minutes)
+# QR token validity (minutes)
 QR_TOKEN_DEFAULT_EXPIRY_MINUTES=20
 
-# Origines autorisées pour CORS (séparées par des espaces)
+# Authorized CORS origins (space-separated)
 CORS_ALLOWED_ORIGINS=https://yourdomain.com https://api.yourdomain.com
 ```
 
-> ⚠️ **Sécurité** : Ne commettez jamais le fichier `.env` contenant de vrais secrets. Le fichier `.env.example` est fourni comme modèle.
+> ⚠️ **Security**: Never commit the `.env` file containing real secrets. The `.env.example` file is provided as a template.
 
-### Variables requises pour le déploiement
-
-| Variable | Description | Exemple |
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `DJANGO_SECRET_KEY` | Clé secrète Django | `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
-| `DJANGO_DEBUG` | Mode debug | `False` en production |
-| `DATABASE_URL` | URL de connexion PostgreSQL | `postgresql://user:pass@host:5432/db` |
-| `SITE_BASE_URL` | URL publique de l'API | `https://api.yourdomain.com` |
-| `CORS_ALLOWED_ORIGINS` | Origines CORS autorisées | `https://app.yourdomain.com` |
+| `DJANGO_SECRET_KEY` | Django secret key | `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
+| `DJANGO_DEBUG` | Debug mode | `False` in production |
+| `DATABASE_URL` | PostgreSQL connection URL | `postgresql://user:pass@host:5432/db` |
+| `SITE_BASE_URL` | Public API URL | `https://api.yourdomain.com` |
+| `CORS_ALLOWED_ORIGINS` | Authorized CORS origins | `https://app.yourdomain.com` |
 
 ---
 
-## Lancement du projet
+## Running the Project
 
 ### Backend (Django)
 
 ```bash
-# Accéder au dossier backend
+# Access the backend folder
 cd backend
 
-# Créer et activer l'environnement virtuel
+# Create and activate virtual environment
 python -m venv venv
 # Windows
 venv\Scripts\activate
 # Linux/Mac
 source venv/bin/activate
 
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 
-# Appliquer les migrations de base de données
+# Apply database migrations
 python manage.py migrate
 
-# Collecter les fichiers statiques
+# Collect static files
 python manage.py collectstatic --noinput
 
-# Créer un superutilisateur (admin)
+# Create superuser (admin)
 python manage.py createsuperuser
 
-# Lancer le serveur de développement
+# Run development server
 python manage.py runserver 127.0.0.1:8000
 
-# Ou avec Daphne (ASGI pour WebSocket)
+# Or with Daphne (ASGI for WebSocket)
 daphne -b 127.0.0.1 -p 8000 config.asgi:application
 ```
 
-### Application mobile (Flutter)
+### Mobile Application (Flutter)
 
 ```bash
 cd mobile
 
-# Installer les dépendances
+# Install dependencies
 flutter pub get
 
-# Lancer en développement (émulateur ou appareil physique)
+# Run in development (emulator or physical device)
 flutter run
 
-# Spécifier l'URL de l'API si nécessaire
+# Specify API URL if needed
 flutter run --dart-define=API_BASE_URL=https://your-api.com/api/v1
 
-# Générer un APK de release
+# Build release APK
 flutter build apk --release
 
-# Générer un App Bundle (Play Store)
+# Build App Bundle (Play Store)
 flutter build appbundle --release
 ```
 
-### Avec Docker (optionnel)
+### With Docker (optional)
 
 ```bash
-# À la racine du projet
+# At the project root
 docker-compose up -d
 
-# Cela lance :
+# This launches:
 # - PostgreSQL (port 5432)
 # - Redis (port 6379)
 # - Backend Django (port 8000)
@@ -459,195 +448,193 @@ docker-compose up -d
 
 ---
 
-## Documentation API
+## API Documentation
 
-L'API REST est disponible sous `/api/v1/` et documentée via Swagger / ReDoc.
+The REST API is available under `/api/v1/` and documented via Swagger / ReDoc.
 
-### Authentification
+### Authentication
 
-Tous les endpoints protégés nécessitent un header `Authorization: Bearer <access_token>`.
+All protected endpoints require the header `Authorization: Bearer <access_token>`.
 
-| Méthode | Endpoint | Description | Authentification |
-|---------|----------|-------------|------------------|
-| `POST` | `/api/v1/auth/login/` | Connexion utilisateur | Non |
-| `POST` | `/api/v1/auth/token/refresh/` | Rafraîchir le token d'accès | Non (refresh token) |
-| `GET` | `/api/v1/users/` | Liste des utilisateurs | Oui (Admin) |
-| `GET` | `/api/v1/classes/` | Liste des classes | Oui |
-| `GET` | `/api/v1/students/` | Liste des étudiants | Oui |
-| `POST` | `/api/v1/sessions/` | Créer une séance | Oui |
-| `GET` | `/api/v1/sessions/` | Liste des séances | Oui |
-| `GET` | `/api/v1/sessions/{id}/` | Détail d'une séance | Oui |
-| `GET` | `/api/v1/dashboard/counts/` | Statistiques dashboard | Oui |
-| `GET` | `/api/v1/blocks/` | Liste des blocs | Oui |
-| `GET` | `/api/v1/rooms/` | Liste des salles | Oui |
-| `GET` | `/api/v1/amphitheaters/` | Liste des amphithéâtres | Oui |
-| `GET` | `/api/v1/teachers/` | Liste des enseignants | Oui |
-| `GET` | `/api/v1/departments/` | Liste des départements | Oui |
+| Method | Endpoint | Description | Authentication |
+|--------|----------|-------------|----------------|
+| `POST` | `/api/v1/auth/login/` | User login | No |
+| `POST` | `/api/v1/auth/token/refresh/` | Refresh access token | No (refresh token) |
+| `GET` | `/api/v1/users/` | List users | Yes (Admin) |
+| `GET` | `/api/v1/classes/` | List classes | Yes |
+| `GET` | `/api/v1/students/` | List students | Yes |
+| `POST` | `/api/v1/sessions/` | Create session | Yes |
+| `GET` | `/api/v1/sessions/` | List sessions | Yes |
+| `GET` | `/api/v1/sessions/{id}/` | Session detail | Yes |
+| `GET` | `/api/v1/dashboard/counts/` | Dashboard statistics | Yes |
+| `GET` | `/api/v1/blocks/` | List blocks | Yes |
+| `GET` | `/api/v1/rooms/` | List rooms | Yes |
+| `GET` | `/api/v1/amphitheaters/` | List amphitheaters | Yes |
+| `GET` | `/api/v1/teachers/` | List teachers | Yes |
+| `GET` | `/api/v1/departments/` | List departments | Yes |
 
 ### Swagger UI
 
-Une fois le serveur lancé :
-- Swagger : `http://localhost:8000/api/docs/swagger/`
-- ReDoc : `http://localhost:8000/api/docs/redoc/`
-- Schema JSON : `http://localhost:8000/api/docs/swagger.json`
+Once the server is running:
+- Swagger: `http://localhost:8000/api/docs/swagger/`
+- ReDoc: `http://localhost:8000/api/docs/redoc/`
+- Schema JSON: `http://localhost:8000/api/docs/swagger.json`
 
-### Pages web (servies par Django)
+### Web Pages (served by Django)
 
-| Page | URL | Rôle |
+| Page | URL | Role |
 |------|-----|------|
-| Accueil | `/` | Landing page publique |
-| Connexion | `/login/` | Authentification |
-| Admin | `/admin-ui/` | Tableau de bord Admin |
-| Enseignant | `/teacher/` | Espace Enseignant |
-| Étudiant | `/student/` | Espace Étudiant |
-| QR Validate | `/attend/` | Page de validation QR |
-| Admin : Classes | `/admin/classes/` | Gestion classes |
-| Admin : Séances | `/admin/sessions/` | Gestion séances |
-| Admin : Utilisateurs | `/admin/users/` | Gestion utilisateurs |
+| Home | `/` | Public landing page |
+| Login | `/login/` | Authentication |
+| Admin | `/admin-ui/` | Admin Dashboard |
+| Teacher | `/teacher/` | Teacher Space |
+| Student | `/student/` | Student Space |
+| QR Validate | `/attend/` | QR Validation Page |
+| Admin: Classes | `/admin/classes/` | Class Management |
+| Admin: Sessions | `/admin/sessions/` | Session Management |
+| Admin: Users | `/admin/users/` | User Management |
 
 ---
 
-## Modèle de données
+## Database Model
 
 <div align="center">
 
 <img src="docs/diagrams/database-er.svg" alt="Database ER Diagram" width="100%" />
 
-*Diagramme Entité-Association basé sur les modèles Django du projet.*
+*Entity-Relationship diagram based on the project's Django models.*
 
 </div>
 
-### Entités principales
-
-| Entité | Attributs clés | Relations |
+| Entity | Key Attributes | Relations |
 |--------|---------------|-----------|
-| **User** | id, email, full_name, role, department_id | Enseigne des sessions, appartient à un département |
-| **Classe** | id, name, code, niveau, filiere_id, semestre_id, module_id | A plusieurs sessions, liée à une filière |
-| **Session** | id, subject, classe_id, teacher_id, location_type, block_id, room_id, amphitheater_id, date, start_time, end_time | Appartient à une classe et un enseignant, a un lieu |
-| **Filiere** | id, name, semestre_id, department_id | Contient des classes et modules |
-| **Semestre** | id, name | Lié à des filières |
-| **Module** | id, name, filiere_id | Lié à des classes et sessions |
-| **Block** | id, name | Contient des salles |
-| **Room** | id, name, block_id | Appartient à un bloc |
-| **Amphitheater** | id, name | Lieu de séance |
-| **Department** | id, name | Contient des utilisateurs et filières |
+| **User** | id, email, full_name, role, department_id | Teaches sessions, belongs to department |
+| **Classe** | id, name, code, niveau, filiere_id, semestre_id, module_id | Has sessions, linked to filière |
+| **Session** | id, subject, classe_id, teacher_id, location_type, block_id, room_id, amphitheater_id, date, start_time, end_time | Belongs to class and teacher, has a location |
+| **Filiere** | id, name, semestre_id, department_id | Contains classes and modules |
+| **Semestre** | id, name | Linked to filières |
+| **Module** | id, name, filiere_id | Linked to classes and sessions |
+| **Block** | id, name | Contains rooms |
+| **Room** | id, name, block_id | Belongs to a block |
+| **Amphitheater** | id, name | Session location |
+| **Department** | id, name | Contains users and filières |
 
 ---
 
-## Flux QR Code
+## QR Code Workflow
 
 <div align="center">
 
 <img src="docs/diagrams/qr-workflow.svg" alt="QR Code Attendance Workflow" width="100%" />
 
-*Flux complet de la création de séance à la validation de présence.*
+*Complete flow from session creation to attendance validation.*
 
 </div>
 
-### Étapes du flux
+### Workflow Steps
 
-1. **Création de séance** : L'enseignant sélectionne une classe, un module, une date et une heure. Le serveur génère un QR token unique (validité 20 min par défaut).
-2. **Affichage du QR** : Le QR code est affiché sur l'écran de l'enseignant ou projeté en classe.
-3. **Scan étudiant** : L'étudiant scanne le QR via l'application mobile. La géolocalisation et l'empreinte appareil sont capturées.
-4. **Validation serveur** : Le serveur vérifie la validité du token, son expiration, la géo-fence (50m) et la fenêtre temporelle de la séance.
-5. **Confirmation** : L'étudiant reçoit une confirmation immédiate. L'enseignant voit la présence en temps réel. Un rapport Excel est disponible pour l'admin.
+1. **Session creation**: The teacher selects a class, module, date, and time. The server generates a unique QR token (20 min default validity).
+2. **QR display**: The QR code is displayed on the teacher's screen or projected in class.
+3. **Student scan**: The student scans the QR via the mobile app. Geolocation and device fingerprint are captured.
+4. **Server validation**: The server checks token validity, expiration, geofence (50m), and session time window.
+5. **Confirmation**: The student receives immediate confirmation. The teacher sees attendance in real-time. An Excel report is available for the admin.
 
-### Sécurité du flux
+### Workflow Security
 
-- ✅ Token JWT signé
-- ✅ Expiration du QR (20 min configurables)
-- ✅ Géo-fence (radius 50m autour du lieu de la séance)
-- ✅ Contrôle de la fenêtre temporelle (session active uniquement)
-- ✅ Empreinte appareil pour éviter les doublons
-
----
-
-## Sécurité
-
-Les mesures de sécurité suivantes sont implémentées dans le projet :
-
-| Mesure | Détail |
-|--------|--------|
-| **Authentification JWT** | Access token (1h) + Refresh token (7j) via SimpleJWT |
-| **Rate limiting** | 30 req/min (anonyme), 120 req/min (utilisateur), 10 req/min (validation présence) |
-| **Contrôle d'accès** | Permissions basées sur les rôles (Admin / Teacher / Student) |
-| **Géo-fencing** | Présence validée uniquement dans un rayon de 50m du lieu de la séance |
-| **Fenêtre temporelle** | Présence validée uniquement pendant la séance active |
-| **CSRF Protection** | Middleware Django CSRF activé |
-| **CORS** | Origines configurées via `CORS_ALLOWED_ORIGINS` |
-| **Cookies sécurisés** | `SESSION_COOKIE_SECURE` et `CSRF_COOKIE_SECURE` en production (`DEBUG=False`) |
-| **HTTPS redirect** | `SECURE_SSL_REDIRECT` activé en production |
-
-> ⚠️ **Important** : Le fichier `.env` contenant des secrets a été identifié dans l'historique Git. Avant tout déploiement en production, révoquez les credentials exposés (mot de passe base de données Neon, mot de passe SMTP Brevo) et générez de nouvelles clés.
+- ✅ Signed JWT token
+- ✅ QR expiration (20 min configurable)
+- ✅ Geofence (50m radius around session location)
+- ✅ Time-window control (active sessions only)
+- ✅ Device fingerprint to prevent duplicates
 
 ---
 
-## Déploiement
+## Security
 
-AttendQR est conçu pour être déployé sur une plateforme supportant des processus persistants (Django + Daphne ASGI + WebSocket).
+The following security measures are implemented in the project:
 
-> ⚠️ **Vercel n'est pas recommandé** pour ce projet car il est serverless et ne supporte pas nativement les processus longs, WebSocket persistants, ni Daphne/ASGI en continu.
+| Measure | Detail |
+|---------|--------|
+| **JWT Authentication** | Access token (1h) + Refresh token (7d) via SimpleJWT |
+| **Rate Limiting** | 30 req/min (anonymous), 120 req/min (user), 10 req/min (presence validation) |
+| **Access Control** | Role-based permissions (Admin / Teacher / Student) |
+| **Geofencing** | Presence validated only within 50m of session location |
+| **Time Window** | Presence validated only during active session |
+| **CSRF Protection** | Django CSRF middleware enabled |
+| **CORS** | Origins configured via `CORS_ALLOWED_ORIGINS` |
+| **Secure Cookies** | `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` in production (`DEBUG=False`) |
+| **HTTPS Redirect** | `SECURE_SSL_REDIRECT` enabled in production |
 
-### Option recommandée : Railway ou Render
+> ⚠️ **Important**: A `.env` file containing secrets was identified in the Git history. Before any production deployment, revoke the exposed credentials (Neon database password, Brevo SMTP password) and generate new keys.
+
+---
+
+## Deployment
+
+AttendQR is designed to be deployed on a platform supporting persistent processes (Django + Daphne ASGI + WebSocket).
+
+> ⚠️ **Vercel is not recommended** for this project because it is serverless and does not natively support persistent processes, persistent WebSocket, or Daphne/ASGI in continuous mode.
+
+### Recommended: Railway or Render
 
 #### Railway
 
-1. Connectez votre repository GitHub à [Railway](https://railway.app)
-2. Ajoutez une base de données PostgreSQL managée Railway
-3. Ajoutez Redis (pour WebSocket en production multi-process)
-4. Configurez les variables d'environnement :
+1. Connect your GitHub repository to [Railway](https://railway.app)
+2. Add a managed PostgreSQL database on Railway
+3. Add Redis (for WebSocket in multi-process production)
+4. Configure environment variables:
    - `DJANGO_SECRET_KEY`
    - `DJANGO_DEBUG=False`
-   - `DATABASE_URL` (fourni par Railway PostgreSQL)
-   - `CORS_ALLOWED_ORIGINS=https://votre-domaine.com`
-   - `SITE_BASE_URL=https://votre-domaine.com`
-5. Build command : `cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput`
-6. Start command : `cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application`
+   - `DATABASE_URL` (provided by Railway PostgreSQL)
+   - `CORS_ALLOWED_ORIGINS=https://your-domain.com`
+   - `SITE_BASE_URL=https://your-domain.com`
+5. Build command: `cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput`
+6. Start command: `cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application`
 
 #### Render
 
-1. Créez un **Web Service** sur [Render](https://render.com)
-2. Ajoutez une base de données PostgreSQL managée
-3. Build command : `cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput`
-4. Start command : `cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application`
+1. Create a **Web Service** on [Render](https://render.com)
+2. Add a managed PostgreSQL database
+3. Build command: `cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput`
+4. Start command: `cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application`
 
-### VPS (contrôle total)
+### VPS (full control)
 
-Voir le fichier `DEPLOY.md` pour la procédure complète avec Nginx, systemd et certificat SSL.
+See the `DEPLOY.md` file for the complete procedure with Nginx, systemd, and SSL certificate.
 
-### Checklist de déploiement
+### Deployment Checklist
 
 - [ ] `DJANGO_DEBUG=False`
-- [ ] `DJANGO_SECRET_KEY` générée (32+ caractères aléatoires)
-- [ ] `ALLOWED_HOSTS` restreint aux domaines de production
-- [ ] `DATABASE_URL` avec `sslmode=require`
-- [ ] HTTPS activé (certificat SSL)
-- [ ] Redis configuré pour Channels (production multi-process)
-- [ ] Fichier `.env` non committé dans Git
-- [ ] Credentials exposés dans l'historique Git révoqués
+- [ ] `DJANGO_SECRET_KEY` generated (32+ random characters)
+- [ ] `ALLOWED_HOSTS` restricted to production domains
+- [ ] `DATABASE_URL` with `sslmode=require`
+- [ ] HTTPS enabled (SSL certificate)
+- [ ] Redis configured for Channels (multi-process production)
+- [ ] `.env` file not committed to Git
+- [ ] Exposed credentials in Git history revoked
 
 ---
 
-## Tests
+## Testing
 
 ### Backend (Django)
 
 ```bash
 cd backend
 
-# Lancer tous les tests
+# Run all tests
 python manage.py test
 
-# Tester une application spécifique
+# Test a specific app
 python manage.py test users
 python manage.py test courses
 python manage.py test attendance
 python manage.py test curriculum
 
-# Vérifier le projet
+# Check the project
 python manage.py check
 
-# Vérifier les migrations
+# Check migrations
 python manage.py makemigrations --check --dry-run
 ```
 
@@ -656,53 +643,53 @@ python manage.py makemigrations --check --dry-run
 ```bash
 cd mobile
 
-# Analyser le code
+# Analyze code
 flutter analyze
 
-# Lancer les tests unitaires et de widgets
+# Run unit and widget tests
 flutter test
 
-# Vérifier les dépendances
+# Check dependencies
 flutter pub outdated
 ```
 
 ---
 
-## Feuille de route
+## Roadmap
 
-### ✅ Implémenté
+### ✅ Implemented
 
-- Authentification multi-rôles (Admin, Teacher, Student) avec JWT
-- Gestion des classes, filières, semestres, modules
-- Création et gestion des séances de cours
-- Génération et scan de QR Code de présence
-- Géofence et contrôle de fenêtre temporelle
-- Tableaux de bord Admin, Enseignant, Étudiant
-- Export de rapports Excel
-- WebSocket pour les présences en direct
-- API REST documentée (Swagger/ReDoc)
-- Application mobile Flutter (Android/iOS)
+- Multi-role authentication (Admin, Teacher, Student) with JWT
+- Class, filière, semester, module management
+- Session creation and management
+- QR Code generation and scanning
+- Geofence and time-window control
+- Admin, Teacher, Student dashboards
+- Excel report exports
+- WebSocket for live attendance
+- REST API documented (Swagger/ReDoc)
+- Flutter mobile app (Android/iOS)
 
-### 🚧 En cours / Futur
+### 🚧 In Progress / Future
 
-- Notifications push pour les séances
-- Tableau de bord analytique avancé (graphiques)
-- Intégration avec Google Calendar / Outlook
-- Export PDF des rapports
-- Multi-langue (FR/EN)
-- Application PWA pour validation sans installation mobile
+- Push notifications for sessions
+- Advanced analytics dashboard (charts)
+- Google Calendar / Outlook integration
+- PDF report exports
+- Multi-language (FR/EN)
+- PWA app for validation without mobile installation
 
 ---
 
-## Auteur et crédits
+## Author & Credits
 
 <div align="center">
 
 **AttendQR — Smart QR Code Attendance Management System**
 
-Développé avec ❤️ pour la gestion des présences académiques.
+Developed with ❤️ for academic attendance management.
 
-[🔗 Voir sur GitHub](https://github.com/abdertalibi-gif/Qr_code_pfe-.git)
+[🔗 View on GitHub](https://github.com/abdertalibi-gif/Qr_code_pfe-.git)
 
 </div>
 
@@ -710,6 +697,6 @@ Développé avec ❤️ pour la gestion des présences académiques.
 
 <div align="center">
 
-<sub>Documentation générée pour le repository GitHub. Les illustrations visuelles sont des représentations conceptuelles basées sur les templates et écrans réels du projet.</sub>
+<sub>Documentation generated for the GitHub repository. Visual illustrations are concept representations based on the project's real templates and screens.</sub>
 
 </div>

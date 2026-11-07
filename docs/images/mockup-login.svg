@@ -1,105 +1,94 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700">
   <defs>
-    <linearGradient id="login-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0A192F;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#050A14;stop-opacity:1" />
+    <linearGradient id="login-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D0D0D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A0A0A;stop-opacity:1" />
     </linearGradient>
     <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#16253A;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0F1E30;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#141414;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D0D0D;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0F7DB8;stop-opacity:1" />
+    <linearGradient id="red-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#DC143C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B5121B;stop-opacity:1" />
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="20" result="blur" />
+      <feGaussianBlur stdDeviation="24" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
   
-  <rect width="900" height="700" fill="url(#login-grad)" />
+  <rect width="900" height="700" fill="url(#login-bg)" />
   
-  <!-- Decorative elements -->
-  <circle cx="100" cy="100" r="80" fill="#00D4FF" opacity="0.05" />
-  <circle cx="800" cy="600" r="100" fill="#0F7DB8" opacity="0.05" />
+  <circle cx="100" cy="100" r="90" fill="#DC143C" opacity="0.08" />
+  <circle cx="800" cy="600" r="110" fill="#B5121B" opacity="0.08" />
   
-  <!-- Login Card -->
   <g transform="translate(300, 80)">
-    <rect x="0" y="0" width="300" height="540" fill="url(#card-grad)" rx="20" filter="url(#shadow)" stroke="#1E3A5A" stroke-width="1" />
+    <rect x="0" y="0" width="300" height="540" fill="url(#card-grad)" rx="24" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
     
-    <!-- Header -->
     <g transform="translate(30, 40)">
-      <rect x="0" y="0" width="44" height="44" fill="url(#accent-grad)" rx="12" />
-      <text x="22" y="30" font-family="'Segoe UI', sans-serif" font-size="20" fill="#0A192F" text-anchor="middle" font-weight="700">📋</text>
-      <text x="80" y="35" font-family="'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#FFFFFF">AttendQR</text>
-      <text x="80" y="60" font-family="'Segoe UI', sans-serif" font-size="13" fill="#00D4FF" font-weight="600" letter-spacing="1">QR Attendance</text>
+      <rect x="0" y="0" width="46" height="46" fill="url(#red-grad)" rx="14" />
+      <text x="23" y="32" font-family="'Segoe UI', sans-serif" font-size="22" fill="#0D0D0D" text-anchor="middle" font-weight="800">📋</text>
+      <text x="78" y="38" font-family="'Segoe UI', sans-serif" font-size="26" font-weight="900" fill="#FFFFFF">AttendQR</text>
+      <text x="78" y="64" font-family="'Segoe UI', sans-serif" font-size="13" fill="#DC143C" font-weight="700" letter-spacing="1">QR Attendance</text>
     </g>
     
-    <!-- Welcome text -->
-    <text x="30" y="130" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Bon retour</text>
-    <text x="30" y="155" font-family="'Segoe UI', sans-serif" font-size="13" fill="#8899AA">Connectez-vous pour accéder à votre espace</text>
+    <text x="30" y="130" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="800" fill="#FFFFFF">Welcome back</text>
+    <text x="30" y="155" font-family="'Segoe UI', sans-serif" font-size="13" fill="#888888">Sign in to your attendance portal</text>
     
-    <!-- Form -->
     <g transform="translate(30, 190)">
-      <!-- Email -->
-      <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Adresse e-mail</text>
-      <rect x="0" y="15" width="240" height="44" fill="#0A192F" rx="8" stroke="#2A4A6E" stroke-width="1" />
-      <text x="12" y="47" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">vous@exemple.com</text>
+      <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#DC143C">Email address</text>
+      <rect x="0" y="15" width="240" height="48" fill="#0A0A0A" rx="10" stroke="#B5121B" stroke-width="1.5" />
+      <text x="12" y="50" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0B0B0">you@example.com</text>
       
-      <!-- Password -->
-      <text x="0" y="80" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">Mot de passe</text>
-      <rect x="0" y="95" width="240" height="44" fill="#0A192F" rx="8" stroke="#2A4A6E" stroke-width="1" />
-      <text x="12" y="127" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0C0D0">••••••••</text>
+      <text x="0" y="85" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#DC143C">Password</text>
+      <rect x="0" y="100" width="240" height="48" fill="#0A0A0A" rx="10" stroke="#B5121B" stroke-width="1.5" />
+      <text x="12" y="135" font-family="'Segoe UI', sans-serif" font-size="13" fill="#B0B0B0">••••••••</text>
       
-      <!-- Forgot -->
-      <text x="180" y="155" font-family="'Segoe UI', sans-serif" font-size="11" fill="#00D4FF" text-anchor="end">Mot de passe oublié ?</text>
+      <text x="180" y="165" font-family="'Segoe UI', sans-serif" font-size="11" fill="#DC143C" text-anchor="end">Forgot password?</text>
       
-      <!-- Login Button -->
-      <rect x="0" y="175" width="240" height="48" fill="url(#accent-grad)" rx="12" />
-      <text x="120" y="205" font-family="'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#0A192F" text-anchor="middle">Se connecter</text>
+      <rect x="0" y="185" width="240" height="52" fill="url(#red-grad)" rx="14" />
+      <text x="120" y="215" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#0D0D0D" text-anchor="middle">Sign in</text>
     </g>
     
-    <!-- Footer -->
-    <g transform="translate(30, 460)">
-      <line x1="0" y1="0" x2="240" y2="0" stroke="#1E3A5A" stroke-width="1" opacity="0.3" />
-      <text x="0" y="25" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA" text-anchor="middle">Connexion sécurisée · JWT</text>
-      <text x="0" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA" text-anchor="middle">← Retour à l'accueil</text>
+    <g transform="translate(30, 470)">
+      <line x1="0" y1="0" x2="240" y2="0" stroke="#2A2A2A" stroke-width="1" opacity="0.4" />
+      <text x="0" y="25" font-family="'Segoe UI', sans-serif" font-size="11" fill="#666666" text-anchor="middle">Secure connection · JWT</text>
+      <text x="0" y="50" font-family="'Segoe UI', sans-serif" font-size="11" fill="#666666" text-anchor="middle">← Back to home</text>
     </g>
   </g>
   
-  <!-- Info Panel -->
   <g transform="translate(650, 80)">
-    <rect x="0" y="0" width="230" height="540" fill="url(#card-grad)" rx="20" filter="url(#shadow)" stroke="#1E3A5A" stroke-width="1" />
+    <rect x="0" y="0" width="230" height="540" fill="url(#card-grad)" rx="24" filter="url(#shadow)" stroke="#B5121B" stroke-width="1" />
     
-    <text x="30" y="50" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Comment ça marche ?</text>
+    <text x="30" y="50" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="800" fill="#FFFFFF">How it works</text>
     
     <g transform="translate(30, 90)">
-      <circle cx="18" cy="22" r="18" fill="#00D4FF" opacity="0.2" />
-      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="16" fill="#00D4FF" text-anchor="middle">1</text>
-      <text x="45" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">Se connecter</text>
-      <text x="45" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Identifiez-vous avec vos identifiants institutionnels</text>
+      <circle cx="18" cy="22" r="16" fill="url(#red-grad)" />
+      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="14" fill="#0D0D0D" text-anchor="middle" font-weight="800">1</text>
+      <text x="44" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Sign in</text>
+      <text x="44" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">Use your institutional credentials</text>
     </g>
     
-    <g transform="translate(30, 140)">
-      <circle cx="18" cy="22" r="18" fill="#00D4FF" opacity="0.2" />
-      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="16" fill="#00D4FF" text-anchor="middle">2</text>
-      <text x="45" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">Accédez à votre tableau de bord</text>
-      <text x="45" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Gérez vos classes, étudiants et séances</text>
+    <g transform="translate(30, 150)">
+      <circle cx="18" cy="22" r="16" fill="url(#red-grad)" />
+      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="14" fill="#0D0D0D" text-anchor="middle" font-weight="800">2</text>
+      <text x="44" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Open your dashboard</text>
+      <text x="44" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">Manage classes, students, sessions</text>
     </g>
     
-    <g transform="translate(30, 200)">
-      <circle cx="18" cy="22" r="18" fill="#00D4FF" opacity="0.2" />
-      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="16" fill="#00D4FF" text-anchor="middle">3</text>
-      <text x="45" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">Générez un QR Code</text>
-      <text x="45" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">Créez une séance et affichez le QR à scanner</text>
+    <g transform="translate(30, 210)">
+      <circle cx="18" cy="22" r="16" fill="url(#red-grad)" />
+      <text x="18" y="28" font-family="'Segoe UI', sans-serif" font-size="14" fill="#0D0D0D" text-anchor="middle" font-weight="800">3</text>
+      <text x="44" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Generate QR Code</text>
+      <text x="44" y="44" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">Create a session and display the QR</text>
     </g>
     
-    <line x1="30" y1="270" x2="200" y2="270" stroke="#1E3A5A" stroke-width="1" opacity="0.3" />
+    <line x1="30" y1="280" x2="200" y2="280" stroke="#2A2A2A" stroke-width="1" opacity="0.4" />
     
-    <text x="30" y="300" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Rôles disponibles</text>
-    <text x="30" y="325" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">🎓 Administrateur</text>
-    <text x="30" y="345" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">👨‍🏫 Enseignant</text>
-    <text x="30" y="365" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8899AA">📱 Étudiant</text>
+    <text x="30" y="310" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="800" fill="#FFFFFF">Roles</text>
+    <text x="30" y="335" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">🎓 Administrator</text>
+    <text x="30" y="355" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">👨‍🏫 Teacher</text>
+    <text x="30" y="375" font-family="'Segoe UI', sans-serif" font-size="11" fill="#888888">📱 Student</text>
   </g>
 </svg>
