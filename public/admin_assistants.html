@@ -1,0 +1,34 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Enseignants assistants{% endblock %}
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Enseignants assistants</h1>
+    <p>Liste des utilisateurs ayant le statut d'enseignant assistant (is_also_teacher).</p>
+  </div>
+</div>
+<div class="section-head">
+  <h2>Assistants</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchAssistants" placeholder="Rechercher nom, email…" />
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Email</th>
+        <th>Rôle</th>
+        <th>Téléphone</th>
+        <th>Statut</th>
+      </tr>
+    </thead>
+    <tbody id="assistantsBody"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="/admin-assistants.js"></script>
+{% endblock %}

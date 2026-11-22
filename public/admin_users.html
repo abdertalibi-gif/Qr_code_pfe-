@@ -1,0 +1,207 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Utilisateurs{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Utilisateurs</h1>
+    <p>Gérez tous les comptes utilisateurs du système.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <div>
+    <h2>Tous les utilisateurs</h2>
+    <p id="usersCountLabel" style="margin:0;font-size:.85rem;color:var(--muted)">Chargement du nombre d’utilisateurs…</p>
+  </div>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchUsers" placeholder="Rechercher nom, e-mail, rôle…" />
+    <button class="btn" id="btnOpenAddUser">+ Nouvel utilisateur</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>E-mail</th>
+        <th>Rôle</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="usersBody">
+      <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="pagination-bar hidden" id="usersPagination"></div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add User -->
+<div class="modal-backdrop" id="modalAddUser">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nouvel utilisateur</h3>
+      <button type="button" class="modal-close" data-close="modalAddUser" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="uFirstName" placeholder="Jean" />
+        </div>
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="uLastName" placeholder="Dupont" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="uEmail" placeholder="john@school.ma" />
+      </div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="uRole">
+          <option value="teacher">Enseignant</option>
+          <option value="admin">Admin</option>
+          <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
+        </select>
+      </div>
+
+      <!-- Department (teacher / department_head) -->
+      <div class="field role-field" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="uDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Filiere (teacher / program_manager) -->
+      <div class="field role-field" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="uFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Teacher-specific fields -->
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Téléphone</label>
+        <input type="text" id="uPhone" placeholder="+212 6XX XXX XXX" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>CIN</label>
+        <input type="text" id="uCin" placeholder="ex: AB123456" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Grade</label>
+        <input type="text" id="uGrade" placeholder="ex: Professeur" />
+      </div>
+      <div class="field role-field" data-roles="teacher" style="display:none">
+        <label>Spécialité</label>
+        <input type="text" id="uSpeciality" placeholder="ex: Informatique" />
+      </div>
+
+      <!-- Student fields -->
+      <div class="role-field" data-roles="student" style="display:none">
+        <div class="field-row">
+          <div class="field">
+            <label>Code Massar</label>
+            <input type="text" id="uCodeMassar" placeholder="ex: MA1234567890" />
+          </div>
+          <div class="field">
+            <label>Code Apogée</label>
+            <input type="text" id="uCodeApogee" placeholder="optionnel" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Classe</label>
+          <select id="uStudentClasse"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div class="field">
+          <label>Filière</label>
+          <select id="uStudentFiliere"><option value="">— Sélectionner —</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="uPassword" placeholder="••••••••" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAddUser">Annuler</button>
+      <button class="btn" id="btnSubmitUser">Créer l'utilisateur</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit User -->
+<div class="modal-backdrop" id="modalEditUser">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Modifier l'utilisateur</h3>
+      <button class="modal-close" data-close="modalEditUser">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="euId" />
+      <div class="field-row">
+        <div class="field"><label>Prénom</label><input type="text" id="euFirstName" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="euLastName" /></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" id="euEmail" /></div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="euRole">
+          <option value="teacher">Enseignant</option>
+          <option value="admin">Admin</option>
+          <option value="student">Étudiant</option>
+          <option value="department_head">Chef de département</option>
+          <option value="program_manager">Responsable de filière</option>
+        </select>
+      </div>
+
+      <!-- Department (teacher / department_head) -->
+      <div class="field role-field-edit" data-roles="teacher,department_head" style="display:none">
+        <label>Département</label>
+        <select id="euDepartment"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Filiere (teacher / program_manager) -->
+      <div class="field role-field-edit" data-roles="teacher,program_manager" style="display:none">
+        <label>Filière</label>
+        <select id="euFiliere"><option value="">— Sélectionner —</option></select>
+      </div>
+
+      <!-- Teacher-specific fields -->
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Téléphone</label>
+        <input type="text" id="euPhone" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>CIN</label>
+        <input type="text" id="euCin" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Grade</label>
+        <input type="text" id="euGrade" />
+      </div>
+      <div class="field role-field-edit" data-roles="teacher" style="display:none">
+        <label>Spécialité</label>
+        <input type="text" id="euSpeciality" />
+      </div>
+
+      <div class="field"><label>Nouveau mot de passe (optionnel)</label><input type="password" id="euPassword" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalEditUser">Annuler</button>
+      <button class="btn" id="btnSubmitEditUser">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-users.js"></script>
+{% endblock %}

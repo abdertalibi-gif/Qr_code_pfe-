@@ -1,0 +1,496 @@
+/* ── Admin Classes Page ── */
+let allClasses = [];
+let allNiveaux = [];
+let allSemestres = [];
+let allFilieres = [];
+let allModules = [];
+let allBlocks = [];
+let allRooms = [];
+let allAmphis = [];
+let classesCurrentPage = 1;
+let classesTotal = 0;
+let classesRequestSeq = 0;
+let classesSearchTimer = null;
+const CLASSES_PAGE_SIZE = 10;
+
+async function initPage() {
+  await Promise.all([loadClasses(), loadNiveaux(), loadSemestres(), loadFilieres(), loadBlocks(), loadAmphis(), loadTeachers()]);
+  setupEventListeners();
+}
+
+async function fetchAllTeachers() {
+  // Préférer l'endpoint dédié /teachers/ (pagination opt-in) ou boucler sur toutes les pages
+  let teachers = [];
+  const seenIds = new Set();
+  let url = '/teachers/';
+
+  try {
+    while (url) {
+      const data = await API.apiFetch(url);
+      let pageItems = [];
+      if (Array.isArray(data)) {
+        pageItems = data;
+        url = null;
+      } else if (data && Array.isArray(data.results)) {
+        pageItems = data.results;
+        url = data.next || null;
+      } else {
+        url = null;
+      }
+
+      for (const t of pageItems) {
+        if (t && t.id && !seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          teachers.push(t);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Fallback vers /users/?role=teacher suite à:', err);
+    url = '/users/?role=teacher&is_active=1';
+    while (url) {
+      const data = await API.apiFetch(url);
+      let pageItems = [];
+      if (Array.isArray(data)) {
+        pageItems = data;
+        url = null;
+      } else if (data && Array.isArray(data.results)) {
+        pageItems = data.results;
+        url = data.next || null;
+      } else {
+        url = null;
+      }
+
+      for (const t of pageItems) {
+        if (t && t.id && !seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          teachers.push(t);
+        }
+      }
+    }
+  }
+
+  // Filtrer pour ne conserver que les enseignants actifs
+  teachers = teachers.filter(t => t.is_active !== false);
+
+  // Trier alphabétiquement par nom complet
+  teachers.sort((a, b) => {
+    const nameA = (a.full_name || (a.first_name + ' ' + a.last_name)).trim().toLowerCase();
+    const nameB = (b.full_name || (b.first_name + ' ' + b.last_name)).trim().toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  return teachers;
+}
+
+async function loadTeachers(selectedId) {
+  const sel = document.getElementById('clTeacher');
+  const spinner = document.getElementById('clTeacherSpinner');
+  if (!sel) return;
+
+  const currentVal = selectedId !== undefined ? selectedId : sel.value;
+  sel.disabled = true;
+  if (spinner) spinner.style.display = 'inline-block';
+
+  try {
+    const teachers = await fetchAllTeachers();
+    sel.innerHTML = '<option value="">— Sélectionner un enseignant —</option>';
+
+    let foundSelected = false;
+    teachers.forEach(function (t) {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      const displayName = t.full_name || ((t.first_name || '') + ' ' + (t.last_name || '')).trim() || ('Enseignant #' + t.id);
+      const emailPart = t.email ? ' (' + t.email + ')' : '';
+      const deptPart = t.department_name ? ' — ' + t.department_name : '';
+      opt.textContent = displayName + emailPart + deptPart;
+      if (currentVal && String(t.id) === String(currentVal)) {
+        opt.selected = true;
+        foundSelected = true;
+      }
+      sel.appendChild(opt);
+    });
+
+    // Si une valeur était sélectionnée mais n'est pas dans la liste des actifs (ex: enseignant inactif assigné antérieurement)
+    if (currentVal && !foundSelected) {
+      try {
+        const u = await API.apiFetch('/users/' + currentVal + '/');
+        if (u && u.id) {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          const uName = u.full_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || ('Enseignant #' + u.id);
+          opt.textContent = uName + (u.email ? ' (' + u.email + ')' : '') + ' (inactif)';
+          opt.selected = true;
+          sel.appendChild(opt);
+        }
+      } catch (_) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = 'Enseignant #' + currentVal;
+        opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    if (!teachers.length && !currentVal) {
+      sel.innerHTML = '<option value="">— Aucun enseignant disponible —</option>';
+    }
+  } catch (e) {
+    console.error('Erreur de chargement des enseignants:', e);
+    sel.innerHTML = '<option value="">Erreur de chargement des enseignants</option>';
+  } finally {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+async function loadClasses(page) {
+  if (!Number.isInteger(page)) page = classesCurrentPage || 1;
+  const params = new URLSearchParams({
+    paginate: '1',
+    page: String(page),
+    page_size: String(CLASSES_PAGE_SIZE),
+  });
+  const search = (document.getElementById('searchClasses')?.value || '').trim();
+  if (search) params.set('search', search);
+
+  const tbody = document.getElementById('classesBody');
+  if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Chargement…</td></tr>';
+
+  const requestId = ++classesRequestSeq;
+  try {
+    const data = await API.apiFetch('/classes/?' + params.toString());
+    if (requestId !== classesRequestSeq) return;
+    allClasses = Array.isArray(data) ? data : (data.results || []);
+    classesTotal = Array.isArray(data) ? allClasses.length : (data.count ?? allClasses.length);
+    const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+    if (page > totalPages && totalPages >= 1 && classesTotal > 0) {
+      return loadClasses(totalPages);
+    }
+    classesCurrentPage = page;
+    renderClasses();
+    if (!search) {
+      const navCount = document.getElementById('navCntClasses');
+      if (navCount) navCount.textContent = classesTotal;
+    }
+  } catch (e) {
+    if (requestId !== classesRequestSeq) return;
+    if (tbody) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Erreur: ' + esc(e.message) + '</td></tr>';
+    }
+    const countLabel = document.getElementById('classesCountLabel');
+    if (countLabel) countLabel.textContent = 'Erreur de chargement.';
+  }
+}
+
+async function loadNiveaux() {
+  try {
+    const data = await API.apiFetch('/curriculum/niveaux/');
+    allNiveaux = Array.isArray(data) ? data : [];
+    const sel = document.getElementById('clNiveau');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allNiveaux.map(n => '<option value="' + n.id + '">' + esc(n.label) + '</option>').join('');
+  } catch (e) { allNiveaux = []; }
+}
+
+async function loadSemestres() {
+  try {
+    const data = await API.apiFetch('/curriculum/semestres/');
+    allSemestres = Array.isArray(data) ? data : [];
+  } catch (e) { allSemestres = []; }
+}
+
+async function loadFilieres() {
+  try {
+    const data = await API.apiFetch('/curriculum/filieres/');
+    allFilieres = Array.isArray(data) ? data : [];
+  } catch (e) { allFilieres = []; }
+}
+
+async function loadModules() {
+  try {
+    const data = await API.apiFetch('/curriculum/modules/');
+    allModules = Array.isArray(data) ? data : [];
+  } catch (e) { allModules = []; }
+}
+
+async function loadBlocks() {
+  try {
+    const data = await API.apiFetch('/blocks/');
+    allBlocks = Array.isArray(data) ? data : [];
+    const sel = document.getElementById('clBlock');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allBlocks.map(b => '<option value="' + b.id + '">' + esc(b.name) + '</option>').join('');
+    allRooms = [];
+    allBlocks.forEach(function (b) {
+      if (b.rooms) allRooms = allRooms.concat(b.rooms);
+    });
+  } catch (e) { allBlocks = []; }
+}
+
+async function loadAmphis() {
+  try {
+    const data = await API.apiFetch('/amphitheaters/');
+    allAmphis = Array.isArray(data) ? data : [];
+    const sel = document.getElementById('clAmphi');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      allAmphis.map(a => '<option value="' + a.id + '">' + esc(a.name) + '</option>').join('');
+  } catch (e) { allAmphis = []; }
+}
+
+function renderClasses() {
+  const tbody = document.getElementById('classesBody');
+  const query = (document.getElementById('searchClasses')?.value || '').trim();
+  const totalPages = Math.max(1, Math.ceil(classesTotal / CLASSES_PAGE_SIZE));
+  const countLabel = document.getElementById('classesCountLabel');
+  const startIdx = (classesCurrentPage - 1) * CLASSES_PAGE_SIZE;
+
+  if (!allClasses.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">' + (query ? 'Aucun résultat.' : 'Aucune classe.') + '</td></tr>';
+    if (countLabel) {
+      countLabel.textContent = query
+        ? '0 classe trouvée sur un total de ' + classesTotal
+        : '0 classe au total';
+    }
+    createPaginationControls('classesPagination', classesCurrentPage, totalPages, loadClasses);
+    return;
+  }
+
+  if (countLabel) {
+    const from = startIdx + 1;
+    const to = Math.min(startIdx + CLASSES_PAGE_SIZE, classesTotal);
+    countLabel.textContent = query
+      ? 'Affichage de ' + from + ' à ' + to + ' sur ' + classesTotal + ' résultat(s) trouvé(s)'
+      : 'Affichage des classes ' + from + ' à ' + to + ' sur ' + classesTotal + ' au total (Page ' + classesCurrentPage + ' sur ' + totalPages + ')';
+  }
+
+  tbody.innerHTML = allClasses.map(function (c, i) {
+    return '<tr>' +
+      '<td><span style="color:var(--muted)">' + (startIdx + i + 1) + '</span></td>' +
+      '<td><strong>' + esc(c.name) + '</strong></td>' +
+      '<td>' + esc(c.filiere_name || '—') + '</td>' +
+      '<td>' + esc(c.niveau_id || '—') + '</td>' +
+      '<td>' + esc(c.semestre_name || '—') + '</td>' +
+      '<td>' + esc(c.module_name || '—') + '</td>' +
+      '<td>' + (c.student_count ?? '—') + '</td>' +
+      '<td>' + esc(c.teacher_name || '—') + '</td>' +
+      '<td class="actions-cell">' +
+        '<button class="btn sm outline" onclick="openEditClass(' + c.id + ')">Modifier</button>' +
+        '<button class="btn sm outline" style="color:var(--red)" onclick="deleteClass(' + c.id + ')">Supprimer</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  createPaginationControls('classesPagination', classesCurrentPage, totalPages, loadClasses);
+}
+
+/* ── Cascades async avec restauration ── */
+
+async function cascadeSemestre(niveauId, restoreValue) {
+  var sel = document.getElementById('clSemestre');
+  var spinner = document.getElementById('clSemestreSpinner');
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  if (spinner) spinner.style.display = 'inline-block';
+  if (!niveauId) {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+    cascadeFiliere('');
+    return;
+  }
+  try {
+    var data = await API.apiFetch('/curriculum/semestres-par-niveau/?niveau=' + encodeURIComponent(niveauId));
+    var sems = Array.isArray(data) ? data : [];
+    sems.forEach(function (s) {
+      sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    });
+    sel.disabled = false;
+    if (restoreValue) sel.value = restoreValue;
+    if (!restoreValue) cascadeFiliere('');
+  } catch (e) {
+    sel.disabled = false;
+    cascadeFiliere('');
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+function cascadeFiliere(semestreId, restoreValue) {
+  var sel = document.getElementById('clFiliere');
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  if (!semestreId) {
+    sel.disabled = false;
+    cascadeModule('');
+    return;
+  }
+  var filtered = allFilieres.filter(function (f) { return String(f.semestre_id) === String(semestreId); });
+  filtered.forEach(function (f) {
+    sel.innerHTML += '<option value="' + f.id + '">' + esc(f.name) + '</option>';
+  });
+  sel.disabled = false;
+  if (restoreValue) sel.value = restoreValue;
+  if (!restoreValue) cascadeModule('');
+}
+
+async function cascadeModule(filiereId, restoreValue) {
+  var sel = document.getElementById('clModule');
+  var spinner = document.getElementById('clModuleSpinner');
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  if (spinner) spinner.style.display = 'inline-block';
+  if (!filiereId) {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+    return;
+  }
+  try {
+    var data = await API.apiFetch('/curriculum/modules/?filiere_id=' + filiereId);
+    var mods = Array.isArray(data) ? data : [];
+    mods.forEach(function (m) {
+      sel.innerHTML += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
+    });
+    sel.disabled = false;
+    if (restoreValue) sel.value = restoreValue;
+  } catch (e) {
+    sel.disabled = false;
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+function cascadeRoom(blockId, restoreValue) {
+  var sel = document.getElementById('clRoom');
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  if (!blockId) return;
+  var block = allBlocks.find(function (b) { return b.id == blockId; });
+  if (block && block.rooms) {
+    block.rooms.forEach(function (r) {
+      sel.innerHTML += '<option value="' + r.id + '">' + esc(r.name) + '</option>';
+    });
+  }
+  if (restoreValue) sel.value = restoreValue;
+}
+
+function toggleLocation(locationType) {
+  var showBlock = locationType === 'BLOC' || locationType === 'BOTH_ALLOWED';
+  var showAmphi = locationType === 'AMPHI' || locationType === 'BOTH_ALLOWED';
+  document.getElementById('clBlockGroup').style.display = showBlock ? '' : 'none';
+  document.getElementById('clAmphiGroup').style.display = showAmphi ? '' : 'none';
+}
+
+async function openEditClass(id) {
+  var c = allClasses.find(function (x) { return x.id === id; });
+  if (!c) return;
+  document.getElementById('clId').value = c.id;
+  document.getElementById('modalClasseTitle').textContent = 'Modifier la classe';
+  document.getElementById('clYear').value = c.academic_year || '';
+  document.getElementById('clTeacher').value = c.assigned_teacher_id || '';
+
+  if (c.location_type) {
+    document.getElementById('clLocationType').value = c.location_type;
+    toggleLocation(c.location_type);
+    if (c.block_id) {
+      document.getElementById('clBlock').value = c.block_id;
+      cascadeRoom(c.block_id, c.room_id);
+    }
+    if (c.amphitheater_id) document.getElementById('clAmphi').value = c.amphitheater_id;
+  }
+
+  if (c.niveau_id) {
+    document.getElementById('clNiveau').value = c.niveau_id;
+    await cascadeSemestre(c.niveau_id, c.semestre_id);
+    if (c.semestre_id) {
+      cascadeFiliere(c.semestre_id, c.filiere_id);
+      if (c.filiere_id) {
+        await cascadeModule(c.filiere_id, c.module_id);
+      }
+    }
+  }
+
+  openModal('modalClasse');
+}
+
+async function deleteClass(id) {
+  if (!confirm('Supprimer cette classe ?')) return;
+  try {
+    await API.apiFetch('/classes/' + id + '/', { method: 'DELETE' });
+    showToast('Classe supprimée.', 'success');
+    await loadClasses();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function resetClassForm() {
+  document.getElementById('clId').value = '';
+  document.getElementById('modalClasseTitle').textContent = 'Ajouter une classe';
+  document.getElementById('clNiveau').value = '';
+  cascadeSemestre('');
+  document.getElementById('clYear').value = '';
+  document.getElementById('clLocationType').value = '';
+  toggleLocation('');
+  document.getElementById('clBlock').value = '';
+  cascadeRoom('');
+  document.getElementById('clAmphi').value = '';
+  document.getElementById('clTeacher').value = '';
+}
+
+function setupEventListeners() {
+  const searchEl = document.getElementById('searchClasses');
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      clearTimeout(classesSearchTimer);
+      classesSearchTimer = setTimeout(function () { loadClasses(1); }, 350);
+    });
+  }
+
+  document.getElementById('clNiveau')?.addEventListener('change', function () {
+    cascadeSemestre(this.value);
+  });
+  document.getElementById('clSemestre')?.addEventListener('change', function () {
+    cascadeFiliere(this.value);
+  });
+  document.getElementById('clFiliere')?.addEventListener('change', function () {
+    cascadeModule(this.value);
+  });
+  document.getElementById('clLocationType')?.addEventListener('change', function () {
+    toggleLocation(this.value);
+  });
+  document.getElementById('clBlock')?.addEventListener('change', function () {
+    cascadeRoom(this.value);
+  });
+
+  document.getElementById('btnOpenAddClasse')?.addEventListener('click', function () {
+    resetClassForm();
+    openModal('modalClasse');
+  });
+
+  document.getElementById('btnSubmitClasse')?.addEventListener('click', async function () {
+    var id = document.getElementById('clId').value;
+    var body = {
+      niveau_id: document.getElementById('clNiveau').value || '',
+      semestre_id: document.getElementById('clSemestre').value || null,
+      filiere_id: document.getElementById('clFiliere').value || null,
+      module_id: document.getElementById('clModule').value || null,
+      academic_year: document.getElementById('clYear').value.trim(),
+      location_type: document.getElementById('clLocationType').value || '',
+      block_id: document.getElementById('clBlock').value || null,
+      room_id: document.getElementById('clRoom').value || null,
+      amphitheater_id: document.getElementById('clAmphi').value || null,
+    };
+    const teacherRaw = document.getElementById('clTeacher').value;
+    if (teacherRaw) body.teacher_id = Number(teacherRaw);
+    if (!body.filiere_id || !body.semestre_id) {
+      showToast('Niveau, semestre et filière sont requis.', 'error'); return;
+    }
+    try {
+      if (id) {
+        await API.apiFetch('/classes/' + id + '/', { method: 'PATCH', body: JSON.stringify(body) });
+      } else {
+        await API.apiFetch('/classes/', { method: 'POST', body: JSON.stringify(body) });
+      }
+      closeModal('modalClasse');
+      showToast('Classe enregistrée.', 'success');
+      await loadClasses(id ? classesCurrentPage : 1);
+    } catch (e) { showToast(e.message, 'error'); }
+  });
+}

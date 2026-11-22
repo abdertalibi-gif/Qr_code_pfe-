@@ -1,169 +1,194 @@
-# PrésenceQR — Gestion des présences par QR code
+# 📋 PrésenceQR — Gestion des Présences Universitaires par QR Code
 
-Application de suivi des présences étudiantes basée sur un code QR, composée d’un **backend Django REST Framework**, d’une **interface web** (administration, enseignants, étudiants) et d’une **application mobile Flutter**.
+<div align="center">
 
-Le système couvre les filières, niveaux, modules, classes, séances, enseignants et étudiants, avec génération de QR codes, scan côté mobile, suivi en direct par WebSocket, détection des tentatives suspectes et export des présences au format Excel.
+[![Node.js](https://img.shields.io/badge/Node.js-22.x_LTS-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![WebSocket](https://img.shields.io/badge/WebSocket-Live_Sync-010101?logo=socketdotio&logoColor=white)](https://developer.mozilla.org/fr/docs/Web/API/WebSocket)
+[![Security](https://img.shields.io/badge/Anti--Fraude-GPS_%2B_Fingerprint-10B981?logo=securityscorecard&logoColor=white)](https://github.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Plateforme web et mobile intelligente d'émargement étudiant sécurisé par QR Code dynamique, validation GPS, détection anti-fraude et synchronisation WebSocket en temps réel.**
+
+[Fonctionnalités](#-fonctionnalités-principales) • [Captures d'écran](#-captures-décran) • [Comptes Démo](#-comptes-de-démonstration) • [Installation](#-installation-et-démarrage) • [API Documentation](#-documentation-de-lapi-rest-v1)
+
+</div>
 
 ---
 
-## Fonctionnalités principales
+## 📸 Captures d'Écran
 
-- **Administration** : gestion des utilisateurs et des rôles, classes, filières/niveaux/modules, séances, salles, blocs, amphithéâtres, départements, statistiques et rapports.
-- **Enseignants** : création de séances, génération du QR code, suivi des présences en direct, import des enseignants depuis Excel, charge horaire et rapports mensuels.
-- **Étudiants** : consultation de l’emploi du temps et des séances, marquage de la présence par scan du QR code.
-- **Sécurité des scans** : identification de l’appareil, limitation des doubles scans, géolocalisation facultative et journal des tentatives suspectes.
-- **Temps réel** : WebSockets pour les présences live (enseignant et administrateur) et les mises à jour d’emploi du temps.
-- **API documentée** : authentification JWT (SimpleJWT) et documentation Swagger.
+### 🌐 1. Page d'Accueil & Portail Institutionnel
+Interface vitrine interactive présentant les statistiques globales, le fonctionnement de l'émargement et les accès sécurisés par rôle.
+
+<div align="center">
+  <img src="docs/screenshots/landing_page.jpg" alt="PrésenceQR Landing Page" width="92%" style="border-radius:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);" />
+</div>
 
 ---
 
-## Structure du dépôt
+### 📊 2. Tableau de Bord Administrateur & Statistiques
+Console centrale pour la supervision complète de l'établissement : taux de présence global, alertes d'absentéisme, gestion des départements, filières, classes, enseignants et suivi en direct.
+
+<div align="center">
+  <img src="docs/screenshots/admin_dashboard.jpg" alt="Tableau de bord Administrateur" width="92%" style="border-radius:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);" />
+</div>
+
+---
+
+### 👨‍🏫 3. Espace Enseignant & Générateur de QR Code Dynamique
+Génération de QR codes cryptés à expiration automatique avec compte à rebours, vérification du rayon GPS, liste instantanée des étudiants présents et bascule manuelle en cas de besoin.
+
+<div align="center">
+  <img src="docs/screenshots/teacher_qr_session.jpg" alt="Espace Enseignant et QR Code" width="92%" style="border-radius:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);" />
+</div>
+
+---
+
+### 📱 4. Émargement Étudiant & Validation GPS Anti-Fraude
+Validation de présence ultra-rapide par scan ou caméra web avec horodatage, empreinte unique de l'appareil (anti-double scan) et contrôle de proximité géographique.
+
+<div align="center">
+  <img src="docs/screenshots/student_scan_validation.jpg" alt="Validation Présence Étudiant" width="75%" style="border-radius:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);" />
+</div>
+
+---
+
+## 🎯 Fonctionnalités Principales
+
+### 🛡️ Sécurité & Anti-Fraude
+* **QR Codes Dynamiques** : Chaque QR code possède un jeton unique à durée de validité configurable (par défaut 15–20 minutes) avec expiration en direct.
+* **Vérification Géographique (GPS Geofencing)** : Contrôle automatique que l'étudiant se trouve physiquement dans la salle ou l'amphithéâtre (rayon de 50 m par défaut).
+* **Empreinte de l'Appareil (Device Fingerprinting)** : Empêche un étudiant de valider la présence de ses camarades depuis le même smartphone.
+* **Journalisation des Tentatives Suspectes** : Détection des adresses IP distantes, anomalies d'horodatage ou de localisation.
+
+### ⚡ Temps Réel & Synchronisation
+* **WebSockets Intégrés** : Mise à jour instantanée des tableaux de bord enseignant et administrateur à chaque scan d'étudiant, sans rechargement de page.
+* **Occupation des Locaux en Direct** : Suivi de l'occupation en temps réel des salles, blocs et amphithéâtres.
+
+### 📑 Gestion Académique Complète
+* **Structure Universitaire** : Départements, Filières, Niveaux (Licence, Master, Ingénieur), Modules et Coefficients.
+* **Classes & Étudiants** : Gestion des cohortes, codes Apogée, codes Massar, coordonnées et affectations.
+* **Rapports & Exports Excel** : Exportation en un clic des feuilles d'émargement et rapports mensuels de charge horaire.
+
+---
+
+## 👤 Comptes de Démonstration
+
+Le système intègre un jeu de données initial vous permettant de tester immédiatement l'ensemble des rôles :
+
+| Rôle | Adresse E-mail | Mot de passe | Espace Accessible |
+|---|---|---|---|
+| **Administrateur** | `admin@qrattendance.local` | `admin` | `/admin-ui/` |
+| **Enseignant** | `teacher@qrattendance.local` | `admin` | `/teacher/` |
+| **Étudiant** | `student@qrattendance.local` | `admin` | `/student/` ou `/attend/` |
+| **Chef de Département** | `depthead@qrattendance.local` | `admin` | `/admin-ui/` |
+
+> *Note : Les raccourcis `admin`, `teacher` et `student` sont également acceptés directement dans le champ e-mail pour des tests rapides.*
+
+---
+
+## 🚀 Installation et Démarrage
+
+### Prérequis
+* **Node.js** version 20 ou 22 LTS
+* **npm** version 9+
+
+### Démarrage Rapide
+
+```bash
+# 1. Cloner le projet
+git clone https://github.com/abdertalibi-gif/Qr_code_pfe-.git
+cd Qr_code_pfe-
+
+# 2. Installer les dépendances
+npm install
+
+# 3. Lancer le serveur en mode développement
+npm run dev
+```
+
+L'application est immédiatement accessible sur **http://localhost:3000** :
+* Accueil public : `http://localhost:3000/`
+* Connexion : `http://localhost:3000/login/`
+* Page d'émargement QR : `http://localhost:3000/attend/?token=SESSION-DEMO-QR-2026`
+
+### Commandes Disponibles
+
+```bash
+npm run dev     # Démarre le serveur TypeScript avec rechargement à chaud (tsx)
+npm run build   # Vérifie les types TypeScript (tsc --noEmit)
+npm start       # Démarre l'application en environnement de production
+```
+
+---
+
+## 🏗️ Architecture du Projet
 
 ```text
 .
-├── backend/                 # Projet Django (config, apps, templates, static, médias)
-│   ├── config/              # settings.py, urls.py, asgi.py (Channels/Daphne)
-│   ├── attendance/          # Présences, QR codes, WebSockets, rapports
-│   ├── courses/             # Séances et planification
-│   ├── curriculum/          # Filières, niveaux, modules
-│   ├── users/               # Utilisateurs, rôles, authentification
-│   └── templates/           # Interfaces web (landing, login, admin, teacher, student)
-├── mobile/                  # Application Flutter (provider, services, écrans)
-├── docs/                    # Diagrammes et images
-├── docker-compose.yml       # PostgreSQL + Redis + Django (Daphne)
-├── requirements.txt         # Dépendances Python essentielles
-└── .env.example             # Modèle de configuration (sans secret)
+├── server.ts                    # Serveur Express & WebSocket (moteur API, état & routes)
+├── package.json                 # Dépendances Node.js (Express, ws, qrcode, tsx, JWT)
+├── tsconfig.json                # Configuration du compilateur TypeScript
+├── public/                      # Interfaces Web & Feuilles de style
+│   ├── landing.html             # Page d'accueil moderne & responsive
+│   ├── login.html               # Portail d'authentification
+│   ├── admin.html               # Tableau de bord complet Administrateur (tabs & modals)
+│   ├── teacher.html             # Interface Enseignant (génération QR, suivi direct)
+│   ├── student.html             # Espace Étudiant (emploi du temps & présences)
+│   ├── attend.html              # Écran de validation de présence par QR
+│   ├── dashboard.css            # Charte graphique unifiée PrésenceQR
+│   ├── api.js                   # Client API REST & WebSocket (window.API)
+│   ├── session_form.js          # Formulaire de création de séance
+│   └── screenshots/             # Captures d'écran HD pour la documentation
+├── docs/                        # Documentation et diagrammes
+│   └── screenshots/             # Captures d'écran du projet
+└── README.md                    # Documentation officielle
 ```
 
 ---
 
-## Prérequis
+## 🔌 Documentation de l'API REST v1
 
-- Python 3.13+ (Django 6.0.5)
-- PostgreSQL (ou une base compatible accessible par `DATABASE_URL`, par exemple Neon)
-- Redis (facultatif en local, utilisé par Django Channels en production)
-- Flutter / Dart SDK 3.11+ pour l’application mobile
-- Docker et Docker Compose pour un lancement conteneurisé
+Toutes les routes API sont préfixées par `/api/v1/` :
 
----
+### Authentification & Profil
+* `POST /api/v1/auth/login/` : Connexion utilisateur, retourne `{ access, refresh, user }`.
+* `POST /api/v1/auth/refresh/` : Renouvellement du jeton d'accès JWT.
+* `GET  /api/v1/auth/me/` : Informations de l'utilisateur connecté.
+* `POST /api/v1/auth/password-reset/` : Demande de réinitialisation de mot de passe.
 
-## Installation locale (backend + interface web)
+### Séances & QR Codes
+* `GET  /api/v1/sessions/` : Liste filtrable des séances (par classe, enseignant ou état actif).
+* `POST /api/v1/sessions/` : Création d'une nouvelle séance de cours/TD/TP.
+* `POST /api/v1/sessions/:id/generate-qr/` : Génération d'un QR code dynamique avec coordonnées GPS et délai d'expiration.
+* `GET  /api/v1/sessions/:id/current-qr/` : Récupération du QR code actif au format base64.
+* `POST /api/v1/sessions/:id/toggle_active/` : Activation / clôture d'une séance.
 
-Depuis la racine du dépôt, sous PowerShell :
+### Émargement & Présences
+* `GET  /api/v1/attendance/qr-info/?token=<TOKEN>` : Récupère les métadonnées de la séance scannée (matière, enseignant, salle, exigence GPS).
+* `POST /api/v1/attendance/validate/` : Valide la présence d'un étudiant après contrôles anti-fraude. Diffuse l'événement en direct sur WebSocket.
+* `GET  /api/v1/attendance/records/` : Historique complet des présences.
+* `GET  /api/v1/attendance/live/` : Présences de la journée en direct.
 
-```powershell
-Copy-Item .env.example .env
-# Éditer .env : DATABASE_URL, DJANGO_SECRET_KEY, DJANGO_DEBUG, SMTP...
-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-cd backend
-python manage.py check
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver 127.0.0.1:8000
-```
-
-> `backend/requirements.txt` contient un environnement complet figé (pytest, Jupyter, outils de diagnostic, etc.) ; `requirements.txt` à la racine suffit pour exécuter l’application.
-
-L’interface est alors disponible sur **http://localhost:8000**.
-
-### Lancement avec Docker
-
-```powershell
-docker compose up --build
-```
-
-Le service `backend` applique les migrations puis démarre Daphne sur le port `8000`. PostgreSQL et Redis sont exposés sur `5432` et `6379`.
+### Statistiques & Tableaux de Bord
+* `GET  /api/v1/dashboard/counts/` : Compteurs globaux (utilisateurs, classes, séances, salles, présences).
+* `GET  /api/v1/statistics/` : Métriques d'assiduité hebdomadaires et répartition par filière.
+* `GET  /api/v1/absence-stats/` : Étudiants en situation critique (> 3 absences).
+* `GET  /api/v1/teacher-workload/` : Suivi de la charge horaire effectuée par enseignant.
 
 ---
 
-## Application mobile (Flutter)
+## 👨‍💻 Auteur & Cadre Académique
 
-```powershell
-cd mobile
-flutter pub get
-flutter analyze
-flutter test
-
-# Émulateur Android :
-flutter run --dart-define=DEV_HOST=10.0.2.2
-
-# Appareil physique sur le même réseau :
-flutter run --dart-define=DEV_HOST=ADRESSE_IP_DU_PC
-
-# Backend distant (production) :
-flutter run --dart-define=API_BASE_URL=https://exemple.onrender.com/api/v1
-```
-
-Par défaut, l’application utilise `http://<DEV_HOST>:8000/api/v1`. Le schéma de deep link est `presenceqr://`.
-
-**Dépannage Flutter (machine de développement Windows)** : si `flutter` échoue avec une erreur de moteur précompilé, définir la variable d’environnement suivante avant la commande :
-
-```powershell
-$env:FLUTTER_PREBUILT_ENGINE_VERSION = (Get-Content C:\flutter\bin\internal\engine.version)
-```
+* **Auteur** : Abderrahim Talibi
+* **Formation** : Master 1 SDIA (Sciences des Données & Intelligence Artificielle)
+* **Établissement** : Faculté des Sciences, Université Moulay Ismaïl — Meknès, Maroc
+* **Projet** : Projet de Fin d'Études (PFE) — Système Intégré de Suivi et Validation de Présence Universitaire par QR Code
 
 ---
 
-## URLs utiles
-
-| URL | Description |
-|---|---|
-| `/` | Page d’accueil |
-| `/login/` | Connexion web |
-| `/admin-ui/` | Tableau de bord administrateur |
-| `/teacher/` | Espace enseignant |
-| `/student/` | Espace étudiant |
-| `/attend/` | Marquage de présence (lien QR / web) |
-| `/health/` | Santé du service et de la base de données (JSON) |
-| `/api/v1/` | Racine de l’API REST |
-| `/api/docs/swagger/` | Documentation Swagger |
-| `/admin/` | Administration Django intégrée |
-
-L’authentification API se fait via `POST /api/v1/auth/login/` (email + mot de passe), puis envoi du jeton d’accès dans l’en-tête `Authorization: Bearer <token>`. Les jetons sont gérés par `djangorestframework-simplejwt`.
-
----
-
-## Configuration (fichier `.env`)
-
-| Variable | Rôle | Valeur par défaut / exemple |
-|---|---|---|
-| `DATABASE_URL` | Connexion PostgreSQL | `postgresql://postgres@127.0.0.1:5432/presenceqr_db` |
-| `DJANGO_SECRET_KEY` | Clé secrète Django | à générer, ne jamais committer |
-| `DJANGO_DEBUG` | Mode debug | `True` en développement, `False` en production |
-| `EMAIL_HOST` / `EMAIL_PORT` | Serveur SMTP (Brevo) | `smtp-relay.brevo.com` / `587` |
-| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | Identifiants SMTP | à renseigner |
-| `DEFAULT_FROM_EMAIL` | Expéditeur des e-mails | `change-me@example.com` |
-| `SITE_BASE_URL` | URL publique utilisée dans les QR codes | `http://172.30.251.9:8000` |
-| `APP_DEEP_LINK_SCHEME` | Schéma d’ouverture de l’app mobile | `presenceqr` |
-| `CORS_ALLOWED_ORIGINS` | Origines autorisées (production) | `http://localhost:3000 http://localhost:8000` |
-
-Le fichier `.env` est ignoré par Git : ne jamais versionner de mot de passe, de clé API ou de jeton.
-
----
-
-## Vérifications
-
-```powershell
-# Backend
-cd backend
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python manage.py test
-
-# Mobile
-cd mobile
-flutter analyze
-flutter test
-```
-
-`flutter analyze` peut remonter des informations de dépréciation (`withOpacity`) sans empêcher la compilation : ce ne sont pas des erreurs bloquantes.
-
----
-
-## Auteur
-
-Projet PFE — Abderrahim Talibi, Master 1 SDIA, Université Moulay Ismaïl, Meknès (Maroc).
+<div align="center">
+  <sub>© 2026 PrésenceQR. Conçu avec rigueur et passion.</sub>
+</div>

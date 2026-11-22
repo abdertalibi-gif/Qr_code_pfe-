@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrésenceQR — Connexion</title>
+  <link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body class="login-page">
+  <aside class="login-brand-panel">
+    <div class="deco-circle"></div>
+    <div class="login-brand-content">
+      <div class="nav-brand" style="color:#fff">
+        <div class="nav-brand-icon">📋</div>
+        <span style="font-size:1.15rem;font-weight:800">PrésenceQR</span>
+      </div>
+      <h2>Bienvenue sur votre<br/>portail de présence</h2>
+      <p>
+        Plateforme sécurisée de gestion des présences par QR code pour les établissements d'enseignement supérieur.
+      </p>
+      <ul class="login-features">
+        <li>Scan QR en temps réel</li>
+        <li>Tableaux de bord admin & enseignant</li>
+        <li>Export Excel des présences</li>
+        <li>Gestion des classes et séances</li>
+      </ul>
+    </div>
+    <p class="login-brand-footer">© 2026 PrésenceQR — Tous droits réservés</p>
+  </aside>
+
+  <div class="login-form-panel">
+    <div class="login-card">
+      <div style="text-align:center;margin-bottom:0.25rem">
+        <div style="width:48px;height:48px;background:linear-gradient(135deg,#0F7DB8,#2196D3);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;box-shadow:0 4px 12px rgba(15,125,184,0.3);margin-bottom:1rem">📋</div>
+      </div>
+      <h1 style="text-align:center">Bon retour</h1>
+      <p class="subtitle" style="text-align:center">Connectez-vous pour accéder à votre espace</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Adresse e-mail</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="vous@exemple.ma"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <div style="text-align:right;margin-top:-0.5rem;margin-bottom:1.25rem">
+          <a href="#" id="forgotPasswordLink" style="font-size:.78rem;color:var(--primary);text-decoration:none;font-weight:600">
+            Mot de passe oublié ?
+          </a>
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn">
+          <span class="btn-label">Se connecter</span>
+          <span class="spinner"></span>
+        </button>
+
+        <div class="alert" id="alert"></div>
+      </form>
+
+      <div id="resetModal" style="display:none">
+        <h2 style="margin-top:1.5rem;font-size:1.1rem">Réinitialiser votre mot de passe</h2>
+        <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem">
+          Saisissez vos informations pour vérifier votre identité.
+        </p>
+        <div class="field" style="margin-bottom:1rem">
+          <label>Vous êtes</label>
+          <div style="display:flex;gap:0.75rem;margin-top:0.25rem">
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:.88rem;cursor:pointer">
+              <input type="radio" name="resetRole" value="student" checked onchange="toggleResetRole()" />
+              Étudiant
+            </label>
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:.88rem;cursor:pointer">
+              <input type="radio" name="resetRole" value="teacher" onchange="toggleResetRole()" />
+              Enseignant
+            </label>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="resetFirstName">Prénom</label>
+            <input type="text" id="resetFirstName" placeholder="Votre prénom" />
+          </div>
+          <div class="field">
+            <label for="resetLastName">Nom</label>
+            <input type="text" id="resetLastName" placeholder="Votre nom" />
+          </div>
+        </div>
+        <div class="field" id="resetCodeMassarField">
+          <label for="resetCodeMassar">Code Massar</label>
+          <input type="text" id="resetCodeMassar" placeholder="ex: M123456789" />
+        </div>
+        <div class="field" id="resetCinField" style="display:none">
+          <label for="resetCin">CNE / CIN</label>
+          <input type="text" id="resetCin" placeholder="ex: NE123456" />
+        </div>
+        <div class="field">
+          <label for="resetEmail">Adresse e-mail</label>
+          <input type="email" id="resetEmail" placeholder="vous@exemple.ma" />
+        </div>
+        <button class="btn" id="resetBtn" style="margin-top:0.5rem">
+          <span class="btn-label">Vérifier et réinitialiser</span>
+          <span class="spinner"></span>
+        </button>
+        <p style="margin-top:1rem;font-size:.82rem;text-align:center">
+          <a href="#" id="backToLoginLink" style="color:var(--primary);text-decoration:none;font-weight:600">← Retour à la connexion</a>
+        </p>
+        <div class="alert" id="resetAlert"></div>
+      </div>
+
+      <p style="margin-top:1rem;text-align:center">
+        <a href="/" style="font-size:.82rem;color:var(--primary);text-decoration:none;font-weight:600">&larr; Retour à l'accueil</a>
+      </p>
+      <p style="margin-top:.5rem;text-align:center;font-size:.78rem;color:var(--muted)">
+        Connexion sécurisée · JWT
+      </p>
+    </div>
+  </div>
+
+  <script src="/api.js"></script>
+  <script src="/i18n-fr.js"></script>
+  <script>
+    if (API.getToken()) {
+      const u = localStorage.getItem('current_user');
+      if (u) {
+        try {
+          const user = JSON.parse(u);
+          if (user.role === 'admin') window.location.href = '/admin-ui/';
+          else if (user.role === 'teacher') window.location.href = '/teacher/';
+          else if (user.role === 'student') window.location.href = '/student/';
+          else if (user.role === 'department_head') window.location.href = '/admin-ui/';
+          else if (user.role === 'program_manager') window.location.href = '/admin-ui/';
+          else window.location.href = '/login/';
+        } catch {}
+      }
+    }
+
+    const form = document.getElementById('loginForm');
+    const btn = document.getElementById('loginBtn');
+    const alertEl = document.getElementById('alert');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+    const backLink = document.getElementById('backToLoginLink');
+    const resetModal = document.getElementById('resetModal');
+    const resetBtn = document.getElementById('resetBtn');
+    const resetAlert = document.getElementById('resetAlert');
+    const resetEmail = document.getElementById('resetEmail');
+
+    function showAlert(msg, type = 'error') {
+      alertEl.className = `alert ${type}`;
+      alertEl.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+    }
+
+    function showResetAlert(msg, type = 'error') {
+      resetAlert.className = `alert ${type}`;
+      resetAlert.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+    }
+
+    function setLoading(loading) {
+      btn.disabled = loading;
+      btn.classList.toggle('loading', loading);
+    }
+
+    function setResetLoading(loading) {
+      resetBtn.disabled = loading;
+      resetBtn.classList.toggle('loading', loading);
+    }
+
+    function toggleResetRole() {
+      const isTeacher = document.querySelector('input[name="resetRole"]:checked').value === 'teacher';
+      document.getElementById('resetCodeMassarField').style.display = isTeacher ? 'none' : '';
+      document.getElementById('resetCinField').style.display = isTeacher ? '' : 'none';
+    }
+
+    function showResetModal() {
+      form.style.display = 'none';
+      resetModal.style.display = 'block';
+      resetAlert.className = 'alert';
+      resetEmail.value = '';
+      document.getElementById('resetFirstName').value = '';
+      document.getElementById('resetLastName').value = '';
+      document.getElementById('resetCodeMassar').value = '';
+      document.getElementById('resetCin').value = '';
+      document.querySelector('input[name="resetRole"][value="student"]').checked = true;
+      toggleResetRole();
+      resetBtn.style.display = '';
+      resetEmail.disabled = false;
+      document.getElementById('resetFirstName').focus();
+    }
+
+    function showLoginForm() {
+      resetModal.style.display = 'none';
+      form.style.display = 'block';
+      alertEl.className = 'alert';
+    }
+
+    forgotLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      showResetModal();
+    });
+
+    backLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      showLoginForm();
+    });
+
+    resetBtn.addEventListener('click', async function () {
+      const first_name = document.getElementById('resetFirstName').value.trim();
+      const last_name = document.getElementById('resetLastName').value.trim();
+      const email = resetEmail.value.trim();
+      const role = document.querySelector('input[name="resetRole"]:checked').value;
+      const isTeacher = role === 'teacher';
+      const identifier = isTeacher
+        ? document.getElementById('resetCin').value.trim()
+        : document.getElementById('resetCodeMassar').value.trim();
+      const identLabel = isTeacher ? 'CNE / CIN' : 'Code Massar';
+      const missing = [];
+      if (!first_name) missing.push('Prénom');
+      if (!last_name) missing.push('Nom');
+      if (!identifier) missing.push(identLabel);
+      if (!email) missing.push('Email');
+      if (missing.length) {
+        showResetAlert('Champs obligatoires : ' + missing.join(', ') + '.');
+        return;
+      }
+      setResetLoading(true);
+      const payload = { role, first_name, last_name, email };
+      if (isTeacher) payload.cin = identifier;
+      else payload.code_massar = identifier;
+      try {
+        const res = await fetch(API_BASE + '/auth/password-reset/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showResetAlert(data.detail || 'Identifiants incorrects.');
+          setResetLoading(false);
+          return;
+        }
+        let message = data.detail || 'Identifiants vérifiés.';
+        if (data.reset_url) {
+          message = 'Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :<br><br>'
+                  + '<a href="' + data.reset_url + '" style="color:var(--primary);word-break:break-all">'
+                  + data.reset_url + '</a>';
+        }
+        showResetAlert(message, 'success');
+        resetBtn.style.display = 'none';
+        resetEmail.disabled = true;
+      } catch (err) {
+        showResetAlert('Erreur reseau. Veuillez reessayer.');
+      } finally {
+        setResetLoading(false);
+      }
+    });
+
+    resetEmail.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') resetBtn.click();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.className = 'alert';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showAlert(t('fillBothFields'));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const data = await API.login(email, password);
+        const role = data.user?.role;
+        const name = data.user?.first_name || email;
+        
+        if (!role) {
+          showAlert('Unable to determine user role', 'error');
+          setLoading(false);
+          return;
+        }
+        
+        showAlert(t('welcomeRedirect', { name }), 'success');
+
+        setTimeout(function () {
+          if (role === 'admin') window.location.href = '/admin-ui/';
+          else if (role === 'teacher') window.location.href = '/teacher/';
+          else if (role === 'student') window.location.href = '/student/';
+          else if (role === 'department_head') window.location.href = '/admin-ui/';
+          else if (role === 'program_manager') window.location.href = '/admin-ui/';
+          else {
+            showAlert('Unknown user role', 'error');
+            setLoading(false);
+          }
+        }, 600);
+      } catch (err) {
+        showAlert(err.message || t('invalidCredentials'));
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

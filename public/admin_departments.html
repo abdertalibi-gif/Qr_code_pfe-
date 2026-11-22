@@ -1,0 +1,94 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Départements{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Départements</h1>
+    <p>Gérez les départements et leurs chefs responsables.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Départements</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchDepartments" placeholder="Rechercher un département…" />
+    <button class="btn" id="btnOpenAddDepartment">+ Nouveau département</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Chef de département</th>
+        <th>Filières</th>
+        <th>Responsables de filière</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="departmentsBody">
+      <tr class="empty-row"><td colspan="6">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Department -->
+<div class="modal-backdrop" id="modalDepartment">
+  <div class="modal medium">
+    <div class="modal-header">
+      <h3 id="departmentModalTitle">➕ Nouveau département</h3>
+      <button class="modal-close" data-close="modalDepartment">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="departmentForm">
+        <div class="field">
+          <label for="deptName">Nom du département <span class="req">*</span></label>
+          <input type="text" id="deptName" required />
+        </div>
+        <div class="field">
+          <label for="deptHead">Chef de département</label>
+          <select id="deptHead">
+            <option value="">— Non assigné —</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn" id="btnSaveDepartment">💾 Enregistrer</button>
+          <button type="button" class="btn outline" data-close="modalDepartment">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Filiere Managers -->
+<div class="modal-backdrop" id="modalFiliereManagers">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3 id="filiereManagersTitle">🎯 Gérer les responsables de filière</h3>
+      <button class="modal-close" data-close="modalFiliereManagers">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:450px;overflow-y:auto">
+        <table>
+          <thead>
+            <tr><th>Filière</th><th>Responsable actuel</th><th>Nouveau responsable</th></tr>
+          </thead>
+          <tbody id="filiereManagersBody"></tbody>
+        </table>
+      </div>
+      <div class="form-actions" style="margin-top:1rem">
+        <button class="btn" id="btnSaveFiliereManagers">💾 Enregistrer les responsables</button>
+        <button type="button" class="btn outline" data-close="modalFiliereManagers">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-departments.js"></script>
+{% endblock %}

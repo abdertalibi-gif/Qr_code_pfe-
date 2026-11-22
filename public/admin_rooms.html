@@ -1,0 +1,129 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Salles{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="page-hero-text">
+    <h1>Salles</h1>
+    <p>Gérez les blocs, salles et amphithéâtres.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Blocs</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchBlocks" placeholder="Rechercher un bloc…" />
+    <button class="btn" id="btnOpenAddBlock">+ Nouveau bloc</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom du bloc</th>
+        <th>Salles</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="blocksBody">
+      <tr class="empty-row"><td colspan="4">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section-head" style="margin-top:2rem">
+  <h2>Amphithéâtres</h2>
+  <div class="section-actions">
+    <input type="search" class="search-input" id="searchAmphis" placeholder="Rechercher un amphithéâtre…" />
+    <button class="btn" id="btnOpenAddAmphi">+ Nouvel amphithéâtre</button>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="amphisBody">
+      <tr class="empty-row"><td colspan="3">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- MODAL: Add Block -->
+<div class="modal-backdrop" id="modalBlock">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="blockModalTitle">Ajouter un bloc</h3>
+      <button class="modal-close" data-close="modalBlock">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="blkId" />
+      <div class="field">
+        <label>Nom du bloc <span class="req">*</span></label>
+        <input type="text" id="blkName" placeholder="Bloc 1" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalBlock">Annuler</button>
+      <button class="btn" id="btnSubmitBlock">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Amphi -->
+<div class="modal-backdrop" id="modalAmphi">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="amphiModalTitle">Ajouter un amphithéâtre</h3>
+      <button class="modal-close" data-close="modalAmphi">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="amId" />
+      <div class="field">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="amName" placeholder="Amphi A" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalAmphi">Annuler</button>
+      <button class="btn" id="btnSubmitAmphi">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Room (inside Block) -->
+<div class="modal-backdrop" id="modalRoom">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="roomModalTitle">Ajouter une salle</h3>
+      <button class="modal-close" data-close="modalRoom">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rmId" />
+      <div class="field">
+        <label>Bloc <span class="req">*</span></label>
+        <select id="rmBlock"><option value="">— Sélectionner —</option></select>
+      </div>
+      <div class="field">
+        <label>Nom de la salle <span class="req">*</span></label>
+        <input type="text" id="rmName" placeholder="Salle 1" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn outline" data-close="modalRoom">Annuler</button>
+      <button class="btn" id="btnSubmitRoom">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/admin-rooms.js"></script>
+{% endblock %}
